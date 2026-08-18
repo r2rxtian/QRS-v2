@@ -1,0 +1,838 @@
+/* ==========================================================================
+   QR Task Check — Dashboard Styles
+   Page-specific rules only. Shared design tokens (:root), dark mode, base
+   resets, and the sidebar/profile/logout chrome all live in styles/app.css
+   (loaded before this file on every appshell page) -- this file used to
+   carry its own full duplicate of that entire foundation, a leftover from
+   when dashboard.php was a standalone mockup page. Since this file loads
+   *after* app.css, that duplicate was silently winning over any fix made
+   to the shared chrome in app.css (same selectors, same specificity, later
+   source order), which is why dashboard.php kept drifting out of sync with
+   the other 6 appshell pages. Removed; only genuinely dashboard-specific
+   styling (stat tiles, insights hero/dome, right rail, bottom grid, ...)
+   stays below.
+
+   One exception, restored after wrongly deleting it in that same cleanup:
+   .app-shell below is NOT a duplicate. app.css's shared .app-shell is a
+   bare `min-height: 100vh` -- correct for the other 6 pages, which lay out
+   with a fixed-position sidebar + margin-left main content, no CSS grid.
+   Only dashboard.php needs a two-column grid (main content + right rail
+   side by side), so that grid behavior belongs here, not in the shared
+   file. */
+.app-shell {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    min-height: 100vh;
+}
+
+/* ==========================================================================
+   Main Content
+   ========================================================================== */
+
+.main-content {
+    margin-left: 280px;
+    padding: 28px 36px 48px;
+    max-width: 1400px;
+}
+
+/* --- Stat tiles row --- */
+.stat-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.stat-tile {
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-tile-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--white);
+    flex-shrink: 0;
+}
+
+.stat-tile-icon.teal {
+    background: var(--accent-teal);
+}
+
+.stat-tile-icon.sky {
+    background: var(--accent-sky);
+}
+
+.stat-tile-icon.purple {
+    background: var(--accent-purple);
+}
+
+.stat-tile-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.stat-tile-label {
+    font-size: 13px;
+    color: var(--gray-500);
+}
+
+.stat-tile-sublabel {
+    font-size: 11.5px;
+    color: var(--gray-400);
+    margin-top: 3px;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* --- Insights hero (dome) --- */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.insights-hero {
+    padding: 28px 32px 36px;
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.insights-hero h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.insights-hero .insights-subtitle {
+    margin: 0 0 28px;
+    font-size: 13px;
+    color: var(--gray-500);
+}
+
+.dome-wrap {
+    position: relative;
+    max-width: 640px;
+    margin: 0 auto;
+    height: 260px;
+}
+
+.dome {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 420px;
+    height: 210px;
+    border-radius: 210px 210px 0 0;
+    background: linear-gradient(180deg, var(--primary-light), rgba(167, 172, 217, 0.15));
+    border: 1px solid var(--gray-100);
+    overflow: hidden;
+    animation: domeGlow 4.5s ease-in-out infinite;
+}
+
+.dome::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 100%, rgba(255, 255, 255, 0.75), transparent 60%);
+    opacity: 0.5;
+    animation: domeShimmer 4.5s ease-in-out infinite;
+}
+
+.dome-center {
+    position: absolute;
+    left: 50%;
+    bottom: 40px;
+    transform: translateX(-50%);
+    text-align: center;
+}
+
+.dome-center .dome-center-label {
+    display: block;
+    font-size: 13px;
+    color: var(--gray-500);
+    margin-bottom: 4px;
+}
+
+.dome-center .dome-center-value {
+    display: block;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.orbit-card {
+    position: absolute;
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 12px 16px;
+    text-align: left;
+    min-width: 130px;
+}
+
+.orbit-card .orbit-label {
+    display: block;
+    font-size: 12px;
+    color: var(--gray-500);
+}
+
+.orbit-card .orbit-value {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.orbit-top-left {
+    top: 10px;
+    left: 0;
+}
+
+.orbit-top-right {
+    top: 10px;
+    right: 0;
+}
+
+.orbit-bottom-left {
+    bottom: 30px;
+    left: 30px;
+}
+
+.orbit-bottom-right {
+    bottom: 30px;
+    right: 30px;
+}
+
+/* --- Bottom grid: overview / breakdown / recent list --- */
+.bottom-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 20px;
+}
+
+.panel {
+    padding: 22px 24px;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.panel-header .panel-menu {
+    font-size: 12px;
+    color: var(--gray-500);
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    padding: 4px 10px;
+    background: var(--surface);
+}
+
+/* Tasks Overview's range dropdown (Daily/Weekly/Monthly) -- same
+   .select-dropdown component used elsewhere, restyled compact to match this
+   card header's smaller footprint instead of the 38px-tall form-field size. */
+.panel-header .select-dropdown {
+    width: auto;
+}
+
+.panel-header .select-dropdown-trigger {
+    height: auto;
+    gap: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-500);
+    border-color: var(--gray-200);
+}
+
+.panel-header .select-dropdown-caret {
+    font-size: 10px;
+}
+
+.panel-header .select-dropdown-menu {
+    min-width: 110px;
+    left: auto;
+    right: 0;
+}
+
+/* Bar chart (static heights, CSS only) */
+.bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    height: 150px;
+    padding-top: 10px;
+    transition: opacity 0.15s ease;
+}
+
+.bar-chart .bar-col {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.bar-chart .bar {
+    width: 100%;
+    max-width: 22px;
+    border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, var(--periwinkle), var(--dusty-purple));
+}
+
+.bar-chart .bar-col span {
+    font-size: 11px;
+    color: var(--gray-500);
+}
+
+/* Recent list (reports) */
+.recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.recent-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.recent-item-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.recent-item-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.recent-item-meta {
+    font-size: 12px;
+    color: var(--gray-500);
+}
+
+/* Status badges (reused across tables/lists) */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 9999px;
+    white-space: nowrap;
+}
+
+.status-complete {
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+
+.status-ongoing {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+}
+
+.status-not-started {
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.status-assign {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+/* ==========================================================================
+   Right Rail — calendar / today's timeline / status donut
+   ========================================================================== */
+
+.right-rail {
+    padding: 28px 28px 48px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.rail-card {
+    padding: 20px 22px;
+}
+
+.rail-card .panel-header {
+    margin-bottom: 16px;
+}
+
+/* --- Calendar --- */
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.calendar-month {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.calendar-nav {
+    display: flex;
+    gap: 6px;
+}
+
+.icon-btn-sm {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+    background: var(--surface);
+    color: var(--gray-500);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.icon-btn-sm:hover {
+    background: var(--gray-50);
+    color: var(--gray-900);
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    row-gap: 8px;
+    text-align: center;
+    transition: opacity 0.15s ease;
+}
+
+.calendar-dow {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-400);
+    text-transform: uppercase;
+}
+
+.calendar-day {
+    position: relative;
+    font-size: 13px;
+    color: var(--gray-700);
+    padding: 6px 0;
+    border-radius: 8px;
+}
+
+.calendar-day.muted {
+    color: var(--gray-300);
+}
+
+.calendar-day.today {
+    background: var(--primary);
+    color: var(--white);
+    font-weight: 700;
+}
+
+.calendar-day.has-task::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent-sky);
+}
+
+.calendar-day.today.has-task::after {
+    background: var(--surface);
+}
+
+/* --- Today's task timeline --- */
+.timeline {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-left: 18px;
+    max-height: 264px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.timeline::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--gray-100);
+}
+
+.timeline-item {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.timeline-dot {
+    position: absolute;
+    left: -18px;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--white);
+    box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.timeline-item.done .timeline-dot {
+    background: var(--success);
+    box-shadow: 0 0 0 2px var(--success-bg);
+}
+
+.timeline-content {
+    flex: 1;
+}
+
+.timeline-time {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.timeline-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-top: 2px;
+}
+
+.timeline-meta {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-top: 2px;
+}
+
+.timeline-check {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--gray-200);
+    background: var(--surface);
+    color: var(--gray-400);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.timeline-item.done .timeline-check {
+    background: var(--success);
+    border-color: var(--success);
+    color: var(--white);
+}
+
+/* --- Location status donut --- */
+.donut-card {
+    padding-bottom: 48px;
+}
+
+.donut-wrap {
+    position: relative;
+    width: 132px;
+    height: 132px;
+    margin: 12px auto 28px;
+}
+
+.donut {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--gray-200); /* fallback; real split is set inline per-request from actual data */
+    transition: background 0.3s ease;
+}
+
+.donut-center {
+    position: absolute;
+    inset: 16px;
+    border-radius: 50%;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.donut-center span {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.donut-center small {
+    font-size: 11px;
+    color: var(--gray-500);
+}
+
+.donut-legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.donut-legend li {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    color: var(--gray-600);
+}
+
+.donut-legend .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.donut-legend .dot.teal {
+    background: var(--teal-soft);
+}
+
+.donut-legend .dot.sky {
+    background: var(--sky);
+}
+
+.donut-legend .dot.purple {
+    background: var(--dusty-purple);
+}
+
+.donut-legend li b {
+    margin-left: auto;
+    color: var(--gray-900);
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+/* .app-shell/.profile-sidebar/.sidebar-toggle/.sidebar-backdrop/.icon-rail
+   responsive behavior lives in app.css now (same duplication issue as the
+   block removed above) -- only the dashboard-specific rules stay here. */
+@media (max-width: 1300px) {
+    /* Below this width the right rail no longer fits as a side column, so
+       it drops into a row below the main content instead of disappearing --
+       calendar/today's-tasks/location-status stay reachable on tablets and
+       narrow windows, not just full desktop width. */
+    .right-rail {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        align-items: start;
+        padding: 0 36px 48px;
+        margin-left: 280px; /* clears the still-fixed profile sidebar above the 1024px drawer breakpoint, same as .main-content */
+    }
+}
+
+@media (max-width: 900px) {
+    .bottom-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 1024px) {
+    .main-content {
+        margin-left: 0;
+    }
+
+    .right-rail {
+        margin-left: 0;
+    }
+
+    .stat-tiles {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .main-content {
+        padding: 20px;
+    }
+
+    .right-rail {
+        padding: 0 20px 32px;
+    }
+}
+
+/* ==========================================================================
+   Dome animation keyframes
+   ========================================================================== */
+
+@keyframes domeGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(167, 172, 217, 0);
+    }
+
+    50% {
+        box-shadow: 0 -14px 46px 6px rgba(167, 172, 217, 0.35);
+    }
+}
+
+@keyframes domeShimmer {
+
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.06);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Stat tile hover */
+.stat-tile {
+    transition: all 0.3s ease;
+}
+
+.stat-tile:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(167, 172, 217, 0.15);
+}
+
+/* Card hover */
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Orbit card hover */
+.orbit-card {
+    transition: all 0.3s ease;
+}
+
+.orbit-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Recent items animations */
+.recent-item {
+    transition: all 0.2s ease;
+}
+
+.recent-item:hover {
+    background-color: var(--gray-100);
+    transform: translateX(4px);
+}
+
+/* Bar chart animation */
+.bar {
+    transition: all 0.3s ease;
+}
+
+.bar-col:hover .bar {
+    background-color: var(--periwinkle);
+    box-shadow: 0 4px 12px rgba(167, 172, 217, 0.3);
+}
+
+.donut {
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.08));
+    transition: all 0.3s ease;
+}
+
+.donut-legend li {
+    transition: all 0.2s ease;
+}
+
+.donut-legend li:hover {
+    transform: translateX(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .dome,
+    .dome::before,
+    .dome-center {
+        animation: none !important;
+    }
+}

@@ -1,0 +1,36 @@
+/* Page-specific styles for pages/task_report.php */
+
+.attachment-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.attachment-list img {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--gray-200);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.attachment-list img:hover {
+    transform: scale(1.1);
+}
+
+.no-attachments {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gray-400);
+    font-size: 13px;
+}
+
+/* .zoomed-photo base layout lives in app.css -- shared with the Task
+   Detail modal's photo zoom (scripts/task-detail-modal.js), not specific
+   to this page. */

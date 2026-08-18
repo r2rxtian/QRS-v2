@@ -1,0 +1,3098 @@
+/* ==========================================================================
+   QR Task Check — Shared Application Stylesheet
+   Reuses the exact palette/tokens from dashboard.css + login.css so every
+   ported page (tasks, task_locations, manage_locations, qradmin, task_report,
+   task_view, task_list, exportwithattachment) looks like one app.
+
+   The ported pages already share a consistent internal class-naming
+   convention (.card, .btn, .status-badge, .modal-overlay, .form-input, ...)
+   from the original codebase — this file redefines those same class names
+   against the new palette, plus the shared app-shell (sidebar/topbar) chrome.
+   ========================================================================== */
+
+:root {
+    /* Brand palette — identical to styles/dashboard.css / styles/login.css */
+    --teal-slate: #668586;
+    --teal-soft: #82AEB1;
+    --sky: #93C6D6;
+    --periwinkle: #A7ACD9;
+    --dusty-purple: #9E8FB2;
+
+    --primary: var(--periwinkle);
+    --primary-hover: #8d93c9;
+    --primary-light: #EEF0FB;
+
+    --accent-teal: var(--teal-soft);
+    --accent-sky: var(--sky);
+    --accent-purple: var(--dusty-purple);
+
+    --success: #059669;
+    --success-bg: #D1FAE5;
+    --success-text: #065F46;
+    --warning: #D97706;
+    --warning-bg: #FEF3C7;
+    --warning-text: #92400E;
+    --danger: #DC2626;
+    --danger-hover: #B91C1C;
+    /* legacy alias used by original qrs pages */
+    --danger-light: #FEE2E2;
+    /* legacy alias used by original qrs pages */
+    --danger-bg: #FEE2E2;
+    --danger-text: #991B1B;
+
+    --gray-50: #F9FAFB;
+    --gray-100: #F3F4F6;
+    --gray-200: #E5E7EB;
+    --gray-300: #D1D5DB;
+    --gray-400: #9CA3AF;
+    --gray-500: #6B7280;
+    --gray-600: #4B5563;
+    --gray-700: #374151;
+    --gray-800: #1F2937;
+    --gray-900: #111827;
+    --white: #FFFFFF;
+    /* Surface = card/sidebar/modal background. Same as --white in light mode,
+       but diverges from it in dark mode (unlike --white, which stays literal
+       white for text/icons on colored buttons). */
+    --surface: var(--white);
+
+    --ink-rail: #14181f;
+
+    --radius: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+
+    --shadow-sm: 0 1px 2px 0 rgba(17, 24, 39, 0.05);
+    --shadow: 0 1px 3px 0 rgba(17, 24, 39, 0.08), 0 1px 2px -1px rgba(17, 24, 39, 0.08);
+    --shadow-md: 0 4px 6px -1px rgba(17, 24, 39, 0.08), 0 2px 4px -2px rgba(17, 24, 39, 0.06);
+    --shadow-lg: 0 10px 20px -6px rgba(17, 24, 39, 0.12);
+}
+
+/* ==========================================================================
+   Dark mode — same token names, inverted values. Set via [data-theme="dark"]
+   on <html> by scripts/theme.js (applied early, before first paint).
+   Everything else in this file references these tokens rather than literal
+   hex, so no component-level dark rules are needed beyond this block.
+   ========================================================================== */
+:root[data-theme="dark"] {
+    --gray-50: #15171D;
+    --gray-100: #1B1E26;
+    --gray-200: #2A2E38;
+    --gray-300: #3A3F4C;
+    --gray-400: #8890A3;
+    --gray-500: #9CA3B8;
+    --gray-600: #B8BECD;
+    --gray-700: #D5D9E3;
+    --gray-800: #E7E9EF;
+    --gray-900: #F7F8FA;
+    --surface: #1E212A;
+
+    --success-bg: #113828;
+    --success-text: #6EE7B7;
+    --warning-bg: #3A2B0D;
+    --warning-text: #FCD34D;
+    --danger-bg: #3A1518;
+    --danger-light: #3A1518;
+    --danger-text: #FCA5A5;
+
+    /* Fallback only — theme.js recomputes this per chosen accent color against
+       the dark surface as soon as it runs, via an inline style that overrides this. */
+    --primary-light: #262A3D;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 20px -6px rgba(0, 0, 0, 0.6);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--gray-50);
+    color: var(--gray-700);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+input[type="checkbox"] {
+    accent-color: var(--primary);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Baseline cursor for every button in the app. Unlike <a>, a plain <button>
+   does NOT get a pointer cursor by default in most browsers -- only the
+   specific classes that happened to set cursor:pointer individually (kebab
+   menu items, tag-remove buttons, etc.) got it, while the most common
+   button class (.btn, used by Cancel/Save/Create/Delete and nearly every
+   other action button) never did, so half the app's buttons showed a hand
+   on hover and half showed a plain arrow. Setting it here once, on the
+   element itself, covers every button consistently; the existing
+   :disabled/.disabled rules (higher specificity, class-based) still win
+   for buttons that really shouldn't look clickable. */
+button {
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+}
+
+/* ==========================================================================
+   App Shell — icon rail + profile sidebar + main content
+   (structure copied from dashboard.php so every page shares one shell)
+   ========================================================================== */
+
+.app-shell {
+    min-height: 100vh;
+}
+
+.icon-rail {
+    background: var(--ink-rail);
+    display: none;
+}
+
+/* --- Profile Sidebar ---
+   Fixed to the viewport so it (and the logout link at its bottom) stays
+   visible while .main-content scrolls independently. */
+.profile-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--gray-200);
+    padding: 28px 20px;
+    display: flex;
+    flex-direction: column;
+    z-index: 40;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- Sidebar drawer toggle (hamburger) — hidden on desktop, shown when the
+   window is narrow enough that the sidebar switches to a slide-in drawer --- */
+.sidebar-toggle {
+    display: none;
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-200);
+    background: var(--surface);
+    color: var(--gray-600);
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sidebar-toggle:hover {
+    background: var(--gray-50);
+    color: var(--gray-900);
+}
+
+/* Dims the page behind the sidebar drawer when open — hidden on desktop */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.5);
+    z-index: 39;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-backdrop.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* --- Brand lockup (Renza-style sidebar header) --- */
+.brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 4px 20px;
+}
+
+.brand-lockup-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--periwinkle), var(--dusty-purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.brand-lockup-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gray-900);
+    letter-spacing: -0.01em;
+}
+
+.nav-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0 14px;
+    margin: 18px 0 8px;
+}
+
+.nav-section-label:first-of-type {
+    margin-top: 0;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-600);
+    transition: all 0.2s ease;
+}
+
+.sidebar-link i {
+    width: 18px;
+    text-align: center;
+    color: var(--gray-400);
+}
+
+.sidebar-link:hover {
+    background: var(--gray-50);
+    color: var(--gray-900);
+}
+
+.sidebar-link.active {
+    background: var(--primary-light);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.sidebar-link.active i {
+    color: var(--primary);
+}
+
+/* One bordered card groups logo/profile/logout into a single visual unit
+   (each section separated by an internal divider, not its own floating
+   border) instead of three separate elements loosely stacked in the
+   sidebar. Card itself carries the margin-top:auto that pushes the whole
+   group to the bottom of the sidebar's flex column. */
+.sidebar-footer-card {
+    margin-top: auto;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.sidebar-footer-logo {
+    padding: 14px 16px 12px;
+    display: flex;
+    justify-content: center;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+/* logofooter.png is a 1920x1080 canvas, but the actual logo only occupies
+   a narrow horizontal band roughly in the middle (measured: content spans
+   y=295-688 of the 1080px height, ~36% -- the rest is baked-in blank
+   margin, above AND below, that isn't visible in CSS as any margin/padding
+   we control). At width:auto that blank space rendered as-is, making the
+   logo look like it had a huge gap under it pushing it "too high up" above
+   the profile. object-fit crops it down to just that content band. */
+.sidebar-footer-logo img {
+    max-width: 150px;
+    width: 100%;
+    aspect-ratio: 1920 / 420;
+    object-fit: cover;
+    object-position: 50% 43%;
+}
+
+.profile-sidebar .topbar-user {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--gray-100);
+    margin-bottom: 0;
+}
+
+.topbar-user-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.profile-sidebar .topbar-user-avatar-wrap img {
+    width: 48px;
+    height: 48px;
+}
+
+.user-status-dot {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--success);
+    border: 2px solid var(--surface);
+}
+
+.topbar-user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-sidebar .topbar-user-name {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.topbar-user-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 3px 10px 3px 8px;
+    border-radius: 999px;
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+.topbar-user-role-badge i {
+    font-size: 11px;
+}
+
+.logout-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--danger);
+}
+
+.logout-link:hover {
+    background: var(--danger-bg);
+}
+
+.logout-divider {
+    align-self: stretch;
+    width: 1px;
+    background: var(--danger-light);
+}
+
+/* --- Appbar (persistent utility row: sidebar toggle + search) --- */
+.appbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+
+.topbar-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 8px;
+}
+
+.topbar-user img {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.topbar-user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+/* --- Top bar (breadcrumb-style page title + back link) --- */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.topbar-title h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+}
+
+.topbar-title p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--gray-500);
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ==========================================================================
+   Main Content
+   ========================================================================== */
+
+.main-content {
+    margin-left: 280px;
+    padding: 28px 36px 48px;
+    max-width: 1400px;
+}
+
+/* Legacy container/page-header wrapper kept for any page that still uses it */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 32px;
+}
+
+/* ==========================================================================
+   Cards
+   ========================================================================== */
+
+.card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-200);
+    margin-bottom: 24px;
+    /* No overflow:hidden here -- it would also clip the Filters dropdown,
+       which lives in .card-header (a sibling of .card-body/table below).
+       Corner-clipping for tables is scoped to .card-body.p-0 instead. */
+}
+
+.card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.card-header h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0;
+}
+
+.card-body {
+    padding: 24px;
+}
+
+.card-body.p-0 {
+    padding: 0;
+}
+
+/* ==========================================================================
+   Form Elements
+   ========================================================================== */
+
+.form-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-600);
+    white-space: nowrap;
+}
+
+.form-input,
+input[type="text"].form-input,
+select.form-input {
+    height: 38px;
+    padding: 0 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--gray-700);
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.btn,
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    border: none;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+.btn-secondary {
+    background: var(--surface);
+    color: var(--gray-700);
+    border: 1px solid var(--gray-300);
+}
+
+.btn-secondary:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+}
+
+.btn-danger {
+    background: var(--surface);
+    color: var(--danger);
+    border: 1px solid var(--gray-300);
+}
+
+.btn-danger:hover {
+    background: var(--danger-light);
+    border-color: var(--danger);
+}
+
+.btn-danger-solid {
+    background: var(--danger);
+    color: var(--white);
+}
+
+.btn-danger-solid:hover {
+    background: var(--danger-hover);
+}
+
+.btn-sm {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+}
+
+/* View Task action button (qradmin / task_list style) */
+.view-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--primary);
+    color: var(--white);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.view-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+/* ==========================================================================
+   Stat Tiles
+   ========================================================================== */
+
+.stat-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.stat-tile {
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-tile-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.stat-tile-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: var(--white);
+    flex-shrink: 0;
+}
+
+.stat-tile-icon.teal {
+    background: var(--accent-teal);
+}
+
+.stat-tile-icon.sky {
+    background: var(--accent-sky);
+}
+
+.stat-tile-icon.purple {
+    background: var(--accent-purple);
+}
+
+.stat-tile-icon.periwinkle {
+    background: var(--primary);
+}
+
+.stat-tile-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--gray-900);
+    line-height: 1.2;
+}
+
+.stat-tile-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-top: 4px;
+}
+
+.stat-tile-meta {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-top: 2px;
+}
+
+/* ==========================================================================
+   Avatar cells / tags (table cell helpers)
+   ========================================================================== */
+
+.avatar-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.avatar-cell img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.avatar-cell-name {
+    font-size: 14px;
+    color: var(--gray-700);
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 9999px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Kebab (row action) menu
+   ========================================================================== */
+
+.kebab-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.kebab-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--gray-400);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.15s ease;
+}
+
+.kebab-btn:hover {
+    background: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.kebab-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    min-width: 150px;
+    padding: 6px;
+    z-index: 50;
+    display: none;
+}
+
+/* Opens upward instead — set via kebab.js when there isn't enough room below */
+.kebab-menu.drop-up {
+    top: auto;
+    bottom: calc(100% + 4px);
+}
+
+.kebab-menu.open {
+    display: block;
+}
+
+.kebab-menu a,
+.kebab-menu button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-700);
+    text-decoration: none;
+    cursor: pointer;
+    text-align: left;
+}
+
+.kebab-menu a:hover,
+.kebab-menu button:hover {
+    background: var(--gray-50);
+}
+
+.kebab-menu .kebab-danger {
+    color: var(--danger);
+}
+
+.kebab-menu .kebab-danger:hover {
+    background: var(--danger-bg);
+}
+
+.kebab-menu i {
+    width: 14px;
+    text-align: center;
+    color: var(--gray-400);
+}
+
+.kebab-menu .kebab-danger i {
+    color: var(--danger);
+}
+
+/* ==========================================================================
+   Filter dropdown (topbar "Filters" button)
+   ========================================================================== */
+
+.filter-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.filter-btn {
+    position: relative;
+}
+
+.filter-badge {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--primary);
+    color: var(--white);
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 2px;
+}
+
+.filter-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    width: 240px;
+    padding: 16px;
+    z-index: 50;
+    display: none;
+}
+
+.filter-wrap.open .filter-panel {
+    display: block;
+}
+
+.filter-group {
+    margin-bottom: 16px;
+}
+
+.filter-group:last-of-type {
+    margin-bottom: 0;
+}
+
+.filter-group-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+}
+
+.filter-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-700);
+    cursor: pointer;
+}
+
+.filter-option input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.filter-panel-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--gray-100);
+}
+
+.filter-panel-actions .btn {
+    flex: 1;
+}
+
+/* --- Custom "Sort By" dropdown (inside a Filters panel) --- a native
+   <select>'s open popup can't be restyled by CSS at all (it's drawn by the
+   OS/browser), which is why it looked like plain gray browser chrome
+   instead of matching the rest of the app -- this is a fully custom
+   listbox instead, built the same way as the Filters panel itself. */
+.sort-dropdown {
+    position: relative;
+}
+
+.sort-dropdown-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 12px;
+    background: var(--surface);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-800);
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+.sort-dropdown-trigger span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sort-dropdown-trigger:hover,
+.sort-dropdown.open .sort-dropdown-trigger {
+    border-color: var(--primary);
+}
+
+.sort-dropdown-trigger i {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--gray-400);
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.sort-dropdown.open .sort-dropdown-trigger i {
+    transform: rotate(180deg);
+    color: var(--primary);
+}
+
+.sort-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 8px;
+    z-index: 60;
+}
+
+.sort-dropdown.open .sort-dropdown-menu {
+    display: block;
+}
+
+.sort-dropdown-group-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 9px 8px 4px;
+}
+
+.sort-dropdown-group-title:first-child {
+    padding-top: 4px;
+}
+
+.sort-dropdown-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-700);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sort-dropdown-option:hover {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+}
+
+.sort-dropdown-option.selected {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    font-weight: 700;
+}
+
+.sort-dropdown-option.selected::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 11px;
+    color: var(--primary);
+}
+
+/* --- Custom form-select dropdown (Task Type, Location Type, ...) -- same
+   rationale as .sort-dropdown above: a native <select>'s open popup is
+   drawn by the OS/browser and can't be restyled by CSS. The real <select>
+   stays in the DOM (visually hidden via .select-dropdown-native) so
+   existing .value reads / onchange handlers keep working unmodified; this
+   is purely a styled front-end mirroring its selection into it. */
+/* display:flex (not block) for the same reason .input-icon-wrap uses it
+   above -- a plain block wrapper turns the whitespace text nodes between
+   the trigger button and the (initially display:none) menu div into an
+   anonymous inline box sized by the inherited line-height, which silently
+   inflated this element's own height (~72px of empty space) and threw off
+   the menu's `top: calc(100% + ...)` since it's computed against that
+   inflated height. Flex containers don't generate anonymous inline boxes
+   for whitespace, which sidesteps the bug entirely. */
+.select-dropdown {
+    position: relative;
+    display: flex;
+    width: 100%;
+}
+
+.select-dropdown-trigger {
+    width: 100%;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    background: var(--surface);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--gray-700);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.select-dropdown-trigger:hover {
+    border-color: var(--gray-400);
+}
+
+/* Standalone use (e.g. the Schedule Date trigger, which has no .select-dropdown
+   wrapper/menu of its own -- it just calls showPicker() on a hidden input). */
+.select-dropdown-trigger:focus-visible {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.select-dropdown.open .select-dropdown-trigger {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.select-dropdown-trigger > i:first-child {
+    flex-shrink: 0;
+    color: var(--gray-400);
+    font-size: 13px;
+    width: 14px;
+    text-align: center;
+}
+
+.select-dropdown-label {
+    flex: 1;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.select-dropdown-label.placeholder {
+    color: var(--gray-400);
+}
+
+.select-dropdown-caret {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--gray-400);
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.select-dropdown.open .select-dropdown-caret {
+    transform: rotate(180deg);
+    color: var(--primary);
+}
+
+.select-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 8px;
+    z-index: 60;
+}
+
+.select-dropdown.open .select-dropdown-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.select-dropdown-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--gray-700);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.select-dropdown-option:hover {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+}
+
+.select-dropdown-option.selected {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    font-weight: 700;
+}
+
+.select-dropdown-option.selected::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 11px;
+    color: var(--primary);
+}
+
+.select-dropdown-native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* --- Schedule Date field. Two prior attempts to keep the real
+   <input type="date"> as the visible surface failed because the native
+   widget's own rendering can repaint over sibling content --
+   ::-webkit-calendar-picker-indicator{opacity:0} covered the left icon,
+   and even just focusing the field covered it again. The picker POPUP
+   itself has the exact same problem as a native <select>'s open list: it's
+   drawn by the OS/browser and cannot be restyled by CSS at all -- no
+   pseudo-element exposes its calendar grid, month header, or day cells.
+   So, same fix family as .select-dropdown: the real input is never shown
+   (opacity:0, not display:none, so it stays a valid form field), and a
+   calendar grid is built from scratch in date-picker.js to match the rest
+   of the app instead of relying on the native popup at all. */
+.date-field {
+    position: relative;
+    display: flex;
+    width: 100%;
+}
+
+.date-field input[type="date"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.date-field.open .select-dropdown-trigger {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* position:fixed with top/left set inline by date-picker.js (from the
+   trigger's own bounding rect) rather than position:absolute anchored to
+   .date-field -- date-picker.js reparents this panel to <body> the moment
+   it opens, specifically to escape .modal-md .modal-body's overflow-y:auto,
+   which otherwise clips it whenever it's taller than the modal's remaining
+   visible scroll space. z-index above .modal-overlay's 1000 so it renders
+   on top once it's a sibling of the modal instead of a descendant. */
+.date-picker-panel {
+    display: none;
+    position: fixed;
+    width: 280px;
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 14px;
+    z-index: 1100;
+}
+
+.date-picker-panel.open {
+    display: block;
+}
+
+.date-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.date-picker-month-label {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.date-picker-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius);
+    color: var(--gray-500);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.date-picker-nav:hover {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+}
+
+.date-picker-weekdays,
+.date-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.date-picker-weekdays span {
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding-bottom: 8px;
+}
+
+.date-picker-day {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    margin: 1px 0;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--gray-700);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.date-picker-day:hover:not(.disabled) {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+}
+
+.date-picker-day.outside {
+    color: var(--gray-300);
+}
+
+.date-picker-day.today:not(.selected) {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.date-picker-day.selected {
+    background: var(--primary);
+    color: var(--white);
+    font-weight: 700;
+}
+
+.date-picker-day.disabled {
+    color: var(--gray-300);
+    cursor: not-allowed;
+}
+
+.date-picker-footer {
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--gray-100);
+    display: flex;
+    justify-content: center;
+}
+
+.date-picker-today-btn {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.date-picker-today-btn:hover {
+    text-decoration: underline;
+}
+
+/* Rows hidden by an active filter — always wins over pagination's inline display style */
+.filter-hidden {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Bulk Actions Bar -- shared by any table with row checkboxes
+   (pages/tasks.php, pages/manage_locations.php)
+   ========================================================================== */
+
+.bulk-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--gray-100);
+    background: var(--gray-50);
+}
+
+.bulk-actions-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.bulk-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--gray-700);
+    cursor: pointer;
+}
+
+.bulk-actions-count {
+    padding-left: 14px;
+    border-left: 1px solid var(--gray-300);
+    font-size: 13px;
+    color: var(--gray-500);
+    min-height: 1em; /* reserves the row's height so the bar doesn't jump when the count appears/disappears */
+}
+
+.bulk-actions-count:empty {
+    border-left: none;
+    padding-left: 0;
+}
+
+/* Tooltip -- shared attribute-driven pattern: add data-tooltip="..." to any
+   element to get an on-hover/focus label above it. */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    color: var(--gray-700);
+    border: 1px solid var(--gray-200);
+    box-shadow: var(--shadow-md);
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    pointer-events: none;
+    z-index: 50;
+}
+
+[data-tooltip]::before {
+    content: "";
+    position: absolute;
+    bottom: calc(100% + 5px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--surface);
+    filter: drop-shadow(0 1px 0 var(--gray-200));
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    pointer-events: none;
+    z-index: 50;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:hover::before,
+[data-tooltip]:focus-visible::after,
+[data-tooltip]:focus-visible::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ==========================================================================
+   Table Styles
+   ========================================================================== */
+
+.table-wrapper {
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gray-500);
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+tbody td {
+    padding: 20px 16px;
+    border-bottom: 1px solid var(--gray-100);
+    font-size: 14px;
+    color: var(--gray-600);
+    vertical-align: middle;
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+tbody tr:hover {
+    background: var(--gray-50);
+}
+
+/* ==========================================================================
+   Status Badges (all class-name variants used across the ported pages)
+   ========================================================================== */
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 9999px;
+    white-space: nowrap;
+}
+
+.status-available,
+.status-complete {
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+
+.status-assigned,
+.status-ongoing {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+}
+
+.status-not-started {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+.status-assign {
+    background: var(--gray-200);
+    color: var(--gray-600);
+}
+
+.status-scheduled {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(17, 24, 39, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 400px;
+    box-shadow: var(--shadow-lg);
+    transform: scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+}
+
+.modal-lg {
+    width: 95vw;
+    max-width: 1280px;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-lg .modal-body {
+    flex: 1 1 auto;
+    max-height: none;
+    overflow-y: auto;
+    /* .modal-body sets white-space:pre-line for the plain-text confirm/
+       message modal (a literal \n in server text should render as a line
+       break there) -- but this is the Task Detail modal's body, filled with
+       richly-nested PHP-generated markup (api/tasks/detail_partial.php),
+       and that inherited property was making the raw indentation/newlines
+       between tags in that source significant, rendering them as real
+       blank lines and silently widening the gap between sections (e.g.
+       between the Assigned Locations box and "Assign More Locations").
+       Same root cause and fix as .modal-body.modal-body-split earlier. */
+    white-space: normal;
+}
+
+/* Create Task: form fields on the left, its location picker in its own
+   panel on the right (was stacked underneath the fields in a narrower
+   .modal-md, which felt cramped/messy once a type was chosen and its full
+   checklist appeared below everything else). Each side scrolls
+   independently instead of the whole modal-body scrolling as one block,
+   so a long location list on the right doesn't push the form fields on
+   the left out of view. */
+.modal-split {
+    width: 92%;
+    max-width: 860px;
+    /* max-height, not a fixed height: picking a Task Type reveals the
+       right panel's checklist, and that content's actual height has
+       shifted at least once already as unrelated spacing fixes landed
+       elsewhere in this file (a hardcoded height needs re-measuring and
+       re-tuning every time that happens, and drifts out of sync silently
+       in the meantime -- it did, leaving dead space below shorter
+       content). A cap lets the modal shrink to fit whatever the content
+       actually needs, while still stopping it from growing past a
+       reasonable size when a location list is long -- that part's still
+       handled by the checkbox-list's own max-height + overflow-y (see
+       .modal-body-right .checkbox-list) absorbing the overflow instead of
+       the whole modal. 830px/94vh keeps the same ceiling as before. */
+    max-height: min(830px, 94vh);
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-split .modal-body {
+    flex: 1 1 auto;
+    max-height: none;
+    overflow: hidden;
+    padding: 0;
+}
+
+.modal-body-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    height: 100%;
+}
+
+/* .modal-body sets white-space:pre-line for the plain-text confirm/message
+   modal (so a literal \n in server text renders as a line break) -- an
+   inherited property, so it was cascading into this richly-nested
+   two-panel layout too. There, it made the raw indentation/newlines
+   between tags in the PHP source significant: each one rendered as a
+   real blank line, quietly pushing content down by an inconsistent
+   amount depending on nesting depth (e.g. the icon and title inside
+   .modal-panel-header no longer shared a top edge, even though both are
+   flex-start-aligned). Resetting to normal removes that inherited
+   behavior for this whole subtree, which is structured form UI, not
+   freeform message text.
+   Compound selector (not plain .modal-body-split) is required here: the
+   element carries both "modal-body" and "modal-body-split" classes, so
+   this has to out-specificity .modal-body's own white-space:pre-line
+   rule -- a plain single-class override loses to it regardless of
+   source order, since same-specificity ties go to whichever rule is
+   later in the file, and .modal-body's rule sits after this one. */
+.modal-body.modal-body-split {
+    white-space: normal;
+}
+
+/* display:flex (not the block default) for the same reason .input-icon-wrap
+   and .select-dropdown use it elsewhere in this file -- a plain block
+   wrapper turns the whitespace text node before its first child into an
+   anonymous inline box sized by the inherited line-height, which was
+   silently pushing this column's header ~24px lower than .modal-body-right
+   (already flex, so unaffected) started at. Its content is sized to fit
+   .modal-split's fixed height without scrolling on any normal window; auto
+   (not hidden) is purely a safety net for unusually short windows, where
+   silently clipping the bottom of the form would be worse than a
+   scrollbar the vast majority of users will never actually see. */
+.modal-body-left {
+    display: flex;
+    flex-direction: column;
+    padding: 20px 24px;
+    overflow-y: auto;
+}
+
+.modal-body-right {
+    padding: 20px 24px;
+    overflow-y: auto;
+    background: var(--gray-50);
+    border-left: 1px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modal-body-right .task-type-locations {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Single column, not the shared .checkbox-list default's 2-up grid -- real
+   location names here run much longer than this panel's ~450px width can
+   fit two abreast without forcing an ugly 3-line wrap per item. */
+.modal-body-right .checkbox-list {
+    grid-template-columns: 1fr;
+    max-height: 320px;
+}
+
+@media (max-width: 760px) {
+    .modal-body-split {
+        display: block;
+        height: auto;
+    }
+
+    .modal-body-right {
+        border-left: none;
+        border-top: 1px solid var(--gray-200);
+    }
+}
+
+/* Shared by both .modal-body-left and .modal-body-right -- each panel
+   opens with one of these, at identical padding/height, so the two
+   columns' content lines up on the same baseline instead of the right
+   side's icon+title header starting lower than the left side's plain
+   field label did.
+   align-items is flex-start, not center: the two panels' subtitles are
+   different lengths (the right one wraps to 2 lines, the left stays on
+   1), and centering the icon against that uneven text height was
+   pushing the right icon a few px lower than the left one even though
+   both titles landed on the same line. Top-aligning keeps both icons
+   pinned to the same y regardless of how the subtitle wraps. */
+.modal-panel-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.modal-panel-header-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius);
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+
+.modal-panel-header h4 {
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.modal-panel-header p {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--gray-500);
+}
+
+/* Shown in the right panel before a Task Type is picked -- without it the
+   panel was just an empty gray box under its header while the left panel
+   filled up with real fields, which read as unbalanced/broken rather than
+   "nothing to show yet". flex:1 centers it in whatever vertical space the
+   panel has, so it settles in the middle of the column instead of leaving
+   a big void below the header when the right side is otherwise empty. */
+.task-locations-empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 12px;
+    padding: 24px;
+}
+
+.task-locations-empty-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--gray-100);
+    color: var(--gray-400);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+}
+
+.task-locations-empty-state p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--gray-400);
+    max-width: 220px;
+}
+
+.task-locations-summary {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 3px;
+    border: 1px dashed var(--gray-300);
+    border-radius: var(--radius-lg);
+    padding: 10px 14px;
+    background: var(--gray-50);
+}
+
+.task-locations-summary-icon {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    margin-bottom: 1px;
+}
+
+.task-locations-summary-text {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.task-locations-summary-desc {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--gray-500);
+}
+
+/* --- Task Type picker cards (Create Task modal) -- two fixed options
+   (see TASK_TYPES), so plain hardcoded cards rather than a generic
+   component; mirrors its selection into the real, hidden <select> the
+   same way .select-dropdown does elsewhere, so onTaskTypeChange() doesn't
+   need to know a dropdown isn't involved here. --- */
+.task-type-cards {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.task-type-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    text-align: left;
+    padding: 10px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.task-type-card:hover {
+    border-color: var(--primary);
+}
+
+.task-type-card.selected {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.task-type-card-check {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--white);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+}
+
+.task-type-card.selected .task-type-card-check {
+    display: flex;
+}
+
+.task-type-card-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius);
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+}
+
+.task-type-card.selected .task-type-card-icon {
+    background: var(--surface);
+}
+
+.task-type-card-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.task-type-card-desc {
+    font-size: 11px;
+    color: var(--gray-500);
+    line-height: 1.35;
+}
+
+.task-locations-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* gap (not a literal space in the markup) for the space between the count
+   and "selected"/"found" -- a bare text node next to a flex-item sibling
+   becomes its own anonymous flex item, and its LEADING whitespace gets
+   silently collapsed the same way a block's does, which rendered as
+   "0selected" with no gap at all despite the space being right there in
+   the HTML source. */
+.task-locations-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+/* --- Task Detail popup (shared, appears on any appshell page) --- */
+.info-box {
+    background: var(--primary-light);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+/* Replaces the per-location checklist/remarks/photos table once a task is
+   fully completed -- that detail already lives in Task Report (filterable,
+   exportable, cross-task), so re-showing it here just duplicated it. This
+   stays focused on the one thing still relevant from this modal: pointing
+   to where the full record now lives. */
+.completed-task-notice {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--success-bg);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    margin: 20px 0;
+}
+
+.completed-task-notice-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--success);
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.completed-task-notice-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.completed-task-notice-text h4 {
+    margin: 0 0 2px;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--success-text);
+}
+
+.completed-task-notice-text p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--gray-600);
+}
+
+.location-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.location-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--gray-300);
+    border-radius: 20px;
+    padding: 6px 8px 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.location-tag button {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: none;
+    border-radius: 9999px;
+    height: 22px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex-shrink: 0;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.location-tag button:hover {
+    background: var(--danger);
+    color: var(--white);
+}
+
+.location-tag button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.method-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 9999px;
+    background: var(--primary-light);
+    color: var(--primary-dark, var(--primary));
+    white-space: nowrap;
+}
+
+/* Checklist column in the Task Detail modal's "Assigned Locations Overview"
+   table -- a compact version of the same icon-circle + label + pill
+   pattern used for the "Recorded at Start" summary in scan.php, scaled
+   down to sit inside a table cell instead of a full-width card. */
+.checklist-answer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.checklist-answer-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.checklist-answer-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: var(--white);
+}
+
+.checklist-answer-icon.yes {
+    background: var(--success);
+}
+
+.checklist-answer-icon.no {
+    background: var(--danger);
+}
+
+.checklist-answer-icon.na {
+    background: var(--gray-400);
+}
+
+.checklist-answer-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-700);
+    white-space: nowrap;
+}
+
+.checklist-answer-pill {
+    margin-left: auto;
+    flex-shrink: 0;
+    padding: 1px 9px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.checklist-answer-pill.yes {
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+
+.checklist-answer-pill.no {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+.checklist-answer-pill.na {
+    background: var(--gray-100);
+    color: var(--gray-500);
+}
+
+.note-text {
+    font-size: 12.5px;
+    color: var(--gray-500);
+    margin-top: 10px;
+}
+
+/* Completed-task variant of the locations summary -- one unified box
+   (header + count pill, tags, caption) instead of the active-task
+   info-box/stat-box side-by-side layout, since there's no "Unassign"
+   action or total-count emphasis needed once a task is done. */
+.completed-locations-box {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    margin: 16px 0;
+}
+
+.completed-locations-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.completed-locations-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--gray-800);
+}
+
+.completed-locations-title i {
+    color: var(--primary-hover);
+    font-size: 13px;
+}
+
+.completed-locations-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--gray-300);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-600);
+    white-space: nowrap;
+}
+
+.completed-locations-count i {
+    color: var(--success);
+    font-size: 10px;
+}
+
+.location-tag-completed-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--success-text);
+    background: var(--success-bg);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.location-tag-completed-mark i {
+    font-size: 9px;
+}
+
+/* Task Detail popup -- "Task: {name}" line under the modal's generic title */
+.modal-subtitle {
+    margin: 2px 0 0;
+    font-size: 14px;
+    color: var(--gray-500);
+}
+
+.modal-subtitle strong {
+    color: var(--primary-hover);
+    font-weight: 700;
+}
+
+/* Locations-assigned info box + the "Total Assigned" stat box beside it */
+.assign-summary {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+}
+
+.assign-summary .info-box {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.info-box-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.info-box-title i {
+    color: var(--primary-hover);
+    font-size: 13px;
+}
+
+.stat-box {
+    flex-shrink: 0;
+    width: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    text-align: center;
+    background: var(--primary-light);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 16px 12px;
+}
+
+.stat-box i {
+    color: var(--primary-hover);
+    font-size: 18px;
+    margin-bottom: 2px;
+}
+
+.stat-box-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--gray-900);
+    line-height: 1;
+}
+
+.stat-box-label {
+    font-size: 12px;
+    color: var(--gray-500);
+}
+
+/* Status pill used for "Not Started" in the overview table (matches the
+   badge treatment already used for statuses elsewhere in the app) */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 9999px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    white-space: nowrap;
+}
+
+/* Small leading icon before "No remarks yet" / "No photos" placeholder text */
+.cell-icon-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gray-500);
+}
+
+.cell-icon-text i {
+    color: var(--gray-400);
+    font-size: 12px;
+}
+
+/* Assign-more-locations checklist: search + select-all row above a single
+   bordered box containing the checkbox grid and a selected-count footer.
+   Explicit width:100% throughout (not flex-grow) because the parent
+   .form-group uses align-items:flex-start, which makes flex children
+   shrink-to-content instead of stretching -- and flex:1 on a child of a
+   *column*-direction flex parent sizes it along the main axis (height),
+   not width, which is what was blowing out .input-icon-wrap's height. */
+.checklist-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+/* display:flex (not block) is required here, not just cosmetic -- a plain
+   block wrapper turns the whitespace text nodes between the icon and the
+   input into an anonymous inline box sized by line-height, which pushed
+   the input down ~48px below the icon. Flex containers don't generate
+   anonymous inline boxes for whitespace, so this sidesteps the bug
+   entirely while the icon (position:absolute) still overlays the input. */
+.checklist-toolbar .search-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.input-icon-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.checklist-toolbar .search-input-wrap i,
+.input-icon-wrap i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-400);
+    font-size: 13px;
+    width: 14px;
+    text-align: center;
+    pointer-events: none;
+}
+
+.checklist-toolbar .search-input-wrap input.form-input,
+.input-icon-wrap input.form-input,
+.input-icon-wrap select.form-input {
+    display: block;
+    width: 100%;
+    padding-left: 40px;
+}
+
+.checklist-select-all {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    color: var(--gray-600);
+    white-space: nowrap;
+    height: 38px;
+    padding: 0 14px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
+}
+
+.checklist-select-all:hover {
+    background: var(--gray-50);
+}
+
+.checklist-select-all input {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+/* Single bordered box wrapping the checkbox grid + its selected-count
+   footer, so they read as one component (matches the toolbar above it). */
+.checklist-box {
+    width: 100%;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.checklist-box .checkbox-list {
+    border: none;
+    border-radius: 0;
+}
+
+.checklist-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--gray-200);
+    background: var(--gray-50);
+}
+
+.checklist-selected-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.checklist-selected-count i {
+    color: var(--success);
+    font-size: 15px;
+}
+
+.checkbox-list-item i.fa-location-dot {
+    color: var(--primary-hover);
+    font-size: 12px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+/* Small row-level icon badge, e.g. a location pin before a task/location
+   name in a table cell -- same visual language as .modal-header-icon,
+   just sized for an inline table row instead of a modal header. */
+.row-icon-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.row-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius);
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+}
+
+/* Schedule/date cell: calendar icon + date + weekday, e.g. a Schedule
+   column showing "Aug 20, 2026 (Wed)" -- shared design across Task
+   Report's Scheduled Date column and Task Manager/All Tasks' Schedule
+   column. */
+.schedule-date-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.schedule-date-cell i {
+    color: var(--gray-400);
+    font-size: 12px;
+}
+
+.schedule-date-weekday {
+    color: var(--gray-400);
+}
+
+/* Modal header icon badge (e.g. Create Task's clipboard icon) + subtitle */
+.modal-header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.modal-header-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+/* Checkbox-list location picker -- replaces a native <select multiple>,
+   which requires an undiscoverable ctrl/cmd-click to select more than one
+   option. Every row is tappable/clickable via its own <label>. */
+.checkbox-list {
+    width: 100%;
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 6px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 2px;
+    align-content: start;
+}
+
+.checkbox-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    font-size: 13.5px;
+    color: var(--gray-700);
+    cursor: pointer;
+    border-radius: 6px;
+    line-height: 1.3;
+}
+
+.checkbox-list-item:hover {
+    background: var(--gray-50);
+}
+
+.checkbox-list-item input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.photo {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+    cursor: pointer;
+    margin-right: 4px;
+    transition: transform 0.15s ease;
+}
+
+.photo:hover {
+    transform: scale(1.05);
+}
+
+.qrs-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 2000;
+    padding: 12px 18px;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.qrs-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.qrs-toast-success {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.qrs-toast-error {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+#taskDetailTable td {
+    font-size: 13.5px;
+}
+
+.modal-overlay.active .modal {
+    transform: scale(1);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0;
+}
+
+/* "Task Details" is just chrome -- what actually matters at a glance is
+   WHICH task this is, so the task name (in the subtitle line right below)
+   is the large, bold heading now, and this label is downsized to a small
+   eyebrow above it instead of competing with it as the biggest text in the
+   header (it used to be sized up to 24px/700 and the task name stayed at
+   the shared 14px subtitle size, so people skipped right past the name
+   they actually needed). */
+#taskDetailTitle {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gray-500);
+}
+
+#taskDetailTitle + .modal-subtitle {
+    margin-top: 3px;
+    font-size: 13px;
+    color: var(--gray-400);
+}
+
+#taskDetailTaskName {
+    display: block;
+    margin-top: 1px;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    color: var(--gray-600);
+    background: var(--gray-100);
+}
+
+.modal-body {
+    padding: 24px;
+    color: var(--gray-600);
+    font-size: 15px;
+    line-height: 1.6;
+    white-space: pre-line;
+}
+
+.modal-footer {
+    padding: 20px 24px;
+    background: var(--gray-50);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--gray-100);
+}
+
+/* ==========================================================================
+   Pagination
+   ========================================================================== */
+
+.btn-page {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-700);
+    border: 1px solid var(--gray-300);
+    background: var(--surface);
+    border-radius: var(--radius);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-page:hover:not(.disabled) {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+    color: var(--gray-900);
+}
+
+.btn-page.active {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+}
+
+.btn-page.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--gray-100);
+}
+
+.btn-page-num {
+    width: 32px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.dots {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    width: 32px;
+    color: var(--gray-500);
+}
+
+.pagination-container {
+    padding: 20px 24px;
+    border-top: 1px solid var(--gray-100);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.pagination-info {
+    font-size: 14px;
+    color: var(--gray-600);
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* Simple whole-page fade on load -- just enough that a fresh page doesn't
+   feel flat/instant. No per-card/title slide-ups. */
+body {
+    animation: fadeIn 0.25s ease-out;
+}
+
+/* Button interactions */
+.btn, .view-btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+.btn-primary:hover {
+    box-shadow: 0 8px 16px rgba(167, 172, 217, 0.3);
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(220, 38, 38, 0.2);
+}
+
+/* Table row hover — simple background change, no scale/shadow "pop" */
+tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+/* Modal animations */
+.modal-overlay {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-overlay.active {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal {
+    animation: scaleIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Kebab menu dropdown */
+.kebab-menu {
+    animation: slideDown 0.2s ease-out;
+    transform-origin: top right;
+}
+
+.kebab-menu.drop-up {
+    animation: slideUp 0.2s ease-out;
+    transform-origin: bottom right;
+}
+
+.kebab-menu:not(.open) {
+    display: none;
+}
+
+/* Filter dropdown */
+.filter-wrap.open .filter-panel {
+    animation: slideDown 0.2s ease-out;
+    transform-origin: top right;
+}
+
+/* Form input focus animation */
+.form-input, textarea, select {
+    transition: all 0.3s ease;
+}
+
+.form-input:focus, textarea:focus, select:focus {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 3px rgba(167, 172, 217, 0.1);
+}
+
+/* Status badge animations */
+.status-badge {
+    transition: all 0.2s ease;
+}
+
+.status-badge:hover {
+    transform: scale(1.05);
+}
+
+/* Tag animations */
+.tag {
+    animation: scaleIn 0.3s ease-out;
+    transition: all 0.2s ease;
+}
+
+.tag:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* Avatar cell animations */
+.avatar-cell {
+    transition: all 0.2s ease;
+}
+
+.avatar-cell:hover {
+    transform: scale(1.05);
+}
+
+.avatar-cell img {
+    transition: transform 0.3s ease;
+}
+
+tbody tr:hover .avatar-cell img {
+    transform: scale(1.1);
+}
+
+/* Pagination button animations */
+.btn-page, .btn-page-num {
+    transition: all 0.2s ease;
+}
+
+.btn-page:hover:not(:disabled), .btn-page-num:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Stat tile icon glow on hover */
+.stat-tile:hover .stat-tile-icon {
+    transform: scale(1.1);
+    filter: drop-shadow(0 4px 12px rgba(167, 172, 217, 0.3));
+    transition: all 0.3s ease;
+}
+
+/* Link hover effects */
+a {
+    transition: color 0.2s ease;
+}
+
+.sidebar-link:hover {
+    transform: translateX(4px);
+    transition: transform 0.2s ease;
+}
+
+/* Photo zoom overlay -- shared by Task Report (scripts/task_report.js) and
+   the Task Detail modal (scripts/task-detail-modal.js). Deliberately has no
+   click-to-close-on-backdrop: dismissing is via .zoomed-photo-close only,
+   so an accidental tap outside the photo can't lose your place. */
+.zoomed-photo {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(17, 24, 39, 0.85);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    animation: scaleIn 0.3s ease-out;
+    backdrop-filter: blur(8px);
+}
+
+.zoomed-photo img {
+    max-width: 80%;
+    max-height: 80%;
+    border-radius: var(--radius);
+}
+
+.zoomed-photo-close {
+    position: absolute;
+    top: 24px;
+    right: 28px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--white);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.zoomed-photo-close:hover {
+    background: rgba(255, 255, 255, 0.24);
+}
+
+
+/* Responsive Animations */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    /* Sidebar becomes an off-canvas drawer instead of disappearing entirely —
+       toggled via the hamburger button (.sidebar-toggle) in the appbar. */
+    .profile-sidebar {
+        transform: translateX(-100%);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .profile-sidebar.open {
+        transform: translateX(0);
+    }
+
+    .sidebar-toggle {
+        display: flex;
+        margin-bottom: 16px;
+    }
+
+    .sidebar-backdrop {
+        display: block;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .main-content {
+        padding: 20px;
+    }
+
+    .container {
+        padding: 20px;
+    }
+}

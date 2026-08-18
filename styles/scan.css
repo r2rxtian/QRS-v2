@@ -1,0 +1,1198 @@
+/* Page-specific styles for pages/scan.php — QR scan check flow.
+   Relies on styles/app.css for the app-shell, cards, buttons, form-input,
+   and modal-overlay system. Only scan-page-unique pieces live here. */
+
+/* --- Two-column layout: form + locations rail --- */
+.scan-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .scan-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.btn-block {
+    width: 100%;
+    margin-top: 12px;
+}
+
+.btn-lg {
+    height: 48px;
+    font-size: 15px;
+    margin-top: 24px;
+}
+
+/* --- Form fields (vertical stack, unlike app.css's inline .form-group) --- */
+.scan-field {
+    margin-bottom: 20px;
+}
+
+.scan-field .form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.scan-field .form-input {
+    width: 100%;
+    height: auto;
+    padding: 12px 16px;
+}
+
+textarea.form-input {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.5;
+}
+
+/* --- Landing state header (icon box + "How it works") --- */
+.scan-landing-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.scan-landing-header-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+/* --- QR section: the highlighted path, set apart from manual entry via
+   its border/background rather than a "Fastest"/"Recommended" label. --- */
+.qr-section {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--primary-light);
+    border: 1.5px solid var(--primary);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 16px;
+}
+
+.qr-section-visual {
+    flex-shrink: 0;
+    width: 84px;
+    height: 84px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    color: var(--primary);
+}
+
+.qr-section-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.qr-section-content h4 {
+    margin: 10px 0 4px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.qr-section-content p {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--gray-600);
+}
+
+.qr-section-content .btn-lg {
+    margin-top: 14px;
+}
+
+/* --- OR divider --- */
+.scan-or-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+    color: var(--gray-400);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.scan-or-divider::before,
+.scan-or-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--gray-200);
+}
+
+/* --- Manual location section --- */
+.manual-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 20px;
+}
+
+.manual-section-visual {
+    flex-shrink: 0;
+    width: 84px;
+    height: 84px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    color: var(--gray-400);
+}
+
+.manual-section-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.manual-section-content h4 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.manual-section-content p {
+    margin: 0 0 12px;
+    font-size: 13.5px;
+    color: var(--gray-600);
+}
+
+/* --- "How it works" modal steps --- */
+.how-it-works-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.how-it-works-step:last-child {
+    margin-bottom: 0;
+}
+
+.how-it-works-step-num {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.how-it-works-step strong {
+    display: block;
+    font-size: 14px;
+    color: var(--gray-900);
+    margin-bottom: 3px;
+}
+
+.how-it-works-step p {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--gray-600);
+}
+
+/* --- Sidebar: callout for the next location to act on, + progress overview.
+   Only shown when backed by real data -- the callout prefers an in_progress
+   location (resume it), falling back to the next pending one (start it) so
+   it isn't just hidden until something's already been started; the
+   breakdown only has the three states this app actually tracks (no
+   separate "not started" bucket -- that's the same thing as "pending"
+   here, so showing both would just double-count). Colors match the
+   breakdown rows' dot colors for the same status (.current = primary,
+   .pending = warning) so the same state isn't shown two different colors
+   in the same card. --- */
+.scan-active-callout {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--primary-light);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-lg);
+    padding: 12px 14px;
+    margin-bottom: 18px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.scan-active-callout:hover {
+    border-color: var(--primary-hover);
+    box-shadow: var(--shadow-sm);
+}
+
+.scan-active-callout.pending {
+    background: var(--warning-bg);
+    border-color: var(--warning);
+}
+
+.scan-active-callout.pending:hover {
+    border-color: var(--warning-text);
+}
+
+.scan-active-callout-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius);
+    background: var(--primary);
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.scan-active-callout.pending .scan-active-callout-icon {
+    background: var(--warning);
+}
+
+.scan-active-callout-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.scan-active-callout-text strong,
+.scan-active-callout-text span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.scan-active-callout-text strong {
+    font-size: 13px;
+    color: var(--gray-900);
+}
+
+.scan-active-callout-text span {
+    font-size: 12px;
+    color: var(--primary-hover);
+}
+
+.scan-active-callout.pending .scan-active-callout-text span {
+    color: var(--warning-text);
+}
+
+.scan-active-badge {
+    flex-shrink: 0;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.scan-active-callout.pending .scan-active-badge {
+    background: var(--warning);
+}
+
+.scan-progress-overview {
+    padding-bottom: 18px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.scan-progress-overview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.scan-progress-fraction {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--gray-500);
+    background: var(--gray-100);
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+.scan-progress-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.scan-progress-track {
+    flex: 1;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--gray-100);
+    overflow: hidden;
+}
+
+.scan-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--success);
+    transition: width 0.3s ease;
+}
+
+.scan-progress-pct {
+    flex-shrink: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--success-text);
+}
+
+.scan-progress-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.scan-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+}
+
+.scan-progress-dot {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--white);
+}
+
+.scan-progress-dot.completed {
+    background: var(--success);
+}
+
+.scan-progress-dot.current {
+    background: var(--primary);
+}
+
+.scan-progress-dot.pending {
+    background: var(--warning);
+}
+
+.scan-progress-row-label {
+    flex: 1;
+    color: var(--gray-700);
+    font-weight: 500;
+}
+
+.scan-progress-row-count {
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.scan-progress-row-pct {
+    width: 34px;
+    text-align: right;
+    color: var(--gray-400);
+    font-size: 12px;
+}
+
+/* --- File inputs / photo previews --- */
+.file-input-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.file-input-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background-color: var(--surface);
+    color: var(--gray-700);
+    padding: 14px 16px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    flex: 1;
+    min-width: 140px;
+}
+
+.file-input-label > i {
+    font-size: 18px;
+}
+
+.file-input-label:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background-color: var(--primary-light);
+}
+
+input[type="file"] {
+    display: none;
+}
+
+.photo-container {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.photo-preview {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+    display: block;
+}
+
+.photo-preview-wrap {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.photo-preview-remove {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--danger);
+    color: var(--white);
+    border: 2px solid var(--surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    padding: 0;
+    transition: transform 0.15s ease;
+}
+
+.photo-preview-remove:hover {
+    transform: scale(1.1);
+}
+
+.photo-count {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    background-color: var(--success-bg);
+    color: var(--success-text);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* --- Step indicator --- */
+.step-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--primary-light);
+    color: var(--primary-hover);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.scan-location-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.scan-location-heading > i {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    background-color: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.scan-location-heading > span {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.scan-location-heading-text {
+    min-width: 0;
+}
+
+.scan-location-heading-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.scan-location-heading-desc {
+    font-size: 13.5px;
+    color: var(--gray-500);
+    margin-top: 2px;
+}
+
+.scan-field-desc {
+    font-size: 13px;
+    color: var(--gray-500);
+    margin: -4px 0 8px;
+}
+
+.char-counter {
+    text-align: right;
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- "Recorded at Start" summary box (completion screen) --- */
+.recorded-start-box {
+    background-color: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+}
+
+.recorded-start-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.recorded-start-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius);
+    background-color: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+
+.recorded-start-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--primary-hover);
+}
+
+/* Each answered checklist item is its own tile (icon+label, a color-coded
+   answer pill, and its remark if any) instead of one long inline row --
+   auto-fit lets them balance across the box's width instead of clumping
+   to the left with empty space on the right. */
+.recorded-start-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.recorded-start-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+}
+
+.recorded-start-item-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--gray-700);
+}
+
+.recorded-start-item-label i {
+    color: var(--primary);
+    font-size: 12px;
+}
+
+.recorded-start-answer {
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.recorded-start-answer.yes {
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+
+.recorded-start-answer.no {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+.recorded-start-answer.na {
+    background: var(--gray-100);
+    color: var(--gray-500);
+}
+
+.recorded-start-item-remark {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--gray-600);
+    font-style: italic;
+}
+
+.recorded-start-findings {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--gray-200);
+    font-size: 13px;
+    color: var(--gray-700);
+}
+
+.recorded-start-findings strong {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+}
+
+/* --- Attach Photos: dashed drop-zone container around the two pickers --- */
+.photo-upload-box {
+    border: 1px dashed var(--gray-300);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    background-color: var(--gray-50);
+}
+
+.photo-upload-footer {
+    text-align: right;
+    font-size: 12.5px;
+    color: var(--gray-400);
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+.file-input-label-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    text-align: left;
+}
+
+.file-input-label-text strong {
+    font-size: 14px;
+    font-weight: 600;
+    color: inherit;
+}
+
+.file-input-label-text small {
+    font-size: 12px;
+    color: var(--gray-400);
+    font-weight: 400;
+}
+
+/* --- Confirm code: icon-left input with a right-side show/hide toggle --- */
+.input-icon-wrap-toggle input.form-input {
+    padding-right: 40px;
+}
+
+.input-toggle-visibility {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+}
+
+.input-toggle-visibility:hover {
+    color: var(--primary);
+}
+
+/* app.css's ".input-icon-wrap i" targets ANY icon inside the wrapper (not
+   just a direct child), which was also grabbing this button's icon and
+   forcing it to the same absolute left:14px spot as the lock icon --
+   overriding that back to normal, in-flow, so it sits inside the button
+   on the right where it belongs. */
+.input-icon-wrap-toggle .input-toggle-visibility i {
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    width: auto;
+    color: inherit;
+    pointer-events: auto;
+}
+
+/* --- Observation/Recommendation checklist: 4 fixed Yes/No/N/A questions,
+   each with a remark that appears (and is required) when answered No/N/A --- */
+.checklist-question {
+    padding: 16px;
+    background-color: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    margin-bottom: 14px;
+}
+
+.checklist-question-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.checklist-question-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    background-color: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+}
+
+.checklist-question-text {
+    min-width: 0;
+}
+
+.checklist-question-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gray-800);
+}
+
+.required-asterisk {
+    color: var(--danger);
+}
+
+.checklist-question-desc {
+    font-size: 13px;
+    color: var(--gray-500);
+    margin-top: 2px;
+}
+
+.answer-btn-group {
+    display: flex;
+    gap: 8px;
+}
+
+.answer-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 10px;
+    background-color: var(--surface);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-600);
+    transition: all 0.15s ease;
+    text-align: center;
+}
+
+.answer-radio {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--gray-300);
+    position: relative;
+    transition: all 0.15s ease;
+}
+
+.answer-radio::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.15s ease;
+}
+
+.answer-btn:hover {
+    border-color: var(--primary);
+}
+
+.answer-btn:hover .answer-radio {
+    border-color: var(--primary);
+}
+
+/* Selected-state color depends on which answer it is, not just "selected
+   vs not" -- "No" and "N/A" used to share the same red/danger styling,
+   which made N/A (a perfectly valid, neutral answer) look like an error
+   right next to it. Colors here match the ones "Recorded at Start" later
+   uses for the exact same three answers, so the meaning stays consistent
+   across the whole flow instead of just within this one screen. */
+.answer-btn.selected .answer-radio::after {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.answer-btn.selected[data-answer="Yes"] {
+    border-color: var(--success);
+    background-color: var(--success-bg);
+    color: var(--success-text);
+}
+
+.answer-btn.selected[data-answer="Yes"] .answer-radio {
+    border-color: var(--success);
+}
+
+.answer-btn.selected[data-answer="Yes"] .answer-radio::after {
+    background-color: var(--success);
+}
+
+.answer-btn.selected[data-answer="No"] {
+    border-color: var(--danger);
+    background-color: var(--danger-bg);
+    color: var(--danger-text);
+}
+
+.answer-btn.selected[data-answer="No"] .answer-radio {
+    border-color: var(--danger);
+}
+
+.answer-btn.selected[data-answer="No"] .answer-radio::after {
+    background-color: var(--danger);
+}
+
+.answer-btn.selected[data-answer="N/A"] {
+    border-color: var(--gray-400);
+    background-color: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.answer-btn.selected[data-answer="N/A"] .answer-radio {
+    border-color: var(--gray-400);
+}
+
+.answer-btn.selected[data-answer="N/A"] .answer-radio::after {
+    background-color: var(--gray-500);
+}
+
+.item-remark {
+    margin-top: 12px;
+}
+
+/* On wide viewports, put the header on the left and the answer pills on
+   the right in one row, matching the reference layout. */
+@media (min-width: 640px) {
+    .checklist-question {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .checklist-question-header {
+        margin-bottom: 0;
+        flex: 1 1 auto;
+        min-width: 220px;
+    }
+
+    .answer-btn-group {
+        flex: 0 0 auto;
+        width: 340px;
+    }
+
+    .item-remark {
+        flex-basis: 100%;
+        margin-top: 0;
+    }
+}
+
+/* --- Back button, always visible during the scan flow --- */
+.scan-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gray-500);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    margin-bottom: 20px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.scan-back-link:hover {
+    color: var(--primary);
+}
+
+/* --- Task picker (scan.php with no ?task_id -- lists today's not-yet-
+   -complete tasks to choose from). Each row only shows fields backed by
+   real data (completed/total location counts); no "priority" concept
+   exists anywhere in the schema, and every task in this list is already
+   scoped to today by the query, so neither a priority badge nor a
+   restating "due today" badge would carry any actual information. --- */
+.task-pick-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.task-pick-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.task-pick-row:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.task-pick-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-lg);
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+}
+
+.task-pick-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-pick-name {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 8px;
+}
+
+.task-pick-done {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--gray-500);
+}
+
+.task-pick-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.task-pick-progress-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--gray-100);
+    overflow: hidden;
+}
+
+.task-pick-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--primary);
+    transition: width 0.3s ease;
+}
+
+.task-pick-remaining {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--gray-500);
+    white-space: nowrap;
+}
+
+.task-pick-action {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* --- Completed state panel --- */
+.completed-panel {
+    text-align: center;
+    padding: 40px;
+    border-radius: var(--radius-lg);
+    background-color: var(--success-bg);
+}
+
+.completed-panel h2 {
+    color: var(--success-text);
+    margin: 0;
+    font-size: 20px;
+}
+
+.completed-panel p {
+    color: var(--success-text);
+    margin-top: 10px;
+}
+
+/* --- Message banner (success/error) --- */
+.success-message,
+.error-message {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 20px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.success-message {
+    background-color: var(--success-bg);
+    color: var(--success-text);
+}
+
+.error-message {
+    background-color: var(--danger-bg);
+    color: var(--danger-text);
+}
+
+/* --- Camera / QR modals need more width than the default 400px modal --- */
+#photoCameraModal .modal,
+#qrScannerModal .modal {
+    max-width: 480px;
+}
+
+/* --- Camera / QR modal internals --- */
+#photoCameraVideo,
+#qr-reader {
+    width: 100% !important;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+}
+
+#photoCameraVideo {
+    max-height: 50vh;
+    object-fit: cover;
+}
+
+#photoCameraCanvas {
+    display: none;
+}
+
+#qrScannerModal .modal-body p {
+    margin-top: 10px;
+    color: var(--gray-500);
+    font-size: 13px;
+    text-align: center;
+}
+
+#capturedPhotos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin: 10px 0;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+.photo-preview {
+    transition: all 0.2s ease;
+}
+
+.photo-preview:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.success-message,
+.error-message {
+    animation: slideInUp 0.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

@@ -1,0 +1,49 @@
+/* Page-specific styles for pages/manage_locations.php */
+
+.qr-thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 6px;
+    border: 1px solid var(--gray-200);
+    background: var(--surface);
+    padding: 2px;
+}
+
+.location-name {
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.csv-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.file-input-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    height: 38px;
+    background: var(--surface);
+    border: 1px dashed var(--gray-300);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--gray-600);
+    transition: all 0.2s;
+}
+
+.file-input-label:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.file-input-label input[type="file"] {
+    display: none;
+}
+
+/* .bulk-actions / .checkbox-label live in app.css -- shared with the Task
+   Manager's bulk-select bar. */
