@@ -24,7 +24,11 @@ function closeSidebarDrawer() {
 document.addEventListener('DOMContentLoaded', function () {
     // Closing the drawer after tapping a nav link keeps the flow smooth —
     // otherwise it stays open, covering the page you just navigated to.
-    document.querySelectorAll('.profile-sidebar .sidebar-link, .profile-sidebar .logout-link').forEach(link => {
+    // Excludes .accessibility-trigger: that one doesn't navigate anywhere,
+    // it opens a popover in place, so auto-closing the drawer the instant
+    // it's tapped would yank the nav away out from under it instead of
+    // just leaving it open behind the popover.
+    document.querySelectorAll('.profile-sidebar .sidebar-link:not(.accessibility-trigger), .profile-sidebar .logout-link').forEach(link => {
         link.addEventListener('click', closeSidebarDrawer);
     });
 });

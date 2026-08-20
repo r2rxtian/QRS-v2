@@ -8,10 +8,8 @@
 require_once __DIR__ . '/../../auth/session.php';
 require_once __DIR__ . '/../../conn/db.php';
 require_once __DIR__ . '/../../rules/constants.php';
-require_once __DIR__ . '/../../authz/capabilities.php';
 
-$currentUser = requireLogin(true);
-$isAdmin = $currentUser['role_name'] === ROLE_ADMIN;
+requireLogin(true);
 
 header('Content-Type: application/json');
 
@@ -49,10 +47,6 @@ $sql = '
     JOIN ' . T_TASKS . ' t ON t.id = tl.task_id
     WHERE t.deleted_at IS NULL AND YEAR(tl.task_date) = ? AND MONTH(tl.task_date) = ?';
 $params = [$year, $month];
-if (!$isAdmin) {
-    $sql .= ' AND t.department_id = ?';
-    $params[] = $currentUser['department_id'];
-}
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $daysWithTasks = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));

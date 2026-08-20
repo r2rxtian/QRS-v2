@@ -12,11 +12,24 @@ $pdo = db();
 $canManage = roleHasCapability($currentUser['role_name'], 'location.create'); // create/update/delete/import share one capability
 $hasCheckboxColumn = $canManage; // the row checkbox only serves the bulk actions bar, which needs it too
 
+// "Busy" = the location's CURRENT ticket (its most recent task_locations
+// row) hasn't been explicitly unassigned -- regardless of whether that
+// ticket is Completed, since finishing a checklist doesn't free the
+// location on its own; only an explicit Unassign does (nothing in this
+// app auto-releases a location, matching the "no automatic behavior"
+// rule tasks themselves follow). Checking only the latest row per
+// location matters because a location can still end up with more than
+// one historical ticket under the same task -- an Admin unassigning and
+// re-assigning it.
 $stmt = $pdo->query('
     SELECT l.id, l.name, l.qr_token, l.created_at, l.location_type,
            CASE WHEN EXISTS (
                SELECT 1 FROM ' . T_TASK_LOCATIONS . ' tl
-               WHERE tl.location_id = l.id AND tl.unassigned_at IS NULL AND tl.status <> \'completed\'
+               WHERE tl.location_id = l.id AND tl.unassigned_at IS NULL
+                 AND tl.id = (
+                     SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+                     WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+                 )
            ) THEN 1 ELSE 0 END AS is_assigned
     FROM ' . T_LOCATIONS . ' l
     WHERE l.deleted_at IS NULL AND l.is_active = 1
@@ -48,10 +61,10 @@ $statTotal = count($locations);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css">
+    <link rel="stylesheet" href="../styles/app.css?v=10">
     <link rel="stylesheet" href="../styles/manage_locations.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="../scripts/theme.js?v=2"></script>
+    <script src="../scripts/theme.js?v=5"></script>
 </head>
 
 <body>
@@ -176,7 +189,7 @@ $statTotal = count($locations);
                             <th>Type</th>
                             <th>Status</th>
                             <th>Date Added</th>
-                            <th></th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -205,7 +218,7 @@ $statTotal = count($locations);
                                     <div class="kebab-wrap">
                                         <button type="button" class="kebab-btn" onclick="toggleKebab(this)"><i class="fas fa-ellipsis-vertical"></i></button>
                                         <div class="kebab-menu">
-                                            <button type="button" onclick="printQR('<?= htmlspecialchars($location['name'], ENT_QUOTES) ?>', this)"><i class="fas fa-print"></i> Print QR</button>
+                                            <button type="button" onclick="printQR(<?= htmlspecialchars(json_encode($location['name'], JSON_HEX_QUOT | JSON_HEX_APOS | JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES) ?>, this)"><i class="fas fa-print"></i> Print QR</button>
                                             <?php if ($canManage): ?>
                                                 <button type="button" class="kebab-danger" onclick="confirmDeleteLocation(this)"><i class="fas fa-trash"></i> Delete</button>
                                             <?php endif; ?>

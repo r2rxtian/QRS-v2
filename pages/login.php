@@ -20,7 +20,7 @@ if (isLoggedIn()) {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles/login.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="../scripts/theme.js?v=2"></script>
+    <script src="../scripts/theme.js?v=5"></script>
 </head>
 
 <body>
@@ -87,10 +87,10 @@ if (isLoggedIn()) {
             <form id="loginForm" novalidate>
                 <?= csrfField() ?>
                 <div class="auth-field">
-                    <label for="login_id">Employee ID or Username</label>
+                    <label for="login_id">Biometrics Number</label>
                     <div class="auth-input">
                         <i class="fas fa-user"></i>
-                        <input type="text" id="login_id" name="login_id" autocomplete="username" placeholder="Enter your employee ID">
+                        <input type="text" id="login_id" name="login_id" autocomplete="username" placeholder="Enter your biometrics number">
                     </div>
                 </div>
 

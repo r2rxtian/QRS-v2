@@ -14,6 +14,10 @@ date_default_timezone_set('Asia/Manila');
 function startSession(): void
 {
     if (session_status() === PHP_SESSION_NONE) {
+        // "QRTaskCheck" instead of PHP's default "PHPSESSID" -- cookie names
+        // can't contain spaces (RFC 6265), so this is the closest safe form
+        // of the app's own name ("QR Task Check").
+        session_name('QRTaskCheck');
         session_set_cookie_params([
             'lifetime' => 0,
             'path' => '/',
@@ -32,8 +36,8 @@ function isLoggedIn(): bool
 
 /**
  * Returns the current session identity, or null if not logged in.
- * Never trust client-submitted creator/department fields for writes —
- * always pull identity/department from here instead.
+ * Never trust client-submitted creator fields for writes -- always pull
+ * identity from here instead.
  */
 function currentUser(): ?array
 {
@@ -48,8 +52,6 @@ function currentUser(): ?array
         'full_name' => $_SESSION['full_name'],
         'role_id' => $_SESSION['role_id'],
         'role_name' => $_SESSION['role_name'],
-        'department_id' => $_SESSION['department_id'],
-        'department_name' => $_SESSION['department_name'] ?? null,
         'avatar_initials' => $_SESSION['avatar_initials'] ?? null,
         'avatar_color' => $_SESSION['avatar_color'] ?? null,
     ];

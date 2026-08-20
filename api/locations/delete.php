@@ -51,6 +51,6 @@ if ((int) $activeCheck->fetchColumn() > 0) {
 
 $pdo->prepare('UPDATE ' . T_LOCATIONS . ' SET deleted_at = SYSDATETIME() WHERE id = ?')->execute([$locationId]);
 
-writeAuditLog($authUser['id'], 'location.delete', 'location', $locationId, $authUser['department_id'], ['name' => $location['name']]);
+writeAuditLog($authUser['id'], 'location.delete', 'location', $locationId, ['name' => $location['name']]);
 
 echo json_encode(['success' => true, 'message' => 'Location deleted.', 'type' => 'success']);

@@ -28,10 +28,14 @@
  *
  * No FOREIGN KEY constraints (matches this company's existing convention,
  * e.g. the other LRNPH_OJT tables). Referential integrity between
- * role_id/department_id/task_id/location_id/*_by columns and their parent
- * tables is enforced entirely at the application layer (see context/authz.php
- * and the api/ endpoints once built) rather than by the database. Primary
- * key, UNIQUE, and CHECK constraints are still used.
+ * role_id/task_id/location_id/*_by columns and their parent tables is
+ * enforced entirely at the application layer (see authz/authz.php and the
+ * api/ endpoints) rather than by the database. Primary key, UNIQUE, and
+ * CHECK constraints are still used.
+ *
+ * No department concept -- this app is used by a single QA team (access is
+ * based on each user's own biometrics/employee_id, not a department), so
+ * there is no qrs_departments table and no department_id column anywhere.
  */
 
 USE LRNPH_OJT;
@@ -50,45 +54,32 @@ CREATE TABLE dbo.qrs_roles (
 GO
 
 -- ============================================================
--- dbo.qrs_departments
--- ============================================================
-CREATE TABLE dbo.qrs_departments (
-    id            SMALLINT IDENTITY(1,1) PRIMARY KEY,
-    name          VARCHAR(80)   NOT NULL,   -- short form, e.g. 'Quality Assurance' — matches filters.js data-department values
-    site_code     VARCHAR(10)   NOT NULL DEFAULT 'LRN',   -- renders tag as "{name} Department - {site_code}"
-    is_active     BIT           NOT NULL DEFAULT 1,
-    created_at    DATETIME2     NOT NULL DEFAULT SYSDATETIME(),
-    CONSTRAINT UQ_qrs_departments_name UNIQUE (name)
-);
-GO
-
--- ============================================================
 -- dbo.qrs_users
 -- ============================================================
 CREATE TABLE dbo.qrs_users (
     id                    INT IDENTITY(1,1) PRIMARY KEY,
-    employee_id           VARCHAR(20)    NOT NULL,        -- primary login credential
-    username              VARCHAR(50)    NULL,             -- optional alt login
-    full_name             VARCHAR(150)   NOT NULL,         -- "Reyes, Mika Anne" (avatar-cell format)
-    password_hash         VARCHAR(255)   NOT NULL,         -- PHP password_hash(), bcrypt/argon2
+    employee_id           VARCHAR(20)    NOT NULL,        -- matches dbo.lrn_master_list.EmployeeID (see
+                                                            -- rules/constants.php's T_MASTER_LIST/fullNameSql())
+                                                            -- for display name, and bridges to
+                                                            -- dbo.lrnph_users (via lrn_master_list.BiometricsID)
+                                                            -- for login credentials -- neither full_name nor a
+                                                            -- password is stored in this table (see
+                                                            -- sql/migrations/0003 and 0004)
     role_id               TINYINT        NOT NULL,
-    department_id         SMALLINT       NULL,             -- NULL only valid for Administrator (app-checked)
     avatar_initials       VARCHAR(4)     NULL,
     avatar_color          CHAR(7)        NULL,
     is_active             BIT            NOT NULL DEFAULT 1,
     failed_login_attempts SMALLINT       NOT NULL DEFAULT 0,
     locked_until          DATETIME2      NULL,
     last_login_at         DATETIME2      NULL,
-    theme_dark            BIT            NULL,             -- optional server-side persistence of settings.php (low priority)
+    theme_dark            BIT            NULL,             -- optional server-side persistence of the accessibility popover's prefs (low priority)
     accent_color          CHAR(7)        NULL,             -- optional, low priority
     created_at            DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
     updated_at            DATETIME2      NOT NULL DEFAULT SYSDATETIME(),  -- app sets this explicitly on every UPDATE
     deleted_at            DATETIME2      NULL,             -- soft delete/deactivate
-    CONSTRAINT UQ_qrs_users_employee_id UNIQUE (employee_id),
-    CONSTRAINT UQ_qrs_users_username UNIQUE (username)
+    CONSTRAINT UQ_qrs_users_employee_id UNIQUE (employee_id)
 );
 GO
-CREATE INDEX IX_qrs_users_department ON dbo.qrs_users(department_id);
 CREATE INDEX IX_qrs_users_role ON dbo.qrs_users(role_id);
 GO
 
@@ -119,17 +110,14 @@ GO
 CREATE TABLE dbo.qrs_tasks (
     id             INT IDENTITY(1,1) PRIMARY KEY,
     name           VARCHAR(200)   NOT NULL,
-    department_id  SMALLINT       NOT NULL,
     owner_id       INT            NOT NULL,   -- creator, always session-derived, never client-submitted
     task_type      VARCHAR(12)    NOT NULL DEFAULT 'Treatment',  -- 'Monitoring' | 'Treatment' -- fixed at creation, constrains which locations can be assigned
-    is_recurring   BIT            NOT NULL DEFAULT 1,
     created_at     DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
     updated_at     DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
     deleted_at     DATETIME2      NULL,      -- soft delete
     CONSTRAINT CK_qrs_tasks_task_type CHECK (task_type IN ('Monitoring', 'Treatment'))
 );
 GO
-CREATE INDEX IX_qrs_tasks_department ON dbo.qrs_tasks(department_id);
 CREATE INDEX IX_qrs_tasks_owner ON dbo.qrs_tasks(owner_id);
 CREATE INDEX IX_qrs_tasks_deleted ON dbo.qrs_tasks(deleted_at);
 GO
@@ -215,7 +203,6 @@ CREATE TABLE dbo.qrs_audit_log (
     action        VARCHAR(60)    NOT NULL,   -- 'login.success', 'task.create', 'task_location.unassign', 'photo.upload', ...
     entity_type   VARCHAR(30)    NULL,   -- 'task' | 'location' | 'task_location' | 'user'
     entity_id     INT            NULL,
-    department_id SMALLINT       NULL,   -- denormalized snapshot for fast department-scoped audit queries
     details       NVARCHAR(MAX)  NULL,   -- JSON text (SQL Server has JSON_VALUE/JSON_QUERY functions, no native JSON type)
     ip_address    VARCHAR(45)    NULL,
     user_agent    VARCHAR(255)   NULL,

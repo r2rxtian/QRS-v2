@@ -221,105 +221,7 @@ textarea.form-input {
     color: var(--gray-600);
 }
 
-/* --- Sidebar: callout for the next location to act on, + progress overview.
-   Only shown when backed by real data -- the callout prefers an in_progress
-   location (resume it), falling back to the next pending one (start it) so
-   it isn't just hidden until something's already been started; the
-   breakdown only has the three states this app actually tracks (no
-   separate "not started" bucket -- that's the same thing as "pending"
-   here, so showing both would just double-count). Colors match the
-   breakdown rows' dot colors for the same status (.current = primary,
-   .pending = warning) so the same state isn't shown two different colors
-   in the same card. --- */
-.scan-active-callout {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--primary-light);
-    border: 1px solid var(--primary);
-    border-radius: var(--radius-lg);
-    padding: 12px 14px;
-    margin-bottom: 18px;
-    font-family: inherit;
-    cursor: pointer;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.scan-active-callout:hover {
-    border-color: var(--primary-hover);
-    box-shadow: var(--shadow-sm);
-}
-
-.scan-active-callout.pending {
-    background: var(--warning-bg);
-    border-color: var(--warning);
-}
-
-.scan-active-callout.pending:hover {
-    border-color: var(--warning-text);
-}
-
-.scan-active-callout-icon {
-    flex-shrink: 0;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius);
-    background: var(--primary);
-    color: var(--white);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-}
-
-.scan-active-callout.pending .scan-active-callout-icon {
-    background: var(--warning);
-}
-
-.scan-active-callout-text {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    text-align: left;
-}
-
-.scan-active-callout-text strong,
-.scan-active-callout-text span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.scan-active-callout-text strong {
-    font-size: 13px;
-    color: var(--gray-900);
-}
-
-.scan-active-callout-text span {
-    font-size: 12px;
-    color: var(--primary-hover);
-}
-
-.scan-active-callout.pending .scan-active-callout-text span {
-    color: var(--warning-text);
-}
-
-.scan-active-badge {
-    flex-shrink: 0;
-    padding: 3px 10px;
-    border-radius: 999px;
-    background: var(--primary);
-    color: var(--white);
-    font-size: 11px;
-    font-weight: 700;
-}
-
-.scan-active-callout.pending .scan-active-badge {
-    background: var(--warning);
-}
-
+/* --- Sidebar: progress overview. --- */
 .scan-progress-overview {
     padding-bottom: 18px;
     margin-bottom: 18px;
@@ -427,6 +329,177 @@ textarea.form-input {
     text-align: right;
     color: var(--gray-400);
     font-size: 12px;
+}
+
+/* Full location roster -- this is now the primary way to see and jump to
+   any assigned location (the old single-location callout above it was
+   removed), so each row reads as its own small card rather than a plain
+   list line. Capped and internally scrollable so a task with many
+   locations doesn't stretch the sidebar arbitrarily tall. */
+.scan-location-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 340px;
+    overflow-y: auto;
+    margin-top: 16px;
+    padding: 2px 2px 2px 0; /* right/bottom room for the scrollbar + focus ring */
+    border-top: 1px solid var(--gray-100);
+    padding-top: 16px;
+}
+
+.scan-location-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.scan-location-list-item:hover:not(:disabled) {
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(167, 172, 217, 0.25);
+}
+
+.scan-location-list-item:disabled {
+    cursor: default;
+    background: var(--gray-50);
+}
+
+.scan-location-list-item.active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    box-shadow: 0 2px 10px rgba(167, 172, 217, 0.3);
+}
+
+/* "You are here" -- separate from .active (which reflects the DB's
+   in_progress status): this marks whichever location's form is CURRENTLY
+   open in the main panel right now, set by JS in scan.js the moment its
+   checklist or completion screen is shown, cleared on returnToLanding().
+   Needed because a freshly-scanned location stays 'pending' in the DB
+   until its checklist is actually submitted (see api/scan/start.php), so
+   .active alone can't show where you are during that whole first step.
+   visibility (not display) on the hand icon reserves its space always, so
+   rows don't shift horizontally as the marker moves between them. */
+.scan-location-list-here-icon {
+    flex-shrink: 0;
+    width: 14px;
+    font-size: 13px;
+    color: var(--primary);
+    visibility: hidden;
+    animation: scanHereNudge 1s ease-in-out infinite;
+}
+
+.scan-location-list-item.here {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.scan-location-list-item.here .scan-location-list-here-icon {
+    visibility: visible;
+}
+
+@keyframes scanHereNudge {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    50% {
+        transform: translateX(3px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scan-location-list-here-icon {
+        animation: none;
+    }
+}
+
+.scan-location-list-icon {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--white);
+}
+
+.scan-location-list-item.pending .scan-location-list-icon {
+    background: var(--warning);
+}
+
+.scan-location-list-item.current .scan-location-list-icon {
+    background: var(--primary);
+}
+
+.scan-location-list-item.completed .scan-location-list-icon {
+    background: var(--success);
+}
+
+.scan-location-list-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--gray-800);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.scan-location-list-item:disabled .scan-location-list-name {
+    color: var(--gray-500);
+    font-weight: 500;
+}
+
+.scan-location-list-status {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.scan-location-list-status.pending {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+}
+
+.scan-location-list-status.current {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+}
+
+.scan-location-list-status.completed {
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+
+.scan-location-list-chevron {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--gray-300);
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.scan-location-list-item:hover:not(:disabled) .scan-location-list-chevron {
+    color: var(--primary);
+    transform: translateX(2px);
 }
 
 /* --- File inputs / photo previews --- */

@@ -2,9 +2,18 @@
 /**
  * Completion screen submit (spec Steps 3-4): 1-3 photos required, plus an
  * optional completion remark and a required biometrics confirmation (the
- * completer retypes their Staff/Biometrics Code -- validated against their
- * own session's employee_id -- as an e-signature substitute; reports show
- * only the last 3 digits). Marks the location complete.
+ * completer retypes their Staff/Biometrics Code -- as an e-signature
+ * substitute; reports show only the last 3 digits). Marks the location
+ * complete.
+ *
+ * Accepts either the session's employee_id (e.g. "2024-40484" -- what the
+ * original 12 real users were given as their "Biometrics Number" and have
+ * been typing here already) or the company-wide lrn_master_list.BiometricsID
+ * (e.g. "40484" -- a separate, shorter code; not reliably derivable from
+ * employee_id, see CA17-3580 -> BiometricsID 3559). A user added later via
+ * Settings > User Management only ever knows the latter, since that's the
+ * number they were looked up by in Add User -- requiring the former would
+ * lock them out of ever completing a task.
  */
 require_once __DIR__ . '/../../auth/session.php';
 require_once __DIR__ . '/../../auth/csrf.php';
@@ -72,15 +81,33 @@ for ($i = 0; $i < $photoCount; $i++) {
 
 $authUser = authorize('scan.complete', ['task_id' => $taskId, 'entity_type' => 'task', 'entity_id' => $taskId]);
 
-if (strcasecmp($confirmCode, $authUser['employee_id']) !== 0) {
+$pdo = db();
+
+$biometricsStmt = $pdo->prepare('SELECT BiometricsID FROM ' . T_MASTER_LIST . ' WHERE EmployeeID = ?');
+$biometricsStmt->execute([$authUser['employee_id']]);
+$realBiometricsId = $biometricsStmt->fetchColumn();
+
+$codeMatches = strcasecmp($confirmCode, $authUser['employee_id']) === 0
+    || ($realBiometricsId !== false && strcasecmp($confirmCode, $realBiometricsId) === 0);
+
+if (!$codeMatches) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'That Staff/Biometrics Code does not match your account. Please try again.', 'type' => 'error']);
     exit;
 }
 
-$pdo = db();
-
-$tlStmt = $pdo->prepare('SELECT id, status FROM ' . T_TASK_LOCATIONS . ' WHERE id = ? AND task_id = ? AND unassigned_at IS NULL');
+// Missed Out is a hard cutoff -- see api/scan/lookup.php's identical
+// reasoning. Applies even if the check was legitimately started before the
+// 24-hour mark: the deadline is 24 hours from assigned_at, not from
+// start_time, so work started on time but submitted late still finds
+// nothing here and falls into the generic "not found" below -- no special
+// Missed Out messaging.
+$tlStmt = $pdo->prepare('
+    SELECT id, status
+    FROM ' . T_TASK_LOCATIONS . '
+    WHERE id = ? AND task_id = ? AND unassigned_at IS NULL
+      AND (status <> \'in_progress\' OR DATEDIFF(SECOND, assigned_at, SYSDATETIME()) < 86400)
+');
 $tlStmt->execute([$taskLocationId, $taskId]);
 $taskLocation = $tlStmt->fetch();
 
@@ -138,7 +165,7 @@ $upd = $pdo->prepare('
 ');
 $upd->execute([$authUser['id'], $remark !== '' ? $remark : null, $taskLocationId]);
 
-writeAuditLog($authUser['id'], 'scan.complete', 'task_location', $taskLocationId, $authUser['department_id'], [
+writeAuditLog($authUser['id'], 'scan.complete', 'task_location', $taskLocationId, [
     'task_id' => $taskId, 'photo_count' => count($storedFiles),
 ]);
 

@@ -12,6 +12,15 @@
  */
 require_once __DIR__ . '/../auth/session.php';
 require_once __DIR__ . '/../authz/capabilities.php';
+require_once __DIR__ . '/../conn/db.php';
+require_once __DIR__ . '/../rules/constants.php';
+require_once __DIR__ . '/../rules/status.php';
+
+// Lazily auto-unassigns any location whose ticket resolved (Completed or
+// Missed Out) since the last page load -- see sweepResolvedLocations()'s
+// own docblock. Runs once per page load, on every appshell page, so the
+// first person to load anything after a ticket resolves is what triggers it.
+sweepResolvedLocations(db());
 
 $shellUser = currentUser();
 $currentPage = basename($_SERVER['PHP_SELF']);
@@ -31,8 +40,8 @@ $mainNavItems = [
 ];
 
 $avatarInitials = $shellUser['avatar_initials'] ?: strtoupper(substr($shellUser['full_name'], 0, 1));
-$avatarColorHex = ltrim($shellUser['avatar_color'] ?: '#A7ACD9', '#');
-$avatarUrl = 'https://placehold.co/38x38/EEF0FB/' . rawurlencode($avatarColorHex) . '?text=' . rawurlencode($avatarInitials);
+$avatarFallbackUrl = initialsAvatarUrl($avatarInitials, $shellUser['avatar_color'], '38');
+$avatarPhotoUrl = employeePhotoUrl($shellUser['employee_id']);
 ?>
 <div class="app-shell">
     <aside class="icon-rail"></aside>
@@ -56,7 +65,53 @@ $avatarUrl = 'https://placehold.co/38x38/EEF0FB/' . rawurlencode($avatarColorHex
 
         <div class="nav-section-label">General</div>
         <nav class="sidebar-nav">
-            <a href="settings.php" class="sidebar-link<?= $currentPage === 'settings.php' ? ' active' : '' ?>"><i class="fas fa-gear"></i> Settings</a>
+            <?php if ($shellUser['role_name'] === ROLE_ADMIN): ?>
+                <a href="user_management.php" class="sidebar-link<?= $currentPage === 'user_management.php' ? ' active' : '' ?>">
+                    <i class="fas fa-users-gear"></i> User Management
+                </a>
+            <?php endif; ?>
+            <div class="accessibility-wrap">
+                <button type="button" class="sidebar-link accessibility-trigger" onclick="toggleAccessibilityPanel(this)">
+                    <i class="fas fa-universal-access"></i> Accessibility
+                </button>
+                <div class="accessibility-panel" id="accessibilityPanel">
+                    <div class="pref-row">
+                        <div class="pref-row-label">
+                            <span class="pref-row-icon"><i class="fas fa-fw fa-moon"></i></span>
+                            <div>
+                                <strong>Dark Mode</strong>
+                                <span>Light / dark appearance</span>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode(this)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="pref-row">
+                        <div class="pref-row-label">
+                            <span class="pref-row-icon"><i class="fas fa-fw fa-palette"></i></span>
+                            <div>
+                                <strong>Accent Color</strong>
+                                <span>Buttons &amp; highlights</span>
+                            </div>
+                        </div>
+                        <div class="accent-swatch-grid" id="accentSwatchGrid">
+                            <button type="button" class="accent-swatch" data-color="#A7ACD9" style="background:#A7ACD9" aria-label="Periwinkle"></button>
+                            <button type="button" class="accent-swatch" data-color="#C98A94" style="background:#C98A94" aria-label="Dusty Rose"></button>
+                            <button type="button" class="accent-swatch" data-color="#81A684" style="background:#81A684" aria-label="Sage Green"></button>
+                            <button type="button" class="accent-swatch" data-color="#6FA8AB" style="background:#6FA8AB" aria-label="Soft Teal"></button>
+                            <button type="button" class="accent-swatch" data-color="#C4A468" style="background:#C4A468" aria-label="Muted Amber"></button>
+                            <button type="button" class="accent-swatch" data-color="#7C93B8" style="background:#7C93B8" aria-label="Slate Blue"></button>
+                            <button type="button" class="accent-swatch" data-color="#BC7A6B" style="background:#BC7A6B" aria-label="Terracotta"></button>
+                            <button type="button" class="accent-swatch" data-color="#A08966" style="background:#A08966" aria-label="Warm Taupe"></button>
+                            <button type="button" class="accent-swatch" data-color="#5F7A63" style="background:#5F7A63" aria-label="Forest Green"></button>
+                            <button type="button" class="accent-swatch" data-color="#B8AEDB" style="background:#B8AEDB" aria-label="Lavender"></button>
+                            <button type="button" class="accent-reset-btn" onclick="resetAccentColor()" data-tooltip="Reset to default"><i class="fas fa-rotate-left"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </nav>
 
         <div class="sidebar-footer-card">
@@ -66,7 +121,7 @@ $avatarUrl = 'https://placehold.co/38x38/EEF0FB/' . rawurlencode($avatarColorHex
 
             <div class="topbar-user">
                 <div class="topbar-user-avatar-wrap">
-                    <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="User avatar">
+                    <img src="<?= htmlspecialchars($avatarPhotoUrl ?? $avatarFallbackUrl) ?>" alt="User avatar" onerror="this.onerror=null;this.src=<?= htmlspecialchars(json_encode($avatarFallbackUrl), ENT_QUOTES) ?>;">
                     <span class="user-status-dot"></span>
                 </div>
                 <div class="topbar-user-info">

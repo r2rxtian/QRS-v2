@@ -10,12 +10,13 @@
 }
 
 .attachment-list img {
-    width: 44px;
-    height: 44px;
+    width: 68px;
+    height: 68px;
     object-fit: cover;
-    border-radius: 6px;
+    border-radius: 8px;
     border: 1px solid var(--gray-200);
     cursor: pointer;
+    box-shadow: var(--shadow-sm);
     transition: transform 0.2s;
 }
 
@@ -34,3 +35,45 @@
 /* .zoomed-photo base layout lives in app.css -- shared with the Task
    Detail modal's photo zoom (scripts/task-detail-modal.js), not specific
    to this page. */
+
+/* .remarks-cell / .remark-block* now live in app.css -- shared with the
+   Task Detail modal's own Remarks column (api/tasks/detail_partial.php),
+   not specific to this page. */
+
+/* The on-screen Remarks column is just this one pill now (the full blocks
+   moved into the View Remarks popup, see scripts/task_report.js), so it no
+   longer needs the wide max-width that used to give wrapped paragraph text
+   room to breathe -- narrowing it hands that space back to Images. */
+.remarks-cell {
+    max-width: none;
+}
+
+/* Small tinted pill instead of a generic bordered .btn -- reads as a quiet
+   "there's more here" affordance rather than a full-weight action button,
+   and its narrower footprint is what frees up room for bigger photo
+   thumbnails in the Images column next to it. */
+.remarks-view-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border: none;
+    border-radius: 999px;
+    background: var(--primary-light);
+    color: var(--primary-dark, var(--primary));
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.remarks-view-btn i {
+    font-size: 11px;
+}
+
+.remarks-view-btn:hover {
+    background: var(--primary);
+    color: var(--white);
+    transform: translateY(-1px);
+}

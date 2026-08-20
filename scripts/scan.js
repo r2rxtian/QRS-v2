@@ -39,15 +39,30 @@ function hideAllStates() {
     document.getElementById('completionState').style.display = 'none';
 }
 
+// "You are here" marker in the Locations Status sidebar -- points at
+// whichever location's checklist/completion screen is open in the main
+// panel right now, independent of that location's DB status (a
+// freshly-scanned location is still 'pending' server-side until its
+// checklist is actually submitted, so the sidebar's own status-based
+// highlighting has nothing to show yet at that point).
+function markCurrentLocationInSidebar(taskLocationId) {
+    document.querySelectorAll('.scan-location-list-item.here').forEach(el => el.classList.remove('here'));
+    if (taskLocationId === null) return;
+    const row = document.querySelector('.scan-location-list-item[data-task-location-id="' + taskLocationId + '"]');
+    if (row) row.classList.add('here');
+}
+
 function returnToLanding() {
     hideAllStates();
     document.getElementById('landingState').style.display = '';
+    markCurrentLocationInSidebar(null);
 }
 
 function showMethodSelectionState(locationName, taskLocationId) {
     hideAllStates();
     document.getElementById('methodLocationName').textContent = locationName;
     document.getElementById('method_task_location_id').value = taskLocationId;
+    markCurrentLocationInSidebar(taskLocationId);
     document.getElementById('findings_observation').value = '';
 
     checklistState = {};
@@ -66,6 +81,7 @@ function showCompletionState(locationName, taskLocationId, startedWith) {
     hideAllStates();
     document.getElementById('completionLocationName').textContent = locationName;
     document.getElementById('completion_task_location_id').value = taskLocationId;
+    markCurrentLocationInSidebar(taskLocationId);
     document.getElementById('completion_remark').value = '';
     document.getElementById('confirm_code').value = '';
     document.getElementById('completionPhotoContainer').innerHTML = '';

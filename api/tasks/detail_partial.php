@@ -1,14 +1,13 @@
 <?php
 /**
- * Renders the "task detail" HTML fragment (today's assigned locations,
+ * Renders the "task detail" HTML fragment (currently assigned locations,
  * their status/remarks/photos, unassign controls, and an assign-more-
  * locations form) for injection into the shared Task Detail modal
  * (see components/appshell_end.php + scripts/task-detail-modal.js).
  *
  * GET, not POST -- purely a read, no state change, so no CSRF check
- * needed (matches every other read-only page in this app). Still
- * requires login and does the same department-scoped IDOR check every
- * other task_id-bound page does.
+ * needed (matches every other read-only page in this app). Still requires
+ * login.
  */
 require_once __DIR__ . '/../../auth/session.php';
 require_once __DIR__ . '/../../conn/db.php';
@@ -29,7 +28,7 @@ if ($taskId <= 0) {
 
 $pdo = db();
 
-$taskStmt = $pdo->prepare('SELECT id, name, department_id, task_type FROM ' . T_TASKS . ' WHERE id = ? AND deleted_at IS NULL');
+$taskStmt = $pdo->prepare('SELECT id, name, task_type FROM ' . T_TASKS . ' WHERE id = ? AND deleted_at IS NULL');
 $taskStmt->execute([$taskId]);
 $task = $taskStmt->fetch();
 
@@ -39,67 +38,130 @@ if (!$task) {
     exit;
 }
 
-if (!$isAdmin && (int) $task['department_id'] !== (int) $currentUser['department_id']) {
-    http_response_code(403);
-    echo '<p style="color: var(--danger);">You do not have access to this task.</p>';
-    exit;
-}
+// Task-wide totals -- still-relevant condition (unassigned_at IS NULL OR
+// unassigned_by IS NULL, see rules/status.php's sweepResolvedLocations())
+// so these stay accurate even once every location has auto-unassigned
+// itself after resolving. Matches tasks.php/qradmin.php's own aggregate
+// exactly, since this is the same task viewed from its detail modal.
+$statusStmt = $pdo->prepare('
+    SELECT
+        COUNT(tl.id) AS total_locations,
+        SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
+        SUM(CASE WHEN tl.status = \'in_progress\' THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 THEN 1 ELSE 0 END) AS missed_locations
+    FROM ' . T_TASK_LOCATIONS . ' tl
+    WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
+      AND tl.id = (
+          SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+          WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+      )
+');
+$statusStmt->execute([$taskId]);
+$statusRow = $statusStmt->fetch();
+$totalForStatus = (int) $statusRow['total_locations'];
+$completedForStatus = (int) $statusRow['completed_locations'];
+$inProgressForStatus = (int) $statusRow['in_progress_locations'];
+$missedForStatus = (int) $statusRow['missed_locations'];
+// Once every assigned location is completed, the task itself is done --
+// unassigning/reassigning locations on a finished task doesn't make sense,
+// so those controls are hidden here (same derivation qradmin.php/tasks.php
+// use for the task's own status badge). A task with any Missed Out
+// location is closed the same way, on purpose: "when the task is done,
+// it's done" applies to a miss just as much as a completion -- a task
+// whose only location missed would otherwise sit at "Not Started" forever
+// (deriveTaskStatus() has no concept of missed), leaving Assign/Unassign
+// open indefinitely even though nothing about it can ever be completed.
+$isTaskCompleted = deriveTaskStatus($totalForStatus, $completedForStatus, $inProgressForStatus)['code'] === 'completed';
+$hasMissed = $missedForStatus > 0;
+$canModifyLocations = $canAssign && !$isTaskCompleted && !$hasMissed;
 
+// Currently-active locations only -- genuinely still on the roster
+// (pending or in_progress), not yet resolved. Drives the Unassign tag list
+// and the detail overview table below. Completed/Missed locations don't
+// live here once resolved -- they auto-unassign and move to their own
+// permanent-record boxes instead (see $completedRows/$missedRows below).
+// is_missed still guards the brief window between a ticket crossing 24
+// hours and the next page load's sweep picking it up.
 $rowsStmt = $pdo->prepare('
     SELECT tl.id, l.id AS location_id, l.name AS location_name,
            tl.spot_spray_answer, tl.spot_spray_remark,
            tl.misting_answer, tl.misting_remark,
            tl.mist_blower_answer, tl.mist_blower_remark,
            tl.monitoring_answer, tl.monitoring_remark,
-           tl.findings_observation, tl.completion_remark,
+           tl.findings_observation,
            tl.start_time, tl.end_time, tl.status,
-           cu.full_name AS completed_by_name, cu.employee_id AS completed_by_code
+           CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) >= 86400 THEN 1 ELSE 0 END AS is_missed
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
-    LEFT JOIN ' . T_USERS . ' cu ON cu.id = tl.completed_by
-    WHERE tl.task_id = ? AND tl.task_date = CAST(SYSDATETIME() AS DATE) AND tl.unassigned_at IS NULL
+    WHERE tl.task_id = ? AND tl.unassigned_at IS NULL
+      AND tl.id = (
+          SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+          WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+      )
     ORDER BY l.name
 ');
 $rowsStmt->execute([$taskId]);
 $assignedRows = $rowsStmt->fetchAll();
 
-// Once every assigned location is completed, the task itself is done --
-// unassigning/reassigning locations on a finished task doesn't make sense,
-// so those controls are hidden here (same derivation qradmin.php/tasks.php
-// use for the task's own status badge).
-$totalForStatus = count($assignedRows);
-$completedForStatus = count(array_filter($assignedRows, fn($r) => $r['status'] === 'completed'));
-$inProgressForStatus = count(array_filter($assignedRows, fn($r) => $r['status'] === 'in_progress'));
-$isTaskCompleted = deriveTaskStatus($totalForStatus, $completedForStatus, $inProgressForStatus)['code'] === 'completed';
-$canModifyLocations = $canAssign && !$isTaskCompleted;
 // Nothing to show in the per-location table until at least one location has
-// actually been started -- a table full of "Not Started" / empty checklist /
-// no photos rows is noise, not information. Before that point this modal's
-// only real job is assigning locations to the task.
-$hasStartedProgress = $inProgressForStatus > 0 || $completedForStatus > 0;
+// actually been started -- a table full of "Not Started" / empty
+// checklist / no photos rows is noise, not information. Before that point
+// this modal's only real job is assigning locations to the task.
+$hasStartedProgress = count(array_filter($assignedRows, fn($r) => $r['start_time'] !== null || (int) $r['is_missed'] === 1)) > 0;
 
-$photosByTaskLocation = [];
-if (!empty($assignedRows)) {
-    $tlIds = array_column($assignedRows, 'id');
-    $placeholders = implode(',', array_fill(0, count($tlIds), '?'));
-    $photoStmt = $pdo->prepare('
-        SELECT task_location_id, photo_type, stored_filename
-        FROM ' . T_TASK_LOCATION_PHOTOS . '
-        WHERE task_location_id IN (' . $placeholders . ') AND deleted_at IS NULL
-    ');
-    $photoStmt->execute($tlIds);
-    foreach ($photoStmt->fetchAll() as $photo) {
-        $photosByTaskLocation[$photo['task_location_id']][$photo['photo_type']][] = $photo['stored_filename'];
-    }
-}
+// Completed Locations -- permanent record, same still-relevant condition
+// as the totals query above, so it keeps showing a location even after it
+// auto-unassigns itself once completed.
+$completedRowsStmt = $pdo->prepare('
+    SELECT l.name AS location_name, ' . fullNameSql('cuml', 'cu') . ' AS completed_by_name, cu.employee_id AS completed_by_code
+    FROM ' . T_TASK_LOCATIONS . ' tl
+    JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
+    LEFT JOIN ' . T_USERS . ' cu ON cu.id = tl.completed_by
+    LEFT JOIN ' . T_MASTER_LIST . ' cuml ON cuml.EmployeeID = cu.employee_id
+    WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
+      AND tl.status = \'completed\'
+      AND tl.id = (
+          SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+          WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+      )
+    ORDER BY l.name
+');
+$completedRowsStmt->execute([$taskId]);
+$completedRows = $completedRowsStmt->fetchAll();
+
+// Missed Locations -- same permanent-record treatment as Completed above,
+// using the frozen missed formula so it keeps reading as missed after
+// auto-unassign instead of comparing against the live clock.
+$missedRowsStmt = $pdo->prepare('
+    SELECT l.name AS location_name
+    FROM ' . T_TASK_LOCATIONS . ' tl
+    JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
+    WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
+      AND tl.status <> \'completed\'
+      AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400
+      AND tl.id = (
+          SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+          WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+      )
+    ORDER BY l.name
+');
+$missedRowsStmt->execute([$taskId]);
+$missedRows = $missedRowsStmt->fetchAll();
 
 $availableLocations = [];
 if ($canModifyLocations) {
+    // Once a location's ticket resolves (Completed or Missed), it
+    // auto-unassigns itself (see sweepResolvedLocations()) and becomes
+    // free for a new task on its own -- no special-case exclusion needed
+    // here beyond the plain "is anything currently holding it" check.
     $availableLocationsStmt = $pdo->prepare('
         SELECT l.id, l.name
         FROM ' . T_LOCATIONS . ' l
         WHERE l.deleted_at IS NULL AND l.is_active = 1 AND l.location_type = ?
-          AND NOT EXISTS (SELECT 1 FROM ' . T_TASK_LOCATIONS . ' tl WHERE tl.location_id = l.id AND tl.unassigned_at IS NULL AND tl.status <> \'completed\')
+          AND NOT EXISTS (
+              SELECT 1 FROM ' . T_TASK_LOCATIONS . ' tl WHERE tl.location_id = l.id AND tl.unassigned_at IS NULL
+                AND tl.id = (SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2 WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id)
+          )
         ORDER BY l.name
     ');
     $availableLocationsStmt->execute([$task['task_type']]);
@@ -117,25 +179,45 @@ if ($canModifyLocations) {
             <i class="fas fa-file-lines"></i> View in Task Report
         </a>
     </div>
+<?php endif; ?>
 
-    <?php if (!empty($assignedRows)): ?>
-        <div class="completed-locations-box">
-            <div class="completed-locations-header">
-                <div class="completed-locations-title"><i class="fas fa-circle-info"></i> Completed Locations</div>
-                <span class="completed-locations-count"><i class="fas fa-check"></i> <?= count($assignedRows) ?> Location<?= count($assignedRows) === 1 ? '' : 's' ?> Completed</span>
-            </div>
-            <div class="location-tags">
-                <?php foreach ($assignedRows as $row): ?>
-                    <div class="location-tag">
-                        <span><?= htmlspecialchars($row['location_name']) ?></span>
-                        <span class="location-tag-completed-mark"><i class="fas fa-check"></i> Completed</span>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <div class="note-text">These are the locations completed for this task.</div>
+<?php if (!empty($completedRows)): ?>
+    <div class="completed-locations-box">
+        <div class="completed-locations-header">
+            <div class="completed-locations-title"><i class="fas fa-circle-info"></i> Completed Locations</div>
+            <span class="completed-locations-count"><i class="fas fa-check"></i> <?= count($completedRows) ?> Location<?= count($completedRows) === 1 ? '' : 's' ?> Completed</span>
         </div>
-    <?php endif; ?>
-<?php else: ?>
+        <div class="location-tags">
+            <?php foreach ($completedRows as $row): ?>
+                <div class="location-tag">
+                    <span><?= htmlspecialchars($row['location_name']) ?></span>
+                    <span class="location-tag-completed-mark"><i class="fas fa-check"></i> Completed</span>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <div class="note-text">These are the locations completed for this task.</div>
+    </div>
+<?php endif; ?>
+
+<?php if (!empty($missedRows)): ?>
+    <div class="completed-locations-box">
+        <div class="completed-locations-header">
+            <div class="completed-locations-title"><i class="fas fa-circle-info"></i> Missed Locations</div>
+            <span class="completed-locations-count status-missed"><i class="fas fa-triangle-exclamation"></i> <?= count($missedRows) ?> Location<?= count($missedRows) === 1 ? '' : 's' ?> Missed</span>
+        </div>
+        <div class="location-tags">
+            <?php foreach ($missedRows as $row): ?>
+                <div class="location-tag">
+                    <span><?= htmlspecialchars($row['location_name']) ?></span>
+                    <span class="location-tag-completed-mark status-missed"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <div class="note-text">These are the locations that were never finished within 24 hours for this task.</div>
+    </div>
+<?php endif; ?>
+
+<?php if (!$isTaskCompleted): ?>
     <?php if (!empty($assignedRows)): ?>
         <div class="assign-summary">
             <div class="info-box">
@@ -171,31 +253,40 @@ if ($canModifyLocations) {
                     <th>Location Name</th>
                     <th>Task Started</th>
                     <th>Checklist</th>
-                    <th>Findings / Remarks</th>
-                    <th>Photos</th>
-                    <th>Completed By</th>
+                    <th>Findings / Observations</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($assignedRows)): ?>
                     <tr>
-                        <td colspan="6" style="text-align:center; padding: 32px; color: var(--gray-500);">No locations assigned for today yet.</td>
+                        <td colspan="4" style="text-align:center; padding: 32px; color: var(--gray-500);">No locations assigned for today yet.</td>
                     </tr>
                 <?php endif; ?>
                 <?php foreach ($assignedRows as $row): ?>
                     <?php
-                    $photos = $photosByTaskLocation[$row['id']] ?? [];
                     $checklistBadges = [];
                     foreach (CHECKLIST_ITEMS as $key => $label) {
                         if ($row[$key . '_answer']) {
                             $checklistBadges[] = ['label' => $label, 'answer' => $row[$key . '_answer'], 'remark' => $row[$key . '_remark']];
                         }
                     }
-                    $remarkParts = array_filter([$row['findings_observation'], $row['completion_remark']]);
+                    // Completion Remarks isn't shown here on purpose -- a location
+                    // only ever gets one once it's completed, and a completed
+                    // location auto-unassigns out of $assignedRows (see the box
+                    // above) around the same time, so it belongs to Task Report's
+                    // permanent record instead, not this ongoing-progress view.
                     ?>
                     <tr>
                         <td class="location-name"><i class="fas fa-location-dot" style="color: var(--primary-hover); margin-right: 6px;"></i><?= htmlspecialchars($row['location_name']) ?></td>
-                        <td><?= $row['start_time'] ? htmlspecialchars((new DateTime($row['start_time']))->format('Y-m-d H:i:s')) : '<span class="status-pill">Not Started</span>' ?></td>
+                        <td>
+                            <?php if ((int) $row['is_missed'] === 1): ?>
+                                <span class="status-badge status-missed"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
+                            <?php elseif ($row['start_time']): ?>
+                                <?= htmlspecialchars((new DateTime($row['start_time']))->format('Y-m-d H:i:s')) ?>
+                            <?php else: ?>
+                                <span class="status-pill">Not Started</span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <?php if (empty($checklistBadges)): ?>
                                 <span style="color: var(--gray-400);">—</span>
@@ -206,26 +297,27 @@ if ($canModifyLocations) {
                                         $answerClass = $b['answer'] === 'Yes' ? 'yes' : ($b['answer'] === 'No' ? 'no' : 'na');
                                         $answerIcon = $answerClass === 'yes' ? 'fa-check' : ($answerClass === 'no' ? 'fa-xmark' : 'fa-minus');
                                         ?>
-                                        <div class="checklist-answer-item" title="<?= htmlspecialchars($b['remark'] ?? '') ?>">
-                                            <span class="checklist-answer-icon <?= $answerClass ?>"><i class="fas <?= $answerIcon ?>"></i></span>
-                                            <span class="checklist-answer-label"><?= htmlspecialchars($b['label']) ?></span>
-                                            <span class="checklist-answer-pill <?= $answerClass ?>"><?= htmlspecialchars($b['answer']) ?></span>
+                                        <div class="checklist-answer-group">
+                                            <div class="checklist-answer-item">
+                                                <span class="checklist-answer-icon <?= $answerClass ?>"><i class="fas <?= $answerIcon ?>"></i></span>
+                                                <span class="checklist-answer-label"><?= htmlspecialchars($b['label']) ?></span>
+                                                <span class="checklist-answer-pill <?= $answerClass ?>"><?= htmlspecialchars($b['answer']) ?></span>
+                                            </div>
+                                            <?php if (!empty($b['remark'])): ?>
+                                                <div class="checklist-answer-remark"><i class="fas fa-comment-dots"></i> <?= htmlspecialchars($b['remark']) ?></div>
+                                            <?php endif; ?>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
                             <?php endif; ?>
                         </td>
-                        <td><?php if ($remarkParts): ?><?= htmlspecialchars(implode(' / ', $remarkParts)) ?><?php else: ?><span class="cell-icon-text"><i class="fas fa-comment"></i> No remarks yet</span><?php endif; ?></td>
-                        <td>
-                            <?php if (empty($photos['after'])): ?>
-                                <span class="cell-icon-text"><i class="fas fa-image"></i> No photos</span>
+                        <td class="remarks-cell">
+                            <?php if ($row['findings_observation']): ?>
+                                <?= htmlspecialchars($row['findings_observation']) ?>
                             <?php else: ?>
-                                <?php foreach ($photos['after'] as $filename): ?>
-                                    <img src="<?= htmlspecialchars(UPLOAD_URL_PATH . $filename) ?>" alt="Photo" class="photo" onclick="zoomPhoto(this)">
-                                <?php endforeach; ?>
+                                <span class="cell-icon-text"><i class="fas fa-comment"></i> No findings yet</span>
                             <?php endif; ?>
                         </td>
-                        <td><?= htmlspecialchars($row['completed_by_name'] ?? '') ?><?= $row['completed_by_code'] ? ' <span style="color: var(--gray-400); font-size:12px;">(' . htmlspecialchars(substr($row['completed_by_code'], -3)) . ')</span>' : '' ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

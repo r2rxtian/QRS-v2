@@ -73,3 +73,99 @@ function getSavedAccentColor() {
 
 applyDarkMode(isDarkMode());
 applyAccentColor(getSavedAccentColor());
+
+// ---- Accessibility popover (sidebar "General" section, every appshell
+// page -- markup lives in components/appshell_start.php) ----
+
+function toggleDarkMode(checkbox) {
+    saveDarkMode(checkbox.checked);
+}
+
+function markSelectedSwatch(color) {
+    document.querySelectorAll('.accent-swatch').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.color.toLowerCase() === color.toLowerCase());
+    });
+}
+
+function selectAccentSwatch(button) {
+    const color = button.dataset.color;
+    markSelectedSwatch(color);
+    saveAccentColor(color);
+}
+
+function resetAccentColor() {
+    markSelectedSwatch(DEFAULT_ACCENT);
+    saveAccentColor(DEFAULT_ACCENT);
+}
+
+function toggleAccessibilityPanel(button) {
+    const panel = document.getElementById('accessibilityPanel');
+    const isOpen = panel.classList.contains('open');
+
+    if (isOpen) {
+        panel.classList.remove('open');
+        return;
+    }
+
+    // Move the panel to a direct child of <body> before showing it.
+    // .profile-sidebar gets a real `transform` value applied in its
+    // off-canvas-drawer breakpoint (max-width: 1024px) -- translateX(-100%)
+    // closed, translateX(0) open, and even translateX(0) counts as "a
+    // transform" for this purpose -- which makes the sidebar itself become
+    // the containing block for any position:fixed descendant instead of
+    // the viewport. That silently broke this panel's on-screen math below
+    // whenever the sidebar was in drawer mode, since window.innerWidth/
+    // innerHeight assume position:fixed is viewport-relative. Body itself
+    // never gets a transform, so parenting there sidesteps the issue
+    // entirely rather than trying to detect/compensate for it.
+    if (panel.parentElement !== document.body) {
+        document.body.appendChild(panel);
+    }
+    panel.classList.add('open');
+    positionAccessibilityPanel(button, panel);
+}
+
+// .accessibility-panel is position:fixed (see app.css for why), so its
+// left/top/bottom have to be computed here against the trigger's actual
+// on-screen position instead of relying on a CSS anchor -- recomputed on
+// every open, so window resizes between opens are handled for free.
+function positionAccessibilityPanel(trigger, panel) {
+    const rect = trigger.getBoundingClientRect();
+    const panelWidth = panel.offsetWidth || 280;
+    const gap = 12;
+    const fitsRight = rect.right + gap + panelWidth <= window.innerWidth;
+
+    if (fitsRight) {
+        panel.style.left = (rect.right + gap) + 'px';
+        panel.style.top = 'auto';
+        panel.style.bottom = Math.max(8, window.innerHeight - rect.bottom) + 'px';
+    } else {
+        // Not enough room to the right (narrow window) -- drop it below the
+        // trigger instead, clamped so it never runs off the left edge.
+        panel.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - panelWidth - 8)) + 'px';
+        panel.style.bottom = 'auto';
+        panel.style.top = (rect.bottom + 8) + 'px';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    markSelectedSwatch(getSavedAccentColor());
+    document.querySelectorAll('.accent-swatch').forEach(btn => {
+        btn.addEventListener('click', () => selectAccentSwatch(btn));
+    });
+
+    const darkToggle = document.getElementById('darkModeToggle');
+    if (darkToggle) darkToggle.checked = isDarkMode();
+});
+
+document.addEventListener('click', function (e) {
+    // The panel itself may no longer be inside .accessibility-wrap by the
+    // time this fires (see toggleAccessibilityPanel()'s move-to-<body>
+    // comment), so a click inside it has to be checked separately from a
+    // click on the trigger, not caught by a single closest('.accessibility-wrap').
+    if (e.target.closest('.accessibility-trigger') || e.target.closest('#accessibilityPanel')) {
+        return;
+    }
+    const panel = document.getElementById('accessibilityPanel');
+    if (panel) panel.classList.remove('open');
+});

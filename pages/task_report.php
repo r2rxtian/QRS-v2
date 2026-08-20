@@ -16,21 +16,26 @@ $sql = '
            tl.mist_blower_answer, tl.mist_blower_remark,
            tl.monitoring_answer, tl.monitoring_remark,
            tl.findings_observation, tl.completion_remark,
-           cu.full_name AS completed_by_name, cu.employee_id AS completed_by_code
+           ' . fullNameSql('cuml', 'cu') . ' AS completed_by_name, cu.employee_id AS completed_by_code
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_TASKS . ' t ON t.id = tl.task_id
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     LEFT JOIN ' . T_USERS . ' cu ON cu.id = tl.completed_by
-    WHERE t.deleted_at IS NULL AND tl.status = \'completed\'';
-$params = [];
-if (!$isAdmin) {
-    $sql .= ' AND t.department_id = ?';
-    $params[] = $currentUser['department_id'];
-}
-$sql .= ' ORDER BY tl.id DESC';
+    LEFT JOIN ' . T_MASTER_LIST . ' cuml ON cuml.EmployeeID = cu.employee_id
+    WHERE t.deleted_at IS NULL AND (
+        tl.status = \'completed\'
+        OR (tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400)
+    )
+    -- Most recently resolved first, not insertion order (tl.id) -- several
+    -- locations assigned to the same task in one batch share close ids but
+    -- finish at very different real times, which made id DESC read as
+    -- "grouped by task" rather than truly by recency. end_time is the real
+    -- completion moment; unassigned_at (when the sweep closed out a missed
+    -- ticket) covers the Missed Out case, which has no end_time.
+    ORDER BY COALESCE(tl.end_time, tl.unassigned_at, tl.assigned_at) DESC';
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute($params);
+$stmt->execute();
 $records = $stmt->fetchAll();
 
 $photosByTaskLocation = [];
@@ -73,10 +78,10 @@ $statTasksCovered = count($taskNames);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css">
-    <link rel="stylesheet" href="../styles/task_report.css">
+    <link rel="stylesheet" href="../styles/app.css?v=10">
+    <link rel="stylesheet" href="../styles/task_report.css?v=6">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="../scripts/theme.js?v=2"></script>
+    <script src="../scripts/theme.js?v=5"></script>
 </head>
 
 <body>
@@ -85,34 +90,10 @@ $statTasksCovered = count($taskNames);
     <div class="topbar">
         <div class="topbar-title">
             <h1>Task Report</h1>
-            <p>Full attachment history across every task and location.</p>
+            <p><?= $statTotal ?> record<?= $statTotal === 1 ? '' : 's' ?> across <?= $statTasksCovered ?> task<?= $statTasksCovered === 1 ? '' : 's' ?> · <?= $withAttachments ?> with attachments</p>
         </div>
         <div class="topbar-actions">
             <button type="button" class="btn btn-primary" id="exportPdfBtn" onclick="exportReportToPDF()"><i class="fas fa-file-pdf"></i> Export to PDF</button>
-        </div>
-    </div>
-
-    <div class="stat-tiles">
-        <div class="stat-tile">
-            <div class="stat-tile-top">
-                <div class="stat-tile-icon periwinkle"><i class="fas fa-file-lines"></i></div>
-            </div>
-            <div class="stat-tile-value"><?= $statTotal ?></div>
-            <div class="stat-tile-label">Total Records</div>
-        </div>
-        <div class="stat-tile">
-            <div class="stat-tile-top">
-                <div class="stat-tile-icon teal"><i class="fas fa-camera"></i></div>
-            </div>
-            <div class="stat-tile-value"><?= $withAttachments ?></div>
-            <div class="stat-tile-label">With Attachments</div>
-        </div>
-        <div class="stat-tile">
-            <div class="stat-tile-top">
-                <div class="stat-tile-icon purple"><i class="fas fa-clipboard-list"></i></div>
-            </div>
-            <div class="stat-tile-value"><?= $statTasksCovered ?></div>
-            <div class="stat-tile-label">Tasks Covered</div>
         </div>
     </div>
 
@@ -158,6 +139,11 @@ $statTasksCovered = count($taskNames);
                                     <div class="sort-dropdown-option" data-value="6:text:desc" data-label="End Time (Latest first)">Latest first</div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="filter-group">
+                            <div class="filter-group-title">Status</div>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Completed" checked> Completed</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Missed Out" checked> Missed Out</label>
                         </div>
                         <div class="filter-group">
                             <div class="filter-group-title">Attachments</div>
@@ -215,26 +201,33 @@ $statTasksCovered = count($taskNames);
                             <?php
                             $photos = $photosByTaskLocation[$r['id']] ?? [];
                             $hasAttachments = !empty($photos) ? 'yes' : 'no';
-                            $checklistRemarks = [];
+                            // Every answered item (Yes/No/N/A), not just the ones with a
+                            // remark -- a plain "Yes" is still relevant information for
+                            // the record, not just the reasons behind a No/N/A.
+                            $checklistLines = [];
                             foreach (CHECKLIST_ITEMS as $key => $label) {
-                                if (!empty($r[$key . '_remark'])) {
-                                    $checklistRemarks[] = $label . ': ' . $r[$key . '_remark'];
+                                if (empty($r[$key . '_answer'])) {
+                                    continue;
                                 }
+                                $line = $label . ': ' . $r[$key . '_answer'];
+                                if (!empty($r[$key . '_remark'])) {
+                                    $line .= ' - ' . $r[$key . '_remark'];
+                                }
+                                $checklistLines[] = $line;
                             }
-                            $remarkParts = array_filter(array_merge($checklistRemarks, [$r['findings_observation'], $r['completion_remark']]));
-                            $remarks = $remarkParts ? implode(' / ', $remarkParts) : 'No remarks';
-                            // Same class/label convention as Task Manager's status badges
-                            // (rules/status.php) so a location's status reads identically
-                            // wherever it's shown, colors included.
-                            $statusMeta = [
-                                'pending' => ['label' => 'Not Started', 'class' => 'status-not-started'],
-                                'in_progress' => ['label' => 'On-going', 'class' => 'status-ongoing'],
-                                'completed' => ['label' => 'Completed', 'class' => 'status-complete'],
-                            ][$r['status']] ?? ['label' => $r['status'], 'class' => ''];
+                            $hasAnyRemark = $checklistLines || $r['findings_observation'] || $r['completion_remark'];
+                            // The query above only ever returns a completed row or a missed
+                            // one (its current ticket open 24+ hours from assigned_at, still
+                            // not completed) -- so any non-completed status reaching this
+                            // point is, by construction, a missed one, regardless of whether
+                            // it was left pending or in_progress when its 24 hours ran out.
+                            $statusMeta = $r['status'] === 'completed'
+                                ? ['label' => 'Completed', 'class' => 'status-complete']
+                                : ['label' => 'Missed Out', 'class' => 'status-missed'];
                             $biometricsLast3 = $r['completed_by_code'] ? substr($r['completed_by_code'], -3) : '—';
                             $taskDateObj = new DateTime($r['task_date']);
                             ?>
-                            <tr data-task="<?= htmlspecialchars($r['task_name']) ?>" data-attachments="<?= $hasAttachments ?>">
+                            <tr data-task="<?= htmlspecialchars($r['task_name']) ?>" data-attachments="<?= $hasAttachments ?>" data-status="<?= htmlspecialchars($statusMeta['label']) ?>">
                                 <td>
                                     <div class="row-icon-name">
                                         <div class="row-icon"><i class="fas fa-location-dot"></i></div>
@@ -249,7 +242,42 @@ $statTasksCovered = count($taskNames);
                                 <td><?= htmlspecialchars($r['completed_by_name'] ?? '—') ?></td>
                                 <td><?= $r['start_time'] ? htmlspecialchars((new DateTime($r['start_time']))->format('Y-m-d H:i:s')) : 'Not Started' ?></td>
                                 <td><?= $r['end_time'] ? htmlspecialchars((new DateTime($r['end_time']))->format('Y-m-d H:i:s')) : 'Not Completed' ?></td>
-                                <td><?= htmlspecialchars($remarks) ?></td>
+                                <td class="remarks-cell">
+                                    <?php if (!$hasAnyRemark): ?>
+                                        <span class="cell-icon-text"><i class="fas fa-comment"></i> No remarks</span>
+                                    <?php else: ?>
+                                        <button type="button" class="remarks-view-btn" onclick="openRemarksModal(this, <?= htmlspecialchars(json_encode($r['task_name'] . ' — ' . $r['location_name']), ENT_QUOTES) ?>)">
+                                            <i class="fas fa-comment-dots"></i> View
+                                        </button>
+                                    <?php endif; ?>
+                                    <!-- Full remark blocks stay in the DOM (just hidden) rather than
+                                         being removed -- exportReportToPDF() still reads them straight
+                                         out of each row via .remark-block, so the PDF keeps showing
+                                         everything inline exactly as before; only the on-screen table
+                                         gets the compact "View Remarks" button instead of a crowded cell. -->
+                                    <div class="remarks-source" hidden>
+                                        <?php if ($checklistLines): ?>
+                                            <div class="remark-block">
+                                                <div class="remark-block-label"><i class="fas fa-list-check"></i> Checklist</div>
+                                                <?php foreach ($checklistLines as $line): ?>
+                                                    <div class="remark-block-text"><?= htmlspecialchars($line) ?></div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($r['findings_observation']): ?>
+                                            <div class="remark-block">
+                                                <div class="remark-block-label"><i class="fas fa-magnifying-glass"></i> Findings / Observation</div>
+                                                <div class="remark-block-text"><?= htmlspecialchars($r['findings_observation']) ?></div>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($r['completion_remark']): ?>
+                                            <div class="remark-block">
+                                                <div class="remark-block-label"><i class="fas fa-flag-checkered"></i> Completion Remarks</div>
+                                                <div class="remark-block-text"><?= htmlspecialchars($r['completion_remark']) ?></div>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
                                 <td><span class="status-badge <?= htmlspecialchars($statusMeta['class']) ?>"><?= htmlspecialchars($statusMeta['label']) ?></span></td>
                                 <td>
                                     <?php if (empty($photos['after'])): ?>
@@ -275,6 +303,25 @@ $statTasksCovered = count($taskNames);
         <a href="<?= $isAdmin ? 'tasks.php' : 'qradmin.php' ?>" class="btn btn-secondary"><i class="fas fa-chart-column"></i> Back to <?= $isAdmin ? 'Task Manager' : 'All Tasks' ?></a>
     </div>
 
+    <!-- Remarks Modal -->
+    <div id="remarksModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title"><i class="fas fa-comment-dots"></i> Remarks</h3>
+                    <p class="modal-subtitle" id="remarksModalSubtitle"></p>
+                </div>
+                <button type="button" class="modal-close" onclick="closeModal('remarksModal')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="modal-body" id="remarksModalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('remarksModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
     <?php include '../components/appshell_end.php'; ?>
 
     <script src="../scripts/sidebar-drawer.js"></script>
@@ -283,7 +330,7 @@ $statTasksCovered = count($taskNames);
     <script src="../scripts/filters.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    <script src="../scripts/task_report.js"></script>
+    <script src="../scripts/task_report.js?v=7"></script>
 </body>
 
 </html>

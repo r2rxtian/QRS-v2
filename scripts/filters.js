@@ -84,7 +84,16 @@ function applyTableFilters(tableId) {
             if (cb.checked) groups[key].checked.push(cb.value);
         });
         Object.keys(groups).forEach(key => {
-            if (groups[key].checked.length < groups[key].total) activeFilterCount++;
+            const group = groups[key];
+            // A single-checkbox group is a plain on/off toggle (e.g. "Missed
+            // Out"), not a multi-select "pick which of these categories" --
+            // checked means "only show matches", unchecked means "no
+            // restriction, show everything" (see applyTableFilters below).
+            // A multi-checkbox group instead treats checked.length < total
+            // as "actively filtering", down to and including all unchecked
+            // meaning "show nothing".
+            const isActive = group.total === 1 ? group.checked.length === 1 : group.checked.length < group.total;
+            if (isActive) activeFilterCount++;
         });
     }
 
@@ -97,7 +106,12 @@ function applyTableFilters(tableId) {
         Object.keys(groups).forEach(key => {
             if (!match) return;
             const rowValue = row.dataset[key];
-            if (groups[key].checked.length === 0 || !groups[key].checked.includes(rowValue)) {
+            const group = groups[key];
+            if (group.total === 1) {
+                if (group.checked.length === 1 && !group.checked.includes(rowValue)) {
+                    match = false;
+                }
+            } else if (group.checked.length === 0 || !group.checked.includes(rowValue)) {
                 match = false;
             }
         });
@@ -148,7 +162,19 @@ function applyFilterPanel(el) {
 
 function clearFilterPanel(el) {
     const wrap = el.closest('.filter-wrap');
-    wrap.querySelectorAll('.filter-panel input[type="checkbox"]').forEach(cb => cb.checked = true);
+    // Group by data-filter key first so a single-checkbox toggle group
+    // (see applyTableFilters) clears to its neutral OFF state instead of
+    // being forced checked=true like every multi-checkbox group's "select
+    // everything" reset.
+    const byKey = {};
+    wrap.querySelectorAll('.filter-panel input[type="checkbox"][data-filter]').forEach(cb => {
+        const key = cb.dataset.filter;
+        (byKey[key] = byKey[key] || []).push(cb);
+    });
+    Object.values(byKey).forEach(checkboxes => {
+        const resetValue = checkboxes.length === 1 ? false : true;
+        checkboxes.forEach(cb => cb.checked = resetValue);
+    });
     const dropdown = wrap.querySelector('.sort-dropdown');
     if (dropdown) {
         dropdown.dataset.value = '';

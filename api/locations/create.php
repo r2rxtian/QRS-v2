@@ -48,6 +48,6 @@ $stmt = $pdo->prepare('INSERT INTO ' . T_LOCATIONS . ' (name, qr_token, created_
 $stmt->execute([$name, $qrToken, $authUser['id'], $locationType]);
 $locationId = (int) $stmt->fetchColumn();
 
-writeAuditLog($authUser['id'], 'location.create', 'location', $locationId, $authUser['department_id'], ['name' => $name, 'location_type' => $locationType]);
+writeAuditLog($authUser['id'], 'location.create', 'location', $locationId, ['name' => $name, 'location_type' => $locationType]);
 
 echo json_encode(['success' => true, 'message' => 'Location added successfully!', 'type' => 'success', 'data' => ['location_id' => $locationId]]);

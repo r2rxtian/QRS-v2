@@ -78,7 +78,7 @@ while (($row = fgetcsv($handle, 0, ',')) !== false) {
 }
 fclose($handle);
 
-writeAuditLog($authUser['id'], 'location.import_csv', null, null, $authUser['department_id'], ['inserted' => $inserted, 'duplicates' => $duplicates, 'blank' => $blank]);
+writeAuditLog($authUser['id'], 'location.import_csv', null, null, ['inserted' => $inserted, 'duplicates' => $duplicates, 'blank' => $blank]);
 
 echo json_encode([
     'success' => true,

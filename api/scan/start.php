@@ -59,7 +59,15 @@ $authUser = authorize('scan.start', ['task_id' => $taskId, 'entity_type' => 'tas
 
 $pdo = db();
 
-$tlStmt = $pdo->prepare('SELECT id, task_id, status FROM ' . T_TASK_LOCATIONS . ' WHERE id = ? AND task_id = ? AND unassigned_at IS NULL');
+// Missed Out is a hard cutoff -- see api/scan/lookup.php's identical
+// reasoning. An expired ticket simply stops matching here, falling into
+// the same generic "not found" as any other invalid task_location_id.
+$tlStmt = $pdo->prepare('
+    SELECT id, task_id, status
+    FROM ' . T_TASK_LOCATIONS . '
+    WHERE id = ? AND task_id = ? AND unassigned_at IS NULL
+      AND (status <> \'pending\' OR DATEDIFF(SECOND, assigned_at, SYSDATETIME()) < 86400)
+');
 $tlStmt->execute([$taskLocationId, $taskId]);
 $taskLocation = $tlStmt->fetch();
 
@@ -94,7 +102,7 @@ $upd->execute([
     $taskLocationId,
 ]);
 
-writeAuditLog($authUser['id'], 'scan.start', 'task_location', $taskLocationId, $authUser['department_id'], [
+writeAuditLog($authUser['id'], 'scan.start', 'task_location', $taskLocationId, [
     'task_id' => $taskId,
     'checklist' => array_map(fn($c) => $c['answer'], $checklist),
 ]);

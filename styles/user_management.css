@@ -1,0 +1,169 @@
+/* Page-specific styles for pages/user_management.php */
+
+.card-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* --- User Management table: role/status pills --- */
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 9999px;
+    white-space: nowrap;
+}
+
+.role-badge-admin {
+    background: var(--primary-light);
+    color: var(--primary-dark, var(--primary));
+}
+
+.role-badge-user {
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.status-badge.status-inactive {
+    background: var(--gray-200);
+    color: var(--gray-600);
+}
+
+.status-badge i {
+    font-size: 11px;
+}
+
+/* --- Add User modal: biometrics lookup --- */
+/* display:flex (not the block default) for the same reason .input-icon-wrap
+   and .select-dropdown use it in app.css -- a plain block wrapper turns the
+   whitespace text node between the <input> and the clear button into an
+   anonymous inline box sized by the inherited line-height (.modal-body's
+   1.6), which was silently padding this wrapper ~50px taller than the
+   input actually is. */
+.input-clearable {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-clearable .form-input {
+    padding-right: 36px;
+}
+
+.input-clear-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1;
+    display: none;
+}
+
+.input-clearable.has-value .input-clear-btn {
+    display: block;
+}
+
+.input-clear-btn:hover {
+    color: var(--gray-600);
+}
+
+.form-hint {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: var(--gray-500);
+}
+
+.add-user-result {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-top: 18px;
+}
+
+.add-user-result-avatar {
+    position: relative;
+    flex-shrink: 0;
+    width: 64px;
+    height: 64px;
+}
+
+.add-user-result-avatar img {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+.add-user-result-badge {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--success);
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    border: 2px solid var(--surface);
+}
+
+.add-user-result-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 4px;
+}
+
+.add-user-result-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--gray-500);
+    margin-top: 2px;
+}
+
+.add-user-result-detail i {
+    width: 14px;
+    color: var(--success);
+}
+
+.add-user-divider {
+    border: none;
+    border-top: 1px solid var(--gray-100);
+    margin: 20px 0 0;
+}
+
+.info-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--success-bg);
+    color: var(--success-text);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-size: 13px;
+    margin-top: 18px;
+    line-height: 1.4;
+}
+
+.info-banner i {
+    margin-top: 2px;
+    flex-shrink: 0;
+}

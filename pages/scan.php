@@ -14,23 +14,29 @@ $taskId = (int) ($_GET['task_id'] ?? 0);
 
 if ($taskId <= 0) {
     // No task specified (e.g. arrived via the nav link, not from a task's
-    // own "Scan" action) -- show a picker of today's not-yet-fully-completed
-    // tasks instead of just bouncing away.
+    // own "Scan" action) -- show a picker of currently-open (not fully
+    // completed) tasks instead of just bouncing away. Joins each location
+    // to its CURRENT ticket -- most recent row, still on the roster --
+    // not a "today" one; see pages/dashboard.php for the same pattern.
+    // Missed Out locations are excluded from the join entirely (same
+    // reasoning as the scan API endpoints) -- once 24 hours pass they're
+    // no longer something to scan, so they shouldn't count toward this
+    // task's total/remaining locations here.
     $pickerSql = '
         SELECT t.id, t.name,
                COUNT(tl.id) AS total_locations,
                SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations
         FROM ' . T_TASKS . ' t
-        LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND tl.task_date = CAST(SYSDATETIME() AS DATE) AND tl.unassigned_at IS NULL
-        WHERE t.deleted_at IS NULL';
-    $pickerParams = [];
-    if (!$isAdmin) {
-        $pickerSql .= ' AND t.department_id = ?';
-        $pickerParams[] = $currentUser['department_id'];
-    }
-    $pickerSql .= ' GROUP BY t.id, t.name ORDER BY t.id DESC';
+        LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND tl.unassigned_at IS NULL
+            AND (tl.status = \'completed\' OR DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400)
+            AND tl.id = (
+                SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+                WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+            )
+        WHERE t.deleted_at IS NULL
+        GROUP BY t.id, t.name ORDER BY t.id DESC';
     $pickerStmt = $pdo->prepare($pickerSql);
-    $pickerStmt->execute($pickerParams);
+    $pickerStmt->execute();
 
     $pickableTasks = [];
     foreach ($pickerStmt->fetchAll() as $row) {
@@ -52,10 +58,10 @@ if ($taskId <= 0) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="../styles/app.css">
-        <link rel="stylesheet" href="../styles/scan.css">
+        <link rel="stylesheet" href="../styles/app.css?v=10">
+        <link rel="stylesheet" href="../styles/scan.css?v=2">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-        <script src="../scripts/theme.js?v=2"></script>
+        <script src="../scripts/theme.js?v=5"></script>
     </head>
 
     <body>
@@ -120,7 +126,7 @@ if ($taskId <= 0) {
 }
 
 $taskStmt = $pdo->prepare('
-    SELECT t.id, t.name, t.department_id
+    SELECT t.id, t.name
     FROM ' . T_TASKS . ' t
     WHERE t.id = ? AND t.deleted_at IS NULL
 ');
@@ -134,16 +140,19 @@ if (!$task) {
     exit;
 }
 
-if (!$isAdmin && (int) $task['department_id'] !== (int) $currentUser['department_id']) {
-    header('Location: ' . $myTasksPage);
-    exit;
-}
-
+// Missed Out locations are excluded entirely -- see api/scan/lookup.php's
+// reasoning. They simply don't appear in this task's scannable list once
+// 24 hours pass, rather than showing up as a tappable row that then fails.
 $rowsStmt = $pdo->prepare('
     SELECT tl.id AS task_location_id, l.id AS location_id, l.name AS location_name, tl.status
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
-    WHERE tl.task_id = ? AND tl.task_date = CAST(SYSDATETIME() AS DATE) AND tl.unassigned_at IS NULL
+    WHERE tl.task_id = ? AND tl.unassigned_at IS NULL
+      AND (tl.status = \'completed\' OR DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400)
+      AND tl.id = (
+          SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+          WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+      )
     ORDER BY l.name
 ');
 $rowsStmt->execute([$taskId]);
@@ -153,30 +162,17 @@ $statTotal = count($assignedRows);
 $statInProgress = 0;
 $statPending = 0;
 $statCompleted = 0;
-$activeRow = null;
-$firstPendingRow = null;
 foreach ($assignedRows as $row) {
     if ($row['status'] === 'in_progress') {
         $statInProgress++;
-        if ($activeRow === null) {
-            $activeRow = $row;
-        }
     } elseif ($row['status'] === 'pending') {
         $statPending++;
-        if ($firstPendingRow === null) {
-            $firstPendingRow = $row;
-        }
     } else {
         $statCompleted++;
     }
 }
 $allCompleted = $statTotal > 0 && $statCompleted === $statTotal;
 
-// Sidebar callout: prefer resuming an already-started (in_progress) location;
-// if nothing is started yet, point at the next pending one instead of
-// hiding the callout entirely.
-$calloutRow = $activeRow ?? $firstPendingRow;
-$calloutIsPending = $activeRow === null && $firstPendingRow !== null;
 $statCompletedPct = $statTotal > 0 ? (int) round(($statCompleted / $statTotal) * 100) : 0;
 $statInProgressPct = $statTotal > 0 ? (int) round(($statInProgress / $statTotal) * 100) : 0;
 $statPendingPct = $statTotal > 0 ? (int) round(($statPending / $statTotal) * 100) : 0;
@@ -197,10 +193,10 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css">
-    <link rel="stylesheet" href="../styles/scan.css">
+    <link rel="stylesheet" href="../styles/app.css?v=10">
+    <link rel="stylesheet" href="../styles/scan.css?v=2">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="../scripts/theme.js?v=2"></script>
+    <script src="../scripts/theme.js?v=5"></script>
 </head>
 
 <body>
@@ -212,32 +208,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
             <p>Scan a QR code to complete each assigned location check.</p>
         </div>
         <div class="topbar-actions">
-            <a href="<?= htmlspecialchars($myTasksPage) ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to <?= $isAdmin ? 'Task Manager' : 'All Tasks' ?></a>
-        </div>
-    </div>
-
-    <div class="stat-tiles">
-        <div class="stat-tile">
-            <div class="stat-tile-top">
-                <div class="stat-tile-icon periwinkle"><i class="fas fa-map-location-dot"></i></div>
-            </div>
-            <div class="stat-tile-value" id="statTotal"><?= $statTotal ?></div>
-            <div class="stat-tile-label">Total Locations</div>
-            <div class="stat-tile-meta">Assigned to this task</div>
-        </div>
-        <div class="stat-tile">
-            <div class="stat-tile-top">
-                <div class="stat-tile-icon sky"><i class="fas fa-hourglass-half"></i></div>
-            </div>
-            <div class="stat-tile-value" id="statInProgress"><?= $statInProgress ?></div>
-            <div class="stat-tile-label">In Progress</div>
-        </div>
-        <div class="stat-tile">
-            <div class="stat-tile-top">
-                <div class="stat-tile-icon purple"><i class="fas fa-clock"></i></div>
-            </div>
-            <div class="stat-tile-value" id="statPending"><?= $statPending ?></div>
-            <div class="stat-tile-label">Pending</div>
+            <a href="scan.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Scan QR</a>
         </div>
     </div>
 
@@ -429,19 +400,9 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
             <div class="card">
                 <div class="card-header">
                     <h2><i class="fas fa-map-signs"></i> Locations Status</h2>
+                    <span class="method-badge"><?= $statTotal ?> location<?= $statTotal === 1 ? '' : 's' ?></span>
                 </div>
                 <div class="card-body">
-                    <?php if ($calloutRow): ?>
-                        <button type="button" class="scan-active-callout<?= $calloutIsPending ? ' pending' : '' ?>" onclick="resolveLocation({ location_id: <?= (int) $calloutRow['location_id'] ?> })">
-                            <div class="scan-active-callout-icon"><i class="fas fa-clipboard-list"></i></div>
-                            <div class="scan-active-callout-text">
-                                <strong><?= htmlspecialchars($calloutRow['location_name']) ?></strong>
-                                <span><?= htmlspecialchars($task['name']) ?></span>
-                            </div>
-                            <span class="scan-active-badge"><?= $calloutIsPending ? 'Pending' : 'In Progress' ?></span>
-                        </button>
-                    <?php endif; ?>
-
                     <?php if ($statTotal > 0): ?>
                         <div class="scan-progress-overview">
                             <div class="scan-progress-overview-header">
@@ -473,6 +434,37 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
                                     <span class="scan-progress-row-pct"><?= $statCompletedPct ?>%</span>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Full roster -- every assigned location, each individually
+                             tappable to jump straight into its checklist. Scrolls
+                             internally past a handful of rows instead of pushing
+                             the sidebar arbitrarily tall. -->
+                        <div class="scan-location-list">
+                            <?php foreach ($assignedRows as $row): ?>
+                                <?php
+                                $rowStatusClass = $row['status'] === 'completed' ? 'completed' : ($row['status'] === 'in_progress' ? 'current' : 'pending');
+                                $rowStatusLabel = $row['status'] === 'completed' ? 'Completed' : ($row['status'] === 'in_progress' ? 'In Progress' : 'Pending');
+                                // Highlighted iff this location genuinely has an open,
+                                // in-progress checklist right now (i.e. it's actually
+                                // been scanned/clicked into) -- not just "whichever
+                                // pending location happens to be listed first", which
+                                // read as an arbitrary, confusing highlight before
+                                // anyone had actually started anything.
+                                $rowIsCurrent = $row['status'] === 'in_progress';
+                                $rowIsDone = $row['status'] === 'completed';
+                                ?>
+                                <button type="button"
+                                    class="scan-location-list-item <?= $rowStatusClass ?><?= $rowIsCurrent ? ' active' : '' ?>"
+                                    data-task-location-id="<?= (int) $row['task_location_id'] ?>"
+                                    <?= $rowIsDone ? 'disabled' : 'onclick="resolveLocation({ location_id: ' . (int) $row['location_id'] . ' })"' ?>>
+                                    <i class="fas fa-hand-point-right scan-location-list-here-icon" aria-hidden="true"></i>
+                                    <span class="scan-location-list-icon"><i class="fas fa-<?= $rowIsDone ? 'check' : ($row['status'] === 'in_progress' ? 'hourglass-half' : 'clock') ?>"></i></span>
+                                    <span class="scan-location-list-name"><?= htmlspecialchars($row['location_name']) ?></span>
+                                    <span class="scan-location-list-status <?= $rowStatusClass ?>"><?= $rowStatusLabel ?></span>
+                                    <?php if (!$rowIsDone): ?><i class="fas fa-chevron-right scan-location-list-chevron"></i><?php endif; ?>
+                                </button>
+                            <?php endforeach; ?>
                         </div>
                     <?php elseif (empty($assignedRows)): ?>
                         <p style="color: var(--gray-500); font-size: 14px;">No locations assigned to this task yet.</p>

@@ -4,11 +4,9 @@
  * the session's role_name) rather than numeric id, so this file doesn't
  * depend on IDENTITY insertion order.
  *
- * Locations have no department_id in the schema (shared cross-department
- * master list, matching the mockup's manage_locations.php) — capabilities
- * that touch locations are therefore not department-scoped by authorize();
- * capabilities that touch tasks/task_locations ARE, via the task's
- * department_id.
+ * No department scoping -- this app is used by a single QA team, so a
+ * capability granted to a role applies to every row of that entity type
+ * (see authz/authz.php).
  */
 
 // Collapsed to the 2 roles actually used per the client's real access
@@ -28,6 +26,7 @@ const QRS_CAPABILITIES = [
     'scan.start' => [ROLE_ADMIN, ROLE_USER],
     'scan.complete' => [ROLE_ADMIN, ROLE_USER],
     'report.view' => [ROLE_ADMIN, ROLE_USER],
+    'user.manage' => [ROLE_ADMIN],        // create/update_role/delete share one capability
 ];
 
 function roleHasCapability(string $roleName, string $capability): bool

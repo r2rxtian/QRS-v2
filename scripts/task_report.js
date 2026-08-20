@@ -1,4 +1,23 @@
-// task_report.js — Photo zoom and pagination controls
+// task_report.js — Photo zoom, Remarks modal, and pagination controls
+
+function showModal(id) {
+    document.getElementById(id).classList.add('active');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+// Each row keeps its full remark blocks in a hidden ".remarks-source" div
+// (see task_report.php) purely so exportReportToPDF() can still read them --
+// this just clones that markup into the modal instead of re-fetching
+// anything, so the popup and the PDF are always showing the exact same data.
+function openRemarksModal(button, subtitle) {
+    const source = button.parentElement.querySelector('.remarks-source');
+    document.getElementById('remarksModalBody').innerHTML = source ? source.innerHTML : '';
+    document.getElementById('remarksModalSubtitle').textContent = subtitle || '';
+    showModal('remarksModal');
+}
 
 function zoomPhoto(img) {
     var zoomedPhoto = document.createElement('div');
@@ -59,11 +78,46 @@ async function exportReportToPDF() {
             return m ? m[1] : text;
         }
 
+        // The Remarks cell holds several labeled ".remark-block" groups
+        // (Checklist / Findings / Completion Remarks). Rather than flatten
+        // them into one plain string for autoTable to draw, pull out each
+        // label and text line as its own { text, bold } segment -- the
+        // label lines get drawn bold, the actual typed/answered content
+        // stays regular weight (see the manual didParseCell/didDrawCell
+        // handling for column 7 below, which is what actually renders
+        // these with mixed font weights -- autoTable itself has no notion
+        // of per-line styling within a single cell).
+        function extractRemarksSegments(td) {
+            const blocks = td.querySelectorAll('.remark-block');
+            if (!blocks.length) {
+                const text = td.textContent.trim();
+                return text ? [{ text: text, bold: false }] : [];
+            }
+            const segments = [];
+            Array.from(blocks).forEach(function (block, i) {
+                if (i > 0) segments.push({ text: '', bold: false }); // blank line between blocks
+                segments.push({ text: block.querySelector('.remark-block-label').textContent.trim() + ':', bold: true });
+                Array.from(block.querySelectorAll('.remark-block-text')).forEach(function (el) {
+                    segments.push({ text: el.textContent.trim(), bold: false });
+                });
+            });
+            return segments;
+        }
+
         const body = [];
         const rowPhotos = [];
+        const rowRemarksSegments = [];
         for (const row of rows) {
             const cells = row.querySelectorAll('td');
-            const textCells = Array.from(cells).slice(0, 9).map(td => td.textContent.trim());
+            const textCells = [];
+            for (let idx = 0; idx < 9; idx++) {
+                if (idx === 7) {
+                    rowRemarksSegments.push(extractRemarksSegments(cells[7]));
+                    textCells.push(''); // drawn manually in didDrawCell instead
+                } else {
+                    textCells.push(cells[idx].textContent.trim());
+                }
+            }
             textCells[5] = compactTimeText(textCells[5]); // Start Time
             textCells[6] = compactTimeText(textCells[6]); // End Time
             const imgEls = Array.from(cells[9].querySelectorAll('img'));
@@ -87,15 +141,59 @@ async function exportReportToPDF() {
         doc.setFontSize(10);
         doc.text('Generated: ' + new Date().toLocaleString(), 14, 21);
 
-        // Photos dominate the row -- a row with pictures should read as
-        // dramatically bigger than a plain text row, closer to a small
-        // gallery than a thumbnail strip. Every other column is squeezed to
-        // the minimum width its own content needs to make room, and page
-        // margins are tightened to free up a bit more width for it.
-        const THUMB_SIZE = 44; // mm square each photo is fit into, preserving aspect ratio
+        // Photos read as a small gallery rather than a thumbnail strip,
+        // whether or not that particular row has photos -- so the Images
+        // column reserves the same height on every row via a static
+        // columnStyles.minCellHeight (applied uniformly to the whole column)
+        // instead of conditionally per-row: setting minCellHeight only on
+        // rows that had photos (via didParseCell) was what caused only the
+        // first row to render tall while the rest stayed short.
+        // THUMB_SIZE was previously 44mm ("dominant"), which reserved ~138mm
+        // of the page for Images -- on a 287mm-wide landscape page that left
+        // the Remarks column only ~27mm, wrapping its now-longer labeled
+        // text (Checklist / Findings / Completion Remarks) into an
+        // unreadable single-word-per-line mess. 28mm still reads as a real
+        // gallery, just no longer at Remarks' expense.
+        const THUMB_SIZE = 28; // mm square each photo is fit into, preserving aspect ratio
         const THUMB_GAP = 3;
         const THUMB_PAD = 3;
         const IMAGES_COL_WIDTH = THUMB_SIZE * 3 + THUMB_GAP * 2 + THUMB_PAD * 2;
+        const IMAGES_ROW_HEIGHT = THUMB_SIZE + THUMB_PAD * 2;
+
+        // Remarks is drawn manually (see didParseCell/didDrawCell below) so its
+        // label lines ("Checklist:", "Findings / Observation:", "Completion
+        // Remarks:") can render bold while the actual answered/typed content
+        // under each one stays regular weight -- autoTable has no notion of
+        // mixed font weights within a single cell's own auto-wrapped text.
+        // A fixed (not 'auto') column width is required for this: the wrap
+        // points have to be known before autoTable's own layout pass runs, so
+        // there's no chicken-and-egg with an 'auto' width autoTable would
+        // otherwise still be computing at that point.
+        const FONT_SIZE = 6.5;
+        const CELL_PADDING = 1;
+        const OTHER_FIXED_COLS_WIDTH = 16 + 20 + 20 + 15 + 14 + 12 + 12 + 13; // every column except Remarks/Images
+        const PAGE_MARGIN = 5;
+        const REMARKS_COL_WIDTH = doc.internal.pageSize.getWidth() - PAGE_MARGIN * 2 - OTHER_FIXED_COLS_WIDTH - IMAGES_COL_WIDTH;
+        const REMARKS_TEXT_WIDTH = REMARKS_COL_WIDTH - CELL_PADDING * 2;
+        const LINE_HEIGHT = FONT_SIZE * doc.getLineHeightFactor() * 0.352778; // pt -> mm
+
+        function buildRemarkLines(segments) {
+            const lines = [];
+            segments.forEach(function (seg) {
+                if (seg.text === '') { lines.push({ text: '', bold: false }); return; }
+                doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+                doc.splitTextToSize(seg.text, REMARKS_TEXT_WIDTH).forEach(function (wrapped) {
+                    lines.push({ text: wrapped, bold: seg.bold });
+                });
+            });
+            return lines;
+        }
+        doc.setFontSize(FONT_SIZE);
+        const rowRemarksLines = rowRemarksSegments.map(buildRemarkLines);
+        const rowRemarksHeights = rowRemarksLines.map(function (lines) {
+            return Math.max(lines.length, 1) * LINE_HEIGHT + CELL_PADDING * 2;
+        });
+        doc.setFont('helvetica', 'normal');
 
         doc.autoTable({
             head: [headers],
@@ -104,6 +202,14 @@ async function exportReportToPDF() {
             margin: { left: 5, right: 5 },
             styles: { fontSize: 6.5, cellPadding: 1, valign: 'middle' },
             headStyles: { fontSize: 6.5, halign: 'center', valign: 'middle' },
+            // Without this, autoTable slices a row that doesn't fully fit in
+            // the page's remaining space across the page break -- the photo
+            // box then gets sized to whatever partial fragment of the row
+            // height landed on that page (sometimes just a few mm) instead
+            // of the full IMAGES_ROW_HEIGHT, which is what made some rows'
+            // photos render small seemingly at random. This forces the whole
+            // row onto the next page instead of splitting it.
+            rowPageBreak: 'avoid',
             columnStyles: {
                 0: { cellWidth: 16 },  // Task Name
                 1: { cellWidth: 20 },  // Area
@@ -112,18 +218,34 @@ async function exportReportToPDF() {
                 4: { cellWidth: 14 },  // User
                 5: { cellWidth: 12 },  // Start Time
                 6: { cellWidth: 12 },  // End Time
-                7: { cellWidth: 'auto' }, // Remarks -- gets whatever's left
+                7: { cellWidth: REMARKS_COL_WIDTH }, // Remarks -- drawn manually, see below
                 8: { cellWidth: 13 },  // Status
-                9: { cellWidth: IMAGES_COL_WIDTH }, // Images -- dedicated, dominant space
+                9: { cellWidth: IMAGES_COL_WIDTH, minCellHeight: IMAGES_ROW_HEIGHT }, // Images -- dedicated space, same on every row
             },
+            // Reserves this row's actual Remarks height (computed above from
+            // its real line count) and blanks out the cell's own text so
+            // autoTable's default single-weight text draw doesn't also fire
+            // and double up with the manual bold/normal draw in didDrawCell.
             didParseCell: function (data) {
-                if (data.section !== 'body' || data.column.index !== 9) return;
-                const photos = rowPhotos[data.row.index] || [];
-                if (photos.length > 0) {
-                    data.cell.styles.minCellHeight = THUMB_SIZE + THUMB_PAD * 2;
-                }
+                if (data.section !== 'body' || data.column.index !== 7) return;
+                data.cell.styles.minCellHeight = rowRemarksHeights[data.row.index];
+                data.cell.text = [];
             },
             didDrawCell: function (data) {
+                if (data.section === 'body' && data.column.index === 7) {
+                    const lines = rowRemarksLines[data.row.index] || [];
+                    doc.setFontSize(FONT_SIZE);
+                    let y = data.cell.y + CELL_PADDING + LINE_HEIGHT * 0.8;
+                    lines.forEach(function (line) {
+                        if (line.text !== '') {
+                            doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
+                            doc.text(line.text, data.cell.x + CELL_PADDING, y);
+                        }
+                        y += LINE_HEIGHT;
+                    });
+                    doc.setFont('helvetica', 'normal');
+                    return;
+                }
                 if (data.section !== 'body' || data.column.index !== 9) return;
                 const photos = rowPhotos[data.row.index] || [];
                 // Box size adapts to whatever the row's actual height turns

@@ -32,7 +32,7 @@ if (!checkRateLimit('delete:task:' . $authUser['id'], 20, 60)) {
 $pdo = db();
 $placeholders = implode(',', array_fill(0, count($taskIds), '?'));
 
-$taskStmt = $pdo->prepare('SELECT id, name, department_id FROM ' . T_TASKS . " WHERE id IN ($placeholders) AND deleted_at IS NULL");
+$taskStmt = $pdo->prepare('SELECT id, name FROM ' . T_TASKS . " WHERE id IN ($placeholders) AND deleted_at IS NULL");
 $taskStmt->execute($taskIds);
 $tasks = $taskStmt->fetchAll();
 
@@ -66,7 +66,7 @@ try {
 }
 
 foreach ($tasks as $task) {
-    writeAuditLog($authUser['id'], 'task.delete', 'task', (int) $task['id'], $task['department_id'], ['name' => $task['name']]);
+    writeAuditLog($authUser['id'], 'task.delete', 'task', (int) $task['id'], ['name' => $task['name']]);
 }
 
 $skipped = count($taskIds) - count($foundIds);

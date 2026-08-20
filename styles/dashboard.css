@@ -19,6 +19,17 @@
    Only dashboard.php needs a two-column grid (main content + right rail
    side by side), so that grid behavior belongs here, not in the shared
    file. */
+/* Main content and the right rail are sized via clamp()/vh below to
+   naturally land close to one viewport-height on most screens, without
+   forcing it. Deliberately NOT locked to a hard 100vh + overflow:hidden
+   here -- that approach gave .main-content and .right-rail their own
+   independent scroll boxes, so on any screen where either one didn't quite
+   fit, it silently grew its own separate internal scrollbar (two scrollbars
+   competing for attention, one of them looking cut off from the cards it
+   belonged to). A single ordinary page is far less surprising: if
+   everything fits, there's no scrollbar at all; if it doesn't fit on a
+   given screen, the ONE normal page scrollbar appears, same as any other
+   page in this app -- never two independent ones side by side. */
 .app-shell {
     display: grid;
     grid-template-columns: 1fr 320px;
@@ -29,10 +40,16 @@
    Main Content
    ========================================================================== */
 
+/* Vertical spacing below scales with clamp(min, Nvh, max) instead of a
+   fixed px value -- on a short window it holds at the min, on a tall one it
+   grows toward the max, so the whole column's natural height tracks 100vh
+   automatically instead of being tuned to one guessed screen size. */
 .main-content {
     margin-left: 280px;
-    padding: 28px 36px 48px;
+    padding: clamp(18px, 2.8vh, 42px) 36px clamp(20px, 3.8vh, 58px);
     max-width: 1400px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* --- Stat tiles row --- */
@@ -40,14 +57,14 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
-    margin-bottom: 24px;
+    margin-bottom: clamp(14px, 2vh, 28px);
 }
 
 .stat-tile {
     background: var(--surface);
     border: 1px solid var(--gray-200);
     border-radius: var(--radius-lg);
-    padding: 20px;
+    padding: clamp(14px, 2.2vh, 28px) 20px;
     display: flex;
     align-items: center;
     gap: 14px;
@@ -108,8 +125,8 @@
 }
 
 .insights-hero {
-    padding: 28px 32px 36px;
-    margin-bottom: 24px;
+    padding: clamp(16px, 2.4vh, 34px) 32px clamp(20px, 3.2vh, 44px);
+    margin-bottom: clamp(14px, 2vh, 28px);
     text-align: center;
 }
 
@@ -121,16 +138,20 @@
 }
 
 .insights-hero .insights-subtitle {
-    margin: 0 0 28px;
+    margin: 0 0 clamp(16px, 2.4vh, 34px);
     font-size: 13px;
     color: var(--gray-500);
 }
 
+/* Height scales with the viewport (clamped) instead of a fixed px value --
+   .dome and .dome-center below are sized/positioned in % of this element's
+   own height, so the whole dome graphic grows and shrinks together with it
+   and never needs re-tuning to a specific screen size again. */
 .dome-wrap {
     position: relative;
     max-width: 640px;
     margin: 0 auto;
-    height: 260px;
+    height: clamp(200px, 30vh, 420px);
 }
 
 .dome {
@@ -138,11 +159,21 @@
     left: 50%;
     bottom: 0;
     transform: translateX(-50%);
-    width: 420px;
-    height: 210px;
-    border-radius: 210px 210px 0 0;
-    background: linear-gradient(180deg, var(--primary-light), rgba(167, 172, 217, 0.15));
-    border: 1px solid var(--gray-100);
+    height: 78%;
+    aspect-ratio: 2 / 1; /* width follows height 2:1, keeping the semicircle proportion */
+    /* 50% horizontal / 100% vertical on the two top corners = a perfect
+       semicircle regardless of the box's actual pixel size (unlike a fixed
+       px border-radius, which only looks right at the exact size it was
+       tuned for). */
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    /* Was a near-invisible pale tint (--primary-light) that barely read
+       against the card's own near-white surface in light mode -- switched
+       to the app's actual brand tones (periwinkle/dusty-purple, fixed
+       values, not theme-swapped) for a dome that's actually visible as a
+       shape, with a soft lifted shadow for separation from the card. */
+    background: linear-gradient(180deg, var(--periwinkle) 0%, rgba(158, 143, 178, 0.55) 100%);
+    border: 1px solid var(--periwinkle);
+    box-shadow: 0 10px 28px rgba(167, 172, 217, 0.35);
     overflow: hidden;
     animation: domeGlow 4.5s ease-in-out infinite;
 }
@@ -159,7 +190,7 @@
 .dome-center {
     position: absolute;
     left: 50%;
-    bottom: 40px;
+    bottom: 15%; /* % of .dome-wrap's own (clamped) height, scales with it */
     transform: translateX(-50%);
     text-align: center;
 }
@@ -173,7 +204,7 @@
 
 .dome-center .dome-center-value {
     display: block;
-    font-size: 30px;
+    font-size: 28px;
     font-weight: 700;
     color: var(--gray-900);
 }
@@ -213,13 +244,13 @@
 }
 
 .orbit-bottom-left {
-    bottom: 30px;
-    left: 30px;
+    bottom: 11%;
+    left: 25px;
 }
 
 .orbit-bottom-right {
-    bottom: 30px;
-    right: 30px;
+    bottom: 11%;
+    right: 25px;
 }
 
 /* --- Bottom grid: overview / breakdown / recent list --- */
@@ -227,17 +258,32 @@
     display: grid;
     grid-template-columns: 1.3fr 1fr;
     gap: 20px;
+    /* Grows to consume whatever space .app-shell's grid-stretch adds beyond
+       this column's natural content -- mirrors .donut-card growing in
+       .right-rail, so both "last block"s land at the same bottom edge.
+       Growing the actual cards (not the gap above them) keeps the
+       tiles-to-dome and dome-to-bottom-grid gaps equal, unlike an
+       auto-margin approach which would dump all the slack into one gap. */
+    flex-grow: 1;
 }
 
 .panel {
-    padding: 22px 24px;
+    padding: clamp(14px, 2.2vh, 28px) 22px;
+    display: flex;
+    flex-direction: column;
+    /* Shared .card (app.css) carries a 24px margin-bottom meant for
+       stacked/table pages -- here spacing is fully owned by .bottom-grid's
+       own `gap`, so that inherited margin needs zeroing or it silently pads
+       out this panel's real height by an extra 24px no rule here accounts
+       for. */
+    margin-bottom: 0;
 }
 
 .panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: clamp(12px, 1.8vh, 24px);
 }
 
 .panel-header h3 {
@@ -288,8 +334,9 @@
     display: flex;
     align-items: flex-end;
     gap: 14px;
-    height: 150px;
-    padding-top: 10px;
+    min-height: clamp(85px, 14vh, 210px);
+    flex: 1; /* fills .panel's grown height (see .bottom-grid) instead of leaving blank space below the bars */
+    padding-top: clamp(6px, 1vh, 14px);
     transition: opacity 0.15s ease;
 }
 
@@ -319,7 +366,9 @@
 .recent-list {
     display: flex;
     flex-direction: column;
+    justify-content: center; /* centers the (usually few) items in .panel's grown height instead of leaving them pinned to the top */
     gap: 14px;
+    flex: 1;
 }
 
 .recent-item {
@@ -388,26 +437,34 @@
    ========================================================================== */
 
 .right-rail {
-    padding: 28px 28px 48px 0;
+    padding: clamp(18px, 2.8vh, 42px) 28px clamp(20px, 3.8vh, 58px) 0;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: clamp(10px, 1.8vh, 24px);
 }
 
 .rail-card {
-    padding: 20px 22px;
+    padding: clamp(10px, 1.8vh, 24px) 20px;
+    /* Same fix as .panel below -- .card's inherited 24px margin-bottom is
+       replaced entirely by .right-rail's own `gap`, not stacked on top of it. */
+    margin-bottom: 0;
 }
 
 .rail-card .panel-header {
-    margin-bottom: 16px;
+    margin-bottom: clamp(8px, 1.3vh, 18px);
 }
 
+/* Calendar and Today's Tasks are deliberately compact and fixed to their
+   content's natural size; Location Status is the one that grows (see
+   .donut-card below) to absorb whatever room that frees up, so its own
+   bottom edge lands flush with .bottom-grid's bottom in the main column
+   instead of the rail trailing off shorter (or taller) than it. */
 /* --- Calendar --- */
 .calendar-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: clamp(8px, 1.3vh, 18px);
 }
 
 .calendar-month {
@@ -443,7 +500,7 @@
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    row-gap: 8px;
+    row-gap: clamp(3px, 0.7vh, 10px);
     text-align: center;
     transition: opacity 0.15s ease;
 }
@@ -459,7 +516,7 @@
     position: relative;
     font-size: 13px;
     color: var(--gray-700);
-    padding: 6px 0;
+    padding: clamp(2px, 0.5vh, 7px) 0;
     border-radius: 8px;
 }
 
@@ -490,13 +547,20 @@
 }
 
 /* --- Today's task timeline --- */
+/* Floor is exactly 2 items' worth of height (measured: 58px per item + an
+   18px gap = 134px, +2px for rounding safety) so a short window always
+   shows at least 2 without scrolling; on a taller window this grows with
+   the viewport (up to a point) instead of staying pinned at 2 and leaving
+   the extra room as dead space -- a 3rd/4th item becomes visible instead of
+   needing a scroll, and anything beyond what fits still scrolls inside the
+   card rather than growing it past the main column's height. */
 .timeline {
     position: relative;
     display: flex;
     flex-direction: column;
     gap: 18px;
     padding-left: 18px;
-    max-height: 264px;
+    max-height: clamp(136px, 15vh, 240px);
     overflow-y: auto;
     padding-right: 4px;
 }
@@ -581,16 +645,56 @@
     color: var(--white);
 }
 
-/* --- Location status donut --- */
-.donut-card {
-    padding-bottom: 48px;
+.timeline-item.missed .timeline-dot {
+    background: var(--danger);
+    box-shadow: 0 0 0 2px var(--danger-bg);
 }
 
+.timeline-item.missed .timeline-time {
+    color: var(--danger-text);
+}
+
+.timeline-item.missed .timeline-check {
+    background: var(--danger-bg);
+    border-color: var(--danger-bg);
+    color: var(--danger-text);
+}
+
+/* --- Location status donut ---
+   Ring and legend used to be stacked (legend below, hidden until hover) --
+   now they sit side-by-side and the legend is always visible/fixed, per
+   request. The ring shrank (132px -> 100px) to make room for the legend
+   column within the rail card's ~248px content width without growing the
+   card's overall height. */
+/* Calendar and Today's Tasks stay their natural (now compact) size;
+   Location Status is the one flexible card -- it grows to soak up whatever
+   vertical room that compacting freed, via .app-shell's default CSS Grid
+   stretch (which already gives .right-rail a definite height matching
+   .main-content's), so its bottom edge lands flush with .bottom-grid's
+   bottom instead of the rail falling short. */
+.donut-card {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.donut-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex: 1;
+}
+
+/* Sized bigger than the card's own natural (un-grown) footprint would need
+   -- since .donut-card now flex-grows to match .bottom-grid's height (see
+   above), a ring sized for the old compact card would just float small in
+   a lot of surrounding whitespace instead of actually using the room. */
 .donut-wrap {
     position: relative;
-    width: 132px;
-    height: 132px;
-    margin: 12px auto 28px;
+    width: 118px;
+    height: 118px;
+    flex-shrink: 0;
 }
 
 .donut {
@@ -603,7 +707,7 @@
 
 .donut-center {
     position: absolute;
-    inset: 16px;
+    inset: 15px;
     border-radius: 50%;
     background: var(--surface);
     display: flex;
@@ -629,26 +733,29 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
 }
 
 .donut-legend li {
     display: flex;
     align-items: center;
-    font-size: 13px;
+    gap: 6px;
+    font-size: 12.5px;
     color: var(--gray-600);
+    white-space: nowrap;
 }
 
 .donut-legend .dot {
-    width: 9px;
-    height: 9px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-    margin-right: 10px;
     flex-shrink: 0;
 }
 
-.donut-legend .dot.teal {
-    background: var(--teal-soft);
+.donut-legend .dot.green {
+    background: var(--success);
 }
 
 .donut-legend .dot.sky {
@@ -659,10 +766,16 @@
     background: var(--dusty-purple);
 }
 
+.donut-legend .dot.red {
+    background: var(--danger);
+}
+
 .donut-legend li b {
     margin-left: auto;
+    padding-left: 6px;
     color: var(--gray-900);
     font-weight: 600;
+    font-size: 12.5px;
 }
 
 /* ==========================================================================
@@ -676,7 +789,14 @@
     /* Below this width the right rail no longer fits as a side column, so
        it drops into a row below the main content instead of disappearing --
        calendar/today's-tasks/location-status stay reachable on tablets and
-       narrow windows, not just full desktop width. */
+       narrow windows, not just full desktop width. .app-shell's grid has to
+       collapse to one column here too -- without this, .right-rail's own
+       reflow below is still trapped inside app-shell's fixed 320px-wide
+       second grid track and can never actually spread out full-width. */
+    .app-shell {
+        grid-template-columns: 1fr;
+    }
+
     .right-rail {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

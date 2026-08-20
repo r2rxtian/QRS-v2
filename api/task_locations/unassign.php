@@ -31,14 +31,20 @@ $pdo = db();
 
 // A completed task is done -- its locations stay as a historical record and
 // can no longer be unassigned, even via a direct API call (the UI already
-// hides the Unassign button once every location is completed).
+// hides the Unassign button once every location is completed). Aggregates
+// over each location's CURRENT ticket only (its most recent row, still on
+// the roster) -- not a "today" one -- same reasoning as api/tasks/create.php.
 $statusStmt = $pdo->prepare('
     SELECT
         COUNT(*) AS total,
         SUM(CASE WHEN status = \'completed\' THEN 1 ELSE 0 END) AS completed,
         SUM(CASE WHEN status = \'in_progress\' THEN 1 ELSE 0 END) AS in_progress
-    FROM ' . T_TASK_LOCATIONS . '
-    WHERE task_id = ? AND task_date = CAST(SYSDATETIME() AS DATE) AND unassigned_at IS NULL
+    FROM ' . T_TASK_LOCATIONS . ' tl
+    WHERE task_id = ? AND unassigned_at IS NULL
+      AND id = (
+          SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+          WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+      )
 ');
 $statusStmt->execute([$taskId]);
 $statusRow = $statusStmt->fetch();
@@ -52,16 +58,17 @@ if ($taskStatus['code'] === 'completed') {
 $stmt = $pdo->prepare('
     UPDATE ' . T_TASK_LOCATIONS . '
     SET unassigned_at = SYSDATETIME(), unassigned_by = ?
-    WHERE task_id = ? AND location_id = ? AND task_date = CAST(SYSDATETIME() AS DATE) AND unassigned_at IS NULL
+    WHERE task_id = ? AND location_id = ? AND unassigned_at IS NULL
+      AND id = (SELECT MAX(id) FROM ' . T_TASK_LOCATIONS . ' WHERE task_id = ? AND location_id = ?)
 ');
-$stmt->execute([$authUser['id'], $taskId, $locationId]);
+$stmt->execute([$authUser['id'], $taskId, $locationId, $taskId, $locationId]);
 
 if ($stmt->rowCount() === 0) {
     http_response_code(404);
-    echo json_encode(['success' => false, 'message' => 'That location was not assigned to this task today.', 'type' => 'error']);
+    echo json_encode(['success' => false, 'message' => 'That location is not currently assigned to this task.', 'type' => 'error']);
     exit;
 }
 
-writeAuditLog($authUser['id'], 'task_location.unassign', 'task', $taskId, $authUser['department_id'], ['location_id' => $locationId]);
+writeAuditLog($authUser['id'], 'task_location.unassign', 'task', $taskId, ['location_id' => $locationId]);
 
 echo json_encode(['success' => true, 'message' => 'Location unassigned successfully.', 'type' => 'success']);

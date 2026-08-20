@@ -30,7 +30,7 @@ if (!checkRateLimit('delete:task:' . $authUser['id'], 20, 60)) {
 }
 
 $pdo = db();
-$taskStmt = $pdo->prepare('SELECT id, name, department_id FROM ' . T_TASKS . ' WHERE id = ? AND deleted_at IS NULL');
+$taskStmt = $pdo->prepare('SELECT id, name FROM ' . T_TASKS . ' WHERE id = ? AND deleted_at IS NULL');
 $taskStmt->execute([$taskId]);
 $task = $taskStmt->fetch();
 
@@ -60,6 +60,6 @@ try {
     throw $e;
 }
 
-writeAuditLog($authUser['id'], 'task.delete', 'task', $taskId, $task['department_id'], ['name' => $task['name']]);
+writeAuditLog($authUser['id'], 'task.delete', 'task', $taskId, ['name' => $task['name']]);
 
 echo json_encode(['success' => true, 'message' => 'Task deleted.', 'type' => 'success']);

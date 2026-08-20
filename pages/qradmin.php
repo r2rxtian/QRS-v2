@@ -24,28 +24,46 @@ $pdo = db();
 $dbToday = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
 $dbToday->setTime(0, 0);
 
-// Locations/Progress reflect a task's REAL current active assignment
-// (unassigned_at IS NULL) regardless of which day it's scheduled for --
-// NOT date-scoped to today -- so a future-scheduled task still shows its
-// real location count instead of looking empty until its day arrives.
+// Locations/Progress reflect a task's REAL total assignment -- each
+// location's CURRENT ticket (its most recent task_locations row), still on
+// the roster OR auto-unassigned by the system once it resolved (see
+// rules/status.php's sweepResolvedLocations() -- unassigned_by IS NULL
+// marks that case). This keeps a task's counts/badges intact even after a
+// completed or missed location auto-frees itself for reuse elsewhere.
+// Pinning to just the latest ticket per (task, location) pair still guards
+// against an Admin unassigning and re-assigning the same location to the
+// same task (e.g. correcting a mistake), which would otherwise double
+// count an old, already-resolved ticket alongside the current one. The
+// missed-hours calculation compares against unassigned_at once frozen
+// (set), not the live clock, so "was this missed" stays true permanently.
 $sql = '
     SELECT
         t.id, t.name,
-        u.full_name AS creator_name, u.avatar_initials, u.avatar_color,
+        ' . fullNameSql('uml', 'u') . ' AS creator_name, u.employee_id AS creator_employee_id, u.avatar_initials, u.avatar_color,
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
         SUM(CASE WHEN tl.status = \'in_progress\' THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 THEN 1 ELSE 0 END) AS missed_locations,
         (SELECT MIN(tl2.task_date) FROM ' . T_TASK_LOCATIONS . ' tl2
-            WHERE tl2.task_id = t.id AND tl2.unassigned_at IS NULL) AS earliest_active_date
+            WHERE tl2.task_id = t.id AND (tl2.unassigned_at IS NULL OR tl2.unassigned_by IS NULL)
+              AND tl2.id = (
+                  SELECT MAX(tl3.id) FROM ' . T_TASK_LOCATIONS . ' tl3
+                  WHERE tl3.task_id = tl2.task_id AND tl3.location_id = tl2.location_id
+              )) AS earliest_active_date
     FROM ' . T_TASKS . ' t
     LEFT JOIN ' . T_USERS . ' u ON u.id = t.owner_id
-    LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND tl.unassigned_at IS NULL
-    WHERE t.deleted_at IS NULL AND t.department_id = ?
-    GROUP BY t.id, t.name, u.full_name, u.avatar_initials, u.avatar_color
+    LEFT JOIN ' . T_MASTER_LIST . ' uml ON uml.EmployeeID = u.employee_id
+    LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
+        AND tl.id = (
+            SELECT MAX(tl4.id) FROM ' . T_TASK_LOCATIONS . ' tl4
+            WHERE tl4.task_id = tl.task_id AND tl4.location_id = tl.location_id
+        )
+    WHERE t.deleted_at IS NULL
+    GROUP BY t.id, t.name, u.employee_id, uml.LastName, uml.FirstName, uml.MiddleName, u.avatar_initials, u.avatar_color
     ORDER BY t.id DESC';
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute([$currentUser['department_id']]);
+$stmt->execute();
 
 $tasks = [];
 $statTotal = 0;
@@ -60,7 +78,10 @@ foreach ($stmt->fetchAll() as $row) {
 
     $status = deriveTaskStatus((int) $row['total_locations'], (int) $row['completed_locations'], (int) $row['in_progress_locations'], $isFutureScheduled, $scheduledDateLabel);
     $row['status'] = $status;
-    $row['action'] = resolveTaskAction($status, (int) $row['id'], $currentUser['role_name']);
+    // Separate, additive indicator layered next to the status badge -- see
+    // pages/tasks.php's identical comment for the reasoning.
+    $row['has_missed'] = (int) $row['missed_locations'] > 0;
+    $row['action'] = resolveTaskAction($status, (int) $row['id'], $currentUser['role_name'], $row['has_missed']);
     $row['schedule_label'] = $earliestActiveDate ? $earliestActiveDate->format('M j, Y') : null;
     $row['schedule_weekday'] = $earliestActiveDate ? $earliestActiveDate->format('D') : null;
     $tasks[] = $row;
@@ -75,9 +96,9 @@ foreach ($stmt->fetchAll() as $row) {
     }
 }
 
-// Assigned location names per task, for the "Locations" column -- not
-// date-limited (same unassigned_at IS NULL scoping as above), so a
-// future-scheduled task's real locations still show here too.
+// Assigned location names per task, for the "Locations" column -- same
+// "current ticket per location" scoping as above, so a location that was
+// unassigned and re-assigned to the same task lists its name once, not twice.
 $locationNamesByTask = [];
 if (!empty($tasks)) {
     $taskIds = array_column($tasks, 'id');
@@ -86,7 +107,11 @@ if (!empty($tasks)) {
         SELECT tl.task_id, l.name AS location_name
         FROM ' . T_TASK_LOCATIONS . ' tl
         JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
-        WHERE tl.task_id IN (' . $placeholders . ') AND tl.unassigned_at IS NULL
+        WHERE tl.task_id IN (' . $placeholders . ') AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
+          AND tl.id = (
+              SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+              WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+          )
         ORDER BY l.name
     ');
     $locNameStmt->execute($taskIds);
@@ -106,9 +131,9 @@ if (!empty($tasks)) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css">
+    <link rel="stylesheet" href="../styles/app.css?v=10">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="../scripts/theme.js?v=2"></script>
+    <script src="../scripts/theme.js?v=5"></script>
 </head>
 
 <body>
@@ -203,6 +228,11 @@ if (!empty($tasks)) {
                             <label class="filter-option"><input type="checkbox" data-filter="status" value="Scheduled" checked> Scheduled</label>
                             <label class="filter-option"><input type="checkbox" data-filter="status" value="Assign Locations" checked> Assign Locations</label>
                         </div>
+                        <div class="filter-group">
+                            <div class="filter-group-title">Missed Out</div>
+                            <label class="filter-option"><input type="checkbox" data-filter="missed" value="Yes" checked> Has Missed Location</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="missed" value="No" checked> None Missed</label>
+                        </div>
                         <div class="filter-panel-actions">
                             <button type="button" class="btn btn-sm btn-secondary" onclick="clearFilterPanel(this)">Clear</button>
                             <button type="button" class="btn btn-sm btn-primary" onclick="applyFilterPanel(this)">Apply</button>
@@ -232,23 +262,23 @@ if (!empty($tasks)) {
                     <?php endif; ?>
                     <?php foreach ($tasks as $task): ?>
                         <?php
-                        $avatarColorHex = ltrim($task['avatar_color'] ?: '#A7ACD9', '#');
                         $avatarInitials = $task['avatar_initials'] ?: strtoupper(substr((string) $task['creator_name'], 0, 1));
-                        $avatarUrl = 'https://placehold.co/28x28/EEF0FB/' . rawurlencode($avatarColorHex) . '?text=' . rawurlencode($avatarInitials);
+                        $avatarFallbackUrl = initialsAvatarUrl($avatarInitials, $task['avatar_color'], '28');
+                        $avatarPhotoUrl = employeePhotoUrl($task['creator_employee_id']);
                         $total = (int) $task['total_locations'];
                         $completed = (int) $task['completed_locations'];
                         $completionLabel = $total === 0 ? 'No locations' : "$completed/$total Complete";
                         $locNames = $locationNamesByTask[$task['id']] ?? [];
                         $locationsCountLabel = $total === 0 ? 'No locations' : ($total === 1 ? '1 Location' : "$total Locations");
                         ?>
-                        <tr data-status="<?= htmlspecialchars(taskStatusFilterLabel($task['status'])) ?>">
+                        <tr data-status="<?= htmlspecialchars(taskStatusFilterLabel($task['status'])) ?>" data-missed="<?= $task['has_missed'] ? 'Yes' : 'No' ?>">
                             <td>
                                 <div class="row-icon-name">
                                     <div class="row-icon"><i class="fas fa-clipboard-check"></i></div>
                                     <span><?= htmlspecialchars($task['name']) ?></span>
                                 </div>
                             </td>
-                            <td><div class="avatar-cell"><img src="<?= htmlspecialchars($avatarUrl) ?>" alt=""><span class="avatar-cell-name"><?= htmlspecialchars($task['creator_name'] ?? 'Unknown') ?></span></div></td>
+                            <td><div class="avatar-cell"><img src="<?= htmlspecialchars($avatarPhotoUrl ?? $avatarFallbackUrl) ?>" alt="" onerror="this.onerror=null;this.src=<?= htmlspecialchars(json_encode($avatarFallbackUrl), ENT_QUOTES) ?>;"><span class="avatar-cell-name"><?= htmlspecialchars($task['creator_name'] ?? 'Unknown') ?></span></div></td>
                             <td>
                                 <?php if (empty($locNames)): ?>
                                     <span style="color: var(--gray-400);"><?= htmlspecialchars($locationsCountLabel) ?></span>
@@ -264,7 +294,13 @@ if (!empty($tasks)) {
                                     <span style="color: var(--gray-400);">—</span>
                                 <?php endif; ?>
                             </td>
-                            <td><span class="status-badge <?= htmlspecialchars($task['status']['class']) ?>"><?= htmlspecialchars($task['status']['label']) ?></span></td>
+                            <td>
+                                <?php if ($task['has_missed']): ?>
+                                    <span class="status-badge status-missed" title="At least one location has been open 24+ hours without completion -- open the task to see which"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
+                                <?php else: ?>
+                                    <span class="status-badge <?= htmlspecialchars($task['status']['class']) ?>"><?= htmlspecialchars($task['status']['label']) ?></span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <?php if ($task['action']['type'] === 'link'): ?>
                                     <a href="<?= htmlspecialchars($task['action']['url']) ?>" class="view-btn"><?= htmlspecialchars($task['action']['label']) ?></a>

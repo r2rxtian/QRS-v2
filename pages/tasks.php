@@ -22,11 +22,18 @@ $pdo = db();
 $canCreateTask = roleHasCapability($currentUser['role_name'], 'task.create');
 $canDeleteTask = roleHasCapability($currentUser['role_name'], 'task.delete');
 
+// A location stays unavailable as long as it's on any task's roster
+// (unassigned_at IS NULL), regardless of whether that ticket is already
+// Completed -- finishing a checklist doesn't free the location on its
+// own; an Admin has to explicitly Unassign it first.
 $availableLocationsForCreate = $pdo->query('
     SELECT l.id, l.name, l.location_type
     FROM ' . T_LOCATIONS . ' l
     WHERE l.deleted_at IS NULL AND l.is_active = 1
-      AND NOT EXISTS (SELECT 1 FROM ' . T_TASK_LOCATIONS . ' tl WHERE tl.location_id = l.id AND tl.unassigned_at IS NULL AND tl.status <> \'completed\')
+      AND NOT EXISTS (
+          SELECT 1 FROM ' . T_TASK_LOCATIONS . ' tl WHERE tl.location_id = l.id AND tl.unassigned_at IS NULL
+            AND tl.id = (SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2 WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id)
+      )
     ORDER BY l.name
 ')->fetchAll();
 
@@ -44,34 +51,46 @@ foreach ($availableLocationsForCreate as $loc) {
 $dbToday = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
 $dbToday->setTime(0, 0);
 
-// Locations/Progress reflect a task's REAL current active assignment
-// (unassigned_at IS NULL) regardless of which day it's scheduled for --
-// NOT date-scoped to today -- so a future-scheduled task still shows its
-// real location count instead of looking empty until its day arrives.
+// Locations/Progress reflect a task's REAL total assignment -- each
+// location's CURRENT ticket (its most recent task_locations row), still on
+// the roster OR auto-unassigned by the system once it resolved (see
+// rules/status.php's sweepResolvedLocations() -- unassigned_by IS NULL
+// marks that case). This keeps a task's counts/badges intact even after a
+// completed or missed location auto-frees itself for reuse elsewhere.
+// Pinning to just the latest ticket per (task, location) pair still guards
+// against an Admin unassigning and re-assigning the same location to the
+// same task (e.g. correcting a mistake), which would otherwise double
+// count an old, already-resolved ticket alongside the current one. The
+// missed-hours calculation compares against unassigned_at once frozen
+// (set), not the live clock, so "was this missed" stays true permanently.
 $sql = '
     SELECT
-        t.id, t.name, t.department_id, t.owner_id,
-        u.full_name AS creator_name, u.avatar_initials, u.avatar_color,
+        t.id, t.name, t.owner_id,
+        ' . fullNameSql('uml', 'u') . ' AS creator_name, u.employee_id AS creator_employee_id, u.avatar_initials, u.avatar_color,
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
         SUM(CASE WHEN tl.status = \'in_progress\' THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 THEN 1 ELSE 0 END) AS missed_locations,
         (SELECT MIN(tl2.task_date) FROM ' . T_TASK_LOCATIONS . ' tl2
-            WHERE tl2.task_id = t.id AND tl2.unassigned_at IS NULL) AS earliest_active_date
+            WHERE tl2.task_id = t.id AND (tl2.unassigned_at IS NULL OR tl2.unassigned_by IS NULL)
+              AND tl2.id = (
+                  SELECT MAX(tl3.id) FROM ' . T_TASK_LOCATIONS . ' tl3
+                  WHERE tl3.task_id = tl2.task_id AND tl3.location_id = tl2.location_id
+              )) AS earliest_active_date
     FROM ' . T_TASKS . ' t
     LEFT JOIN ' . T_USERS . ' u ON u.id = t.owner_id
-    LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND tl.unassigned_at IS NULL
-    WHERE t.deleted_at IS NULL';
-$params = [];
-if (!$isAdmin) {
-    $sql .= ' AND t.department_id = ?';
-    $params[] = $currentUser['department_id'];
-}
-$sql .= '
-    GROUP BY t.id, t.name, t.department_id, t.owner_id, u.full_name, u.avatar_initials, u.avatar_color
+    LEFT JOIN ' . T_MASTER_LIST . ' uml ON uml.EmployeeID = u.employee_id
+    LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
+        AND tl.id = (
+            SELECT MAX(tl4.id) FROM ' . T_TASK_LOCATIONS . ' tl4
+            WHERE tl4.task_id = tl.task_id AND tl4.location_id = tl.location_id
+        )
+    WHERE t.deleted_at IS NULL
+    GROUP BY t.id, t.name, t.owner_id, u.employee_id, uml.LastName, uml.FirstName, uml.MiddleName, u.avatar_initials, u.avatar_color
     ORDER BY t.id DESC';
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute($params);
+$stmt->execute();
 
 $tasks = [];
 $statTotal = 0;
@@ -87,6 +106,14 @@ foreach ($stmt->fetchAll() as $row) {
 
     $status = deriveTaskStatus((int) $row['total_locations'], (int) $row['completed_locations'], (int) $row['in_progress_locations'], $isFutureScheduled, $scheduledDateLabel);
     $row['status'] = $status;
+    // Separate, additive indicator layered next to the status badge rather
+    // than folded into deriveTaskStatus() itself -- "missed" isn't a
+    // replacement for Not Started/On-going, a task can be either of those
+    // AND have a location that's blown past its 24-hour window at the same
+    // time. A completed location can never be missed (see the SQL's
+    // status <> 'completed' condition), so this only ever applies to a
+    // task that isn't already fully Completed.
+    $row['has_missed'] = (int) $row['missed_locations'] > 0;
     $row['schedule_label'] = $earliestActiveDate ? $earliestActiveDate->format('M j, Y') : null;
     $row['schedule_weekday'] = $earliestActiveDate ? $earliestActiveDate->format('D') : null;
     $tasks[] = $row;
@@ -108,9 +135,10 @@ foreach ($stmt->fetchAll() as $row) {
 
 // Assigned location names per task, for the "Location(s)" column (merged in
 // from the former qradmin.php "All Tasks" page, which User now uses instead
-// -- see the top-of-file redirect). Same unassigned_at IS NULL scoping as
-// above -- not date-limited, so a future-scheduled task's real locations
-// still show here instead of an empty list.
+// -- see the top-of-file redirect). Same still-relevant + "current ticket
+// per location" scoping as above -- without the latter, a location that
+// was unassigned and re-assigned to the same task would list its name
+// twice instead of once.
 $locationNamesByTask = [];
 if (!empty($tasks)) {
     $taskIds = array_column($tasks, 'id');
@@ -119,7 +147,11 @@ if (!empty($tasks)) {
         SELECT tl.task_id, l.name AS location_name
         FROM ' . T_TASK_LOCATIONS . ' tl
         JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
-        WHERE tl.task_id IN (' . $placeholders . ') AND tl.unassigned_at IS NULL
+        WHERE tl.task_id IN (' . $placeholders . ') AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
+          AND tl.id = (
+              SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+              WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+          )
         ORDER BY l.name
     ');
     $locNameStmt->execute($taskIds);
@@ -139,9 +171,9 @@ if (!empty($tasks)) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css">
+    <link rel="stylesheet" href="../styles/app.css?v=10">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="../scripts/theme.js?v=2"></script>
+    <script src="../scripts/theme.js?v=5"></script>
 </head>
 
 <body>
@@ -167,7 +199,7 @@ if (!empty($tasks)) {
             </div>
             <div class="stat-tile-value"><?= $statTotal ?></div>
             <div class="stat-tile-label">Total Tasks</div>
-            <div class="stat-tile-meta"><?= $isAdmin ? 'Across all departments' : 'In your department' ?></div>
+            <div class="stat-tile-meta">Across every task</div>
         </div>
         <div class="stat-tile">
             <div class="stat-tile-top">
@@ -201,7 +233,7 @@ if (!empty($tasks)) {
             <div style="display:flex; align-items:center; gap:14px;">
                 <div class="modal-header-icon"><i class="fas fa-clipboard-list"></i></div>
                 <div>
-                    <h2>My Tasks</h2>
+                    <h2>All Tasks</h2>
                     <p style="margin: 2px 0 0; font-size: 13px; color: var(--gray-500);">Manage and track all your tasks</p>
                 </div>
             </div>
@@ -247,6 +279,10 @@ if (!empty($tasks)) {
                             <label class="filter-option"><input type="checkbox" data-filter="status" value="Scheduled" checked> Scheduled</label>
                             <label class="filter-option"><input type="checkbox" data-filter="status" value="Assign Locations" checked> Assign Locations</label>
                         </div>
+                        <div class="filter-group">
+                            <div class="filter-group-title">Missed Out</div>
+                            <label class="filter-option"><input type="checkbox" data-filter="missed" value="Yes"> Missed Out</label>
+                        </div>
                         <div class="filter-panel-actions">
                             <button type="button" class="btn btn-sm btn-secondary" onclick="clearFilterPanel(this)">Clear</button>
                             <button type="button" class="btn btn-sm btn-primary" onclick="applyFilterPanel(this)">Apply</button>
@@ -283,7 +319,7 @@ if (!empty($tasks)) {
                             <th>Completion</th>
                             <th>Schedule</th>
                             <th>Status</th>
-                            <th></th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -299,19 +335,22 @@ if (!empty($tasks)) {
                             $completionLabel = $total === 0 ? 'No locations' : "$completed/$total Complete";
                             $locNames = $locationNamesByTask[$task['id']] ?? [];
                             $locationsCountLabel = $total === 0 ? 'No locations' : ($total === 1 ? '1 Location' : "$total Locations");
-                            $avatarColorHex = ltrim($task['avatar_color'] ?: '#A7ACD9', '#');
                             $avatarInitials = $task['avatar_initials'] ?: strtoupper(substr((string) $task['creator_name'], 0, 1));
-                            $avatarUrl = 'https://placehold.co/28x28/EEF0FB/' . rawurlencode($avatarColorHex) . '?text=' . rawurlencode($avatarInitials);
-                            $isCompleted = $task['status']['code'] === 'completed';
+                            $avatarFallbackUrl = initialsAvatarUrl($avatarInitials, $task['avatar_color'], '28');
+                            $avatarPhotoUrl = employeePhotoUrl($task['creator_employee_id']);
+                            // Missed Out gets the same read-only treatment as Completed -- both
+                            // have Unassign/Assign locked out in the detail modal (see
+                            // api/tasks/detail_partial.php), so "Manage" would be misleading.
+                            $isReadOnly = $task['status']['code'] === 'completed' || $task['has_missed'];
                             ?>
-                            <tr data-status="<?= htmlspecialchars(taskStatusFilterLabel($task['status'])) ?>" data-task-id="<?= (int) $task['id'] ?>">
+                            <tr data-status="<?= htmlspecialchars(taskStatusFilterLabel($task['status'])) ?>" data-missed="<?= $task['has_missed'] ? 'Yes' : 'No' ?>" data-task-id="<?= (int) $task['id'] ?>">
                                 <?php if ($canDeleteTask): ?>
                                     <td><input type="checkbox" class="row-check" value="<?= (int) $task['id'] ?>"></td>
                                 <?php endif; ?>
                                 <td><span class="location-name"><?= htmlspecialchars($task['name']) ?></span></td>
                                 <td>
                                     <div class="avatar-cell">
-                                        <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="">
+                                        <img src="<?= htmlspecialchars($avatarPhotoUrl ?? $avatarFallbackUrl) ?>" alt="" onerror="this.onerror=null;this.src=<?= htmlspecialchars(json_encode($avatarFallbackUrl), ENT_QUOTES) ?>;">
                                         <span class="avatar-cell-name"><?= htmlspecialchars($task['creator_name'] ?? 'Unknown') ?></span>
                                     </div>
                                 </td>
@@ -330,12 +369,18 @@ if (!empty($tasks)) {
                                         <span style="color: var(--gray-400);">—</span>
                                     <?php endif; ?>
                                 </td>
-                                <td><span class="status-badge <?= htmlspecialchars($task['status']['class']) ?>"><?= htmlspecialchars($task['status']['label']) ?></span></td>
+                                <td>
+                                    <?php if ($task['has_missed']): ?>
+                                        <span class="status-badge status-missed" title="At least one location has been open 24+ hours without completion -- open the task to see which"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
+                                    <?php else: ?>
+                                        <span class="status-badge <?= htmlspecialchars($task['status']['class']) ?>"><?= htmlspecialchars($task['status']['label']) ?></span>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <div class="kebab-wrap">
                                         <button type="button" class="kebab-btn" onclick="toggleKebab(this)"><i class="fas fa-ellipsis-vertical"></i></button>
                                         <div class="kebab-menu">
-                                            <?php if ($isCompleted): ?>
+                                            <?php if ($isReadOnly): ?>
                                                 <button type="button" onclick="closeAllKebabs(); openTaskDetailModal(<?= (int) $task['id'] ?>, <?= htmlspecialchars(json_encode($task['name']), ENT_QUOTES) ?>)"><i class="fas fa-eye"></i> View Task</button>
                                             <?php else: ?>
                                                 <button type="button" onclick="closeAllKebabs(); openTaskDetailModal(<?= (int) $task['id'] ?>, <?= htmlspecialchars(json_encode($task['name']), ENT_QUOTES) ?>)"><i class="fas fa-map-location-dot"></i> Manage Task</button>

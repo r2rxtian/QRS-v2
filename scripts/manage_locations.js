@@ -166,15 +166,22 @@ function deleteSelected() {
     showModal('confirmModal');
 }
 
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 function printQR(locationName, button) {
     closeAllKebabs();
     const img = button.closest('tr').querySelector('.qr-thumb');
+    const safeName = escapeHtml(locationName);
     const win = window.open('', '_blank', 'width=400,height=500');
-    win.document.write('<html><head><title>Print QR — ' + locationName + '</title>');
+    win.document.write('<html><head><title>Print QR — ' + safeName + '</title>');
     win.document.write('<style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;font-family:sans-serif;}img{width:250px;height:250px;}</style>');
     win.document.write('</head><body>');
     win.document.write('<img src="' + img.src.replace('100x100', '250x250') + '">');
-    win.document.write('<h3>' + locationName + '</h3>');
+    win.document.write('<h3>' + safeName + '</h3>');
     win.document.write('</body></html>');
     win.document.close();
     win.focus();

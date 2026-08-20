@@ -60,7 +60,7 @@ $delPlaceholders = implode(',', array_fill(0, count($deletable), '?'));
 $pdo->prepare('UPDATE ' . T_LOCATIONS . " SET deleted_at = SYSDATETIME() WHERE id IN ($delPlaceholders)")->execute($deletable);
 
 foreach ($deletable as $id) {
-    writeAuditLog($authUser['id'], 'location.delete', 'location', $id, $authUser['department_id'], ['name' => $namesById[$id]]);
+    writeAuditLog($authUser['id'], 'location.delete', 'location', $id, ['name' => $namesById[$id]]);
 }
 
 $skipped = count($locationIds) - count($deletable);

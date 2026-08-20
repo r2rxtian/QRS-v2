@@ -41,14 +41,25 @@ $taskType = $task['task_type'];
 
 // A completed task is done -- reopening it by sneaking in a fresh location
 // via a direct API call (bypassing the UI, which already hides this) isn't
-// allowed either.
+// allowed either. Aggregates over each location's CURRENT ticket -- still
+// on the roster OR auto-unassigned by the system once resolved (see
+// rules/status.php's sweepResolvedLocations() -- unassigned_by IS NULL
+// marks that case) -- so this still correctly detects "already completed"
+// even after every one of the task's locations has auto-freed itself.
+// Latest-ticket pinning still guards a location that was manually
+// unassigned and re-assigned to this same task from being double counted
+// alongside the current one.
 $statusStmt = $pdo->prepare('
     SELECT
         COUNT(*) AS total,
         SUM(CASE WHEN status = \'completed\' THEN 1 ELSE 0 END) AS completed,
         SUM(CASE WHEN status = \'in_progress\' THEN 1 ELSE 0 END) AS in_progress
-    FROM ' . T_TASK_LOCATIONS . '
-    WHERE task_id = ? AND task_date = CAST(SYSDATETIME() AS DATE) AND unassigned_at IS NULL
+    FROM ' . T_TASK_LOCATIONS . ' tl
+    WHERE task_id = ? AND (unassigned_at IS NULL OR unassigned_by IS NULL)
+      AND id = (
+          SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+          WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+      )
 ');
 $statusStmt->execute([$taskId]);
 $statusRow = $statusStmt->fetch();
@@ -61,13 +72,22 @@ if ($taskStatus['code'] === 'completed') {
 
 $locationIds = array_values(array_unique(array_filter(array_map('intval', $locationIds), fn($id) => $id > 0)));
 
+// "Already active on this task" / "active elsewhere" both mean the
+// location's CURRENT ticket (latest row) hasn't been explicitly
+// unassigned -- a completed ticket does NOT free the location on its own;
+// an Admin has to explicitly Unassign it before it's offered elsewhere.
 $checkActiveForTask = $pdo->prepare('
-    SELECT COUNT(*) FROM ' . T_TASK_LOCATIONS . '
-    WHERE task_id = ? AND location_id = ? AND task_date = CAST(SYSDATETIME() AS DATE) AND unassigned_at IS NULL
+    SELECT COUNT(*) FROM ' . T_TASK_LOCATIONS . ' tl
+    WHERE task_id = ? AND location_id = ? AND unassigned_at IS NULL
+      AND id = (SELECT MAX(id) FROM ' . T_TASK_LOCATIONS . ' WHERE task_id = ? AND location_id = ?)
 ');
 $checkAssignedElsewhere = $pdo->prepare('
-    SELECT COUNT(*) FROM ' . T_TASK_LOCATIONS . '
-    WHERE location_id = ? AND unassigned_at IS NULL AND status <> \'completed\'
+    SELECT COUNT(*) FROM ' . T_TASK_LOCATIONS . ' tl
+    WHERE location_id = ? AND unassigned_at IS NULL
+      AND id = (
+          SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+          WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+      )
 ');
 $checkLocationType = $pdo->prepare('SELECT location_type FROM ' . T_LOCATIONS . ' WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
 $insert = $pdo->prepare('
@@ -81,7 +101,7 @@ $alreadyElsewhere = 0;
 $wrongType = 0;
 
 foreach ($locationIds as $locationId) {
-    $checkActiveForTask->execute([$taskId, $locationId]);
+    $checkActiveForTask->execute([$taskId, $locationId, $taskId, $locationId]);
     if ((int) $checkActiveForTask->fetchColumn() > 0) {
         $duplicates++;
         continue;
@@ -109,7 +129,7 @@ if ($assigned > 0) {
     $parts[] = "$assigned location(s) assigned";
 }
 if ($duplicates > 0) {
-    $parts[] = "$duplicates already assigned to this task today";
+    $parts[] = "$duplicates already assigned to this task";
 }
 if ($alreadyElsewhere > 0) {
     $parts[] = "$alreadyElsewhere already assigned to another task";
@@ -119,7 +139,7 @@ if ($wrongType > 0) {
 }
 $message = $parts ? implode(', ', $parts) . '.' : 'No locations were assigned.';
 
-writeAuditLog($authUser['id'], 'task_location.assign', 'task', $taskId, $authUser['department_id'], [
+writeAuditLog($authUser['id'], 'task_location.assign', 'task', $taskId, [
     'location_ids' => $locationIds, 'assigned' => $assigned, 'duplicates' => $duplicates, 'already_elsewhere' => $alreadyElsewhere,
 ]);
 

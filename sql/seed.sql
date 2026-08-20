@@ -1,19 +1,34 @@
 /*
  * QRS v2 — baseline data (T-SQL / SQL Server). Run after schema.sql.
  * Reflects the real System Requirements Specification data currently live
- * in the database: 2 roles (Admin/User), 1 department (Pest Control
- * Program), and the 12 real employee accounts from the client's user list.
+ * in the database: 2 roles (Admin/User) and the 12 real employee accounts
+ * from the client's user list. No department concept -- access is based on
+ * each user's own biometrics/employee_id, not a department.
+ *
+ * This is a ONE-TIME bootstrap script, not the ongoing way to add users --
+ * once an Admin account exists and can log in, every subsequent user gets
+ * added live through Settings > User Management (see api/users/create.php),
+ * which writes straight to dbo.qrs_users, no SQL involved. This file only
+ * matters again for a fresh install (schema.sql + this, in order, before
+ * the app has any Admin to log in with) or as a record of the original
+ * roles/roster.
  *
  * The real location catalog (~240 rows, Monitoring/Treatment) is NOT
  * seeded here — run sql/import_real_locations.php separately after this
  * file (it reads sql/locations_monitoring.csv + sql/locations_treatment.csv).
  *
- * IMPORTANT — passwords: all 12 accounts get the SAME temporary password:
- * ChangeMe123!
- * There is no "force password change on first login" feature built, so
- * distribute this password and have each person change it via their
- * account/settings page. The hash below was generated with PHP's
- * password_hash('ChangeMe123!', PASSWORD_DEFAULT) — do not hand-edit it.
+ * full_name is NOT a qrs_users column -- it's always derived live from
+ * dbo.lrn_master_list (matched on EmployeeID = employee_id), see
+ * rules/constants.php's fullNameSql(). The names below are kept in the
+ * VALUES tuple purely as a human-readable reference for whose employee_id
+ * is whose, not inserted anywhere.
+ *
+ * Login credentials are NOT stored in qrs_users either (no username or
+ * password_hash column) -- login resolves through the company-wide
+ * dbo.lrnph_users table instead, bridged via dbo.lrn_master_list (see
+ * auth/login_handler.php). A person only gains QRS v2 access once BOTH
+ * exist: a row here (this file) AND a row in lrnph_users with a matching
+ * biometrics number via the master list.
  */
 
 USE LRNPH_OJT;
@@ -28,19 +43,10 @@ INSERT INTO dbo.qrs_roles (name, description) VALUES
 GO
 
 -- ============================================================
--- Department (single team, no per-department concept in the spec)
--- ============================================================
-INSERT INTO dbo.qrs_departments (name, site_code) VALUES
-    ('Quality Assurance', 'LRN');
-GO
-
--- ============================================================
 -- Real users (from the client's user list + access matrix)
 -- ============================================================
 DECLARE @adminRoleId TINYINT = (SELECT id FROM dbo.qrs_roles WHERE name = 'Admin');
 DECLARE @userRoleId TINYINT = (SELECT id FROM dbo.qrs_roles WHERE name = 'User');
-DECLARE @deptId SMALLINT = (SELECT id FROM dbo.qrs_departments WHERE name = 'Quality Assurance');
-DECLARE @tempHash VARCHAR(255) = '$2y$10$eImpdPsufRMDKgmdD899oO9mQ9hmZWX8mNWL7tMCYjrujoZRF7W7O'; -- ChangeMe123!
 
 ;WITH RealUsers AS (
     SELECT * FROM (VALUES
@@ -58,14 +64,10 @@ DECLARE @tempHash VARCHAR(255) = '$2y$10$eImpdPsufRMDKgmdD899oO9mQ9hmZWX8mNWL7tM
         ('2021-12291', 'Figueroa, Jovi Maristela',     'user')
     ) AS t(employee_id, full_name, role_key)
 )
--- username reuses employee_id (rather than NULL) -- dbo.qrs_users.username has
--- a plain UNIQUE constraint, and SQL Server only allows ONE NULL per unique
--- column across the whole table, so 12 simultaneous NULLs fails.
-INSERT INTO dbo.qrs_users (employee_id, username, full_name, password_hash, role_id, department_id)
-SELECT r.employee_id, r.employee_id, r.full_name, @tempHash,
-       CASE WHEN r.role_key = 'admin' THEN @adminRoleId ELSE @userRoleId END,
-       @deptId
+INSERT INTO dbo.qrs_users (employee_id, role_id)
+SELECT r.employee_id,
+       CASE WHEN r.role_key = 'admin' THEN @adminRoleId ELSE @userRoleId END
 FROM RealUsers r;
 GO
 
-PRINT 'Baseline data inserted: 2 roles, 1 department, 12 real users (temp password: ChangeMe123!). Next: run sql/import_real_locations.php.';
+PRINT 'Baseline data inserted: 2 roles, 12 real users. Next: run sql/import_real_locations.php.';

@@ -3,16 +3,13 @@
  * Dashboard "Tasks Overview" bar chart partial -- completed-location counts
  * bucketed by day/week/month, so the Daily/Weekly/Monthly select can swap
  * the chart without a full page reload. GET, read-only, no CSRF (matches
- * api/tasks/detail_partial.php's convention). Department-scoped like every
- * other dashboard query.
+ * api/tasks/detail_partial.php's convention).
  */
 require_once __DIR__ . '/../../auth/session.php';
 require_once __DIR__ . '/../../conn/db.php';
 require_once __DIR__ . '/../../rules/constants.php';
-require_once __DIR__ . '/../../authz/capabilities.php';
 
-$currentUser = requireLogin(true);
-$isAdmin = $currentUser['role_name'] === ROLE_ADMIN;
+requireLogin(true);
 
 header('Content-Type: application/json');
 
@@ -58,10 +55,6 @@ $sql = '
     JOIN ' . T_TASKS . ' t ON t.id = tl.task_id
     WHERE t.deleted_at IS NULL AND tl.status = \'completed\' AND tl.end_time >= ?';
 $params = [$windowStart->format('Y-m-d H:i:s')];
-if (!$isAdmin) {
-    $sql .= ' AND t.department_id = ?';
-    $params[] = $currentUser['department_id'];
-}
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 

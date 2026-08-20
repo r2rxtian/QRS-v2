@@ -41,19 +41,7 @@ if (empty($locationIds)) {
     exit;
 }
 
-// Department is always the acting user's own — always session-derived,
-// never client-submitted (there's only ever one department, but this keeps
-// the IDOR-safe pattern intact regardless).
-$user = requireLogin(true);
-$departmentId = $user['department_id'];
-
-if ($departmentId === null) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'A department is required to create a task.', 'type' => 'error']);
-    exit;
-}
-
-$authUser = authorize('task.create', ['department_id' => $departmentId]);
+$authUser = authorize('task.create');
 
 $pdo = db();
 
@@ -71,21 +59,17 @@ if (!$taskDateObj || $taskDateObj->format('Y-m-d') !== $taskDateRaw || $taskDate
 }
 $taskDate = $taskDateObj->format('Y-m-d');
 
-$deptCheck = $pdo->prepare('SELECT id FROM ' . T_DEPARTMENTS . ' WHERE id = ? AND is_active = 1');
-$deptCheck->execute([$departmentId]);
-if (!$deptCheck->fetchColumn()) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Invalid department.', 'type' => 'error']);
-    exit;
-}
-
-// Only locations not currently assigned to any active task, AND matching
-// this task's Task Type, can be used -- re-validated here server-side even
-// though the picker only shows these.
+// Only locations not currently on any task's roster, AND matching this
+// task's Task Type, can be used -- re-validated here server-side even
+// though the picker only shows these. A completed ticket does NOT free
+// the location on its own; an Admin has to explicitly Unassign it first.
 $availabilityCheck = $pdo->prepare('
     SELECT COUNT(*) FROM ' . T_LOCATIONS . ' l
     WHERE l.id = ? AND l.location_type = ?
-      AND NOT EXISTS (SELECT 1 FROM ' . T_TASK_LOCATIONS . ' tl WHERE tl.location_id = l.id AND tl.unassigned_at IS NULL AND tl.status <> \'completed\')
+      AND NOT EXISTS (
+          SELECT 1 FROM ' . T_TASK_LOCATIONS . ' tl WHERE tl.location_id = l.id AND tl.unassigned_at IS NULL
+            AND tl.id = (SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2 WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id)
+      )
 ');
 $unavailable = [];
 foreach ($locationIds as $locationId) {
@@ -104,8 +88,8 @@ if (empty($locationIds)) {
 
 $pdo->beginTransaction();
 try {
-    $stmt = $pdo->prepare('INSERT INTO ' . T_TASKS . ' (name, department_id, owner_id, task_type, is_recurring) OUTPUT INSERTED.id VALUES (?, ?, ?, ?, 1)');
-    $stmt->execute([$taskName, $departmentId, $authUser['id'], $taskType]);
+    $stmt = $pdo->prepare('INSERT INTO ' . T_TASKS . ' (name, owner_id, task_type) OUTPUT INSERTED.id VALUES (?, ?, ?)');
+    $stmt->execute([$taskName, $authUser['id'], $taskType]);
     $taskId = (int) $stmt->fetchColumn();
 
     $insertLoc = $pdo->prepare('
@@ -124,7 +108,7 @@ try {
     exit;
 }
 
-writeAuditLog($authUser['id'], 'task.create', 'task', $taskId, $departmentId, ['name' => $taskName, 'task_type' => $taskType, 'location_ids' => $locationIds]);
+writeAuditLog($authUser['id'], 'task.create', 'task', $taskId, ['name' => $taskName, 'task_type' => $taskType, 'location_ids' => $locationIds]);
 
 $message = 'Task created successfully with ' . count($locationIds) . ' location' . (count($locationIds) === 1 ? '' : 's') . '!';
 if (!empty($unavailable)) {

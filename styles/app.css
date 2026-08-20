@@ -302,6 +302,216 @@ button:disabled {
     color: var(--primary);
 }
 
+/* --- Accessibility popover (sidebar "General" section) -- Dark Mode +
+   Accent Color live here instead of a dedicated Settings page, since
+   that's genuinely the entire content a Settings page would have had once
+   User Management moved out to its own page. Reachable from every
+   appshell page (this markup lives in components/appshell_start.php, not
+   a single page template), so the trigger/panel need to be a shared
+   component here rather than a page-specific stylesheet. */
+.accessibility-trigger {
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+
+.accessibility-wrap {
+    position: relative;
+}
+
+/* position:fixed (not absolute) and JS-computed left/top/bottom
+   (toggleAccessibilityPanel() in theme.js) -- .profile-sidebar has
+   overflow-y:auto, and per the CSS overflow spec that silently forces
+   overflow-x to compute as auto too (an axis can't be visible while the
+   other isn't), which clips anything positioned outside the sidebar's own
+   box even though its layout geometry looks correct. position:fixed
+   escapes that clipping entirely since it's laid out against the
+   viewport, not the scrolling ancestor. */
+.accessibility-panel {
+    position: fixed;
+    width: 280px;
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    z-index: 60;
+    display: none;
+    overflow: hidden;
+}
+
+/* Controlled by .open directly on the panel itself, not a
+   ".accessibility-wrap.open" ancestor selector -- see the comment in
+   theme.js's toggleAccessibilityPanel() for why the panel gets moved out
+   from under .accessibility-wrap to a direct child of <body> before it's
+   ever shown, which would make an ancestor-based selector never match. */
+.accessibility-panel.open {
+    display: block;
+    animation: scaleIn 0.15s ease-out;
+}
+
+/* Compact preference rows (Dark Mode / Accent Color) -- same rows that
+   used to live in the old Settings page's card body, just re-hosted in
+   this popover now. */
+.pref-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px;
+    flex-wrap: wrap;
+}
+
+.pref-row + .pref-row {
+    border-top: 1px solid var(--gray-100);
+}
+
+.pref-row-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pref-row-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.pref-row-label strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+/* Scoped to the text div's span specifically (not the bare ".pref-row-label
+   span"), which would also match .pref-row-icon -- a <span> itself -- and
+   win the cascade over it (class+type beats a single class), silently
+   knocking the icon badge's display:flex back to block. */
+.pref-row-label > div > span {
+    display: block;
+    font-size: 12.5px;
+    color: var(--gray-500);
+    margin-top: 1px;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--gray-300);
+    border-radius: 999px;
+    transition: background-color 0.2s ease;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    top: 3px;
+    background: var(--white);
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--primary);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}
+
+.accent-swatch-grid {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.accent-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--gray-200);
+    cursor: pointer;
+    padding: 0;
+    position: relative;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.accent-swatch:hover {
+    transform: scale(1.12);
+}
+
+.accent-swatch.selected {
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--gray-900);
+}
+
+.accent-swatch.selected::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-size: 8px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.accent-reset-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px dashed var(--gray-300);
+    background: var(--surface);
+    color: var(--gray-500);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    margin-left: 4px;
+    flex-shrink: 0;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.accent-reset-btn:hover {
+    color: var(--gray-700);
+    border-color: var(--gray-400);
+}
+
 /* One bordered card groups logo/profile/logout into a single visual unit
    (each section separated by an internal divider, not its own floating
    border) instead of three separate elements loosely stacked in the
@@ -791,6 +1001,20 @@ select.form-input {
 .kebab-btn:hover {
     background: var(--gray-100);
     color: var(--gray-700);
+}
+
+/* Same 32px box as a real kebab button, for a row where the action is
+   locked out (e.g. "you can't manage your own account") -- keeps every
+   row's action column visually aligned instead of collapsing down to the
+   bare icon's own smaller, uncentered glyph size. */
+.kebab-btn.is-disabled {
+    color: var(--gray-300);
+    cursor: not-allowed;
+}
+
+.kebab-btn.is-disabled:hover {
+    background: transparent;
+    color: var(--gray-300);
 }
 
 .kebab-menu {
@@ -1497,6 +1721,18 @@ select.form-input {
     visibility: visible;
 }
 
+/* For a trigger sitting near the right edge of a horizontally-scrolling
+   container -- e.g. the Actions column at the far right of a table, inside
+   .table-wrapper's overflow-x:auto -- the default centered bubble overflows
+   past that container's own clipping boundary and gets cut off mid-word.
+   Anchoring to the trigger's right edge instead keeps the whole bubble
+   inside the scrollable area regardless of the trigger's own width. */
+.tooltip-left::after {
+    left: auto;
+    right: 0;
+    transform: none;
+}
+
 /* ==========================================================================
    Table Styles
    ========================================================================== */
@@ -1571,6 +1807,15 @@ tbody tr:hover {
     color: var(--danger);
 }
 
+/* Task Report only: a location whose day closed without being completed
+   (see pages/task_report.php's query) -- same danger color language as
+   .status-not-started, but a distinct class since the meaning is different
+   (a closed-out, no-longer-actionable outcome, not "still due today"). */
+.status-missed {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
 .status-assign {
     background: var(--gray-200);
     color: var(--gray-600);
@@ -1612,10 +1857,29 @@ tbody tr:hover {
     border-radius: var(--radius-lg);
     width: 90%;
     max-width: 400px;
+    /* max-height + column flex, same fix .modal-lg/.modal-split already
+       had: without this, .modal-overlay centers the modal by its natural
+       content height with no cap -- a modal whose content grows taller
+       than the viewport (e.g. Add User once a lookup result/role/info
+       banner all show at once) overflows equally above AND below the
+       visible viewport with no way to scroll to the clipped part, instead
+       of the header/footer staying put and only the body scrolling. */
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: var(--shadow-lg);
     transform: scale(0.95);
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     overflow: hidden;
+}
+
+/* A size tier between the default 400px (message/confirm/simple-add
+   modals) and .modal-lg's 1280px -- for a modal with more going on than a
+   single field but not a full split-panel layout (e.g. Add User's
+   lookup-result card + role picker + info banner), which reads as cramped
+   at 400px and forces its text to wrap more than it needs to. */
+.modal-md {
+    max-width: 520px;
 }
 
 .modal-lg {
@@ -1630,16 +1894,6 @@ tbody tr:hover {
     flex: 1 1 auto;
     max-height: none;
     overflow-y: auto;
-    /* .modal-body sets white-space:pre-line for the plain-text confirm/
-       message modal (a literal \n in server text should render as a line
-       break there) -- but this is the Task Detail modal's body, filled with
-       richly-nested PHP-generated markup (api/tasks/detail_partial.php),
-       and that inherited property was making the raw indentation/newlines
-       between tags in that source significant, rendering them as real
-       blank lines and silently widening the gap between sections (e.g.
-       between the Assigned Locations box and "Assign More Locations").
-       Same root cause and fix as .modal-body.modal-body-split earlier. */
-    white-space: normal;
 }
 
 /* Create Task: form fields on the left, its location picker in its own
@@ -1680,27 +1934,6 @@ tbody tr:hover {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     height: 100%;
-}
-
-/* .modal-body sets white-space:pre-line for the plain-text confirm/message
-   modal (so a literal \n in server text renders as a line break) -- an
-   inherited property, so it was cascading into this richly-nested
-   two-panel layout too. There, it made the raw indentation/newlines
-   between tags in the PHP source significant: each one rendered as a
-   real blank line, quietly pushing content down by an inconsistent
-   amount depending on nesting depth (e.g. the icon and title inside
-   .modal-panel-header no longer shared a top edge, even though both are
-   flex-start-aligned). Resetting to normal removes that inherited
-   behavior for this whole subtree, which is structured form UI, not
-   freeform message text.
-   Compound selector (not plain .modal-body-split) is required here: the
-   element carries both "modal-body" and "modal-body-split" classes, so
-   this has to out-specificity .modal-body's own white-space:pre-line
-   rule -- a plain single-class override loses to it regardless of
-   source order, since same-specificity ties go to whichever rule is
-   later in the file, and .modal-body's rule sits after this one. */
-.modal-body.modal-body-split {
-    white-space: normal;
 }
 
 /* display:flex (not the block default) for the same reason .input-icon-wrap
@@ -2112,10 +2345,32 @@ tbody tr:hover {
     gap: 5px;
 }
 
+.checklist-answer-group {
+    display: flex;
+    flex-direction: column;
+}
+
 .checklist-answer-item {
     display: flex;
     align-items: center;
     gap: 6px;
+}
+
+/* Visible, not a hover-only title tooltip -- a No/N/A answer's reason is
+   exactly the kind of thing an Admin monitoring the task needs to actually
+   read, not hunt for by hovering each pill. Indented past the icon so it
+   reads as "belonging to" the label above it. */
+.checklist-answer-remark {
+    margin: 2px 0 0 22px;
+    font-size: 11.5px;
+    color: var(--gray-500);
+    line-height: 1.35;
+}
+
+.checklist-answer-remark i {
+    color: var(--gray-400);
+    margin-right: 4px;
+    font-size: 10px;
 }
 
 .checklist-answer-icon {
@@ -2249,6 +2504,21 @@ tbody tr:hover {
     font-size: 9px;
 }
 
+/* Missed Locations box -- reuses the Completed Locations box/tag markup
+   with an extra .status-missed class; these two-class overrides are needed
+   because .completed-locations-count/.location-tag-completed-mark define
+   their own color further down this file and would otherwise win over
+   .status-missed on source order alone. */
+.completed-locations-count.status-missed,
+.completed-locations-count.status-missed i {
+    color: var(--danger-text);
+}
+
+.location-tag-completed-mark.status-missed {
+    color: var(--danger-text);
+    background: var(--danger-bg);
+}
+
 /* Task Detail popup -- "Task: {name}" line under the modal's generic title */
 .modal-subtitle {
     margin: 2px 0 0;
@@ -2344,6 +2614,43 @@ tbody tr:hover {
 .cell-icon-text i {
     color: var(--gray-400);
     font-size: 12px;
+}
+
+/* Remarks column -- shared between Task Report and the Task Detail modal's
+   own per-location table. Several distinct kinds of note (per-checklist-
+   item reason, overall Findings/Observation, Completion Remarks) used to
+   be joined into one run-on " / "-separated string, making it hard to tell
+   which note was which. Each kind now gets its own small labeled block. */
+.remarks-cell {
+    max-width: 260px;
+}
+
+.remark-block + .remark-block {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--gray-200);
+}
+
+.remark-block-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--gray-400);
+    margin-bottom: 3px;
+}
+
+.remark-block-text {
+    font-size: 13px;
+    color: var(--gray-700);
+    line-height: 1.4;
+}
+
+.remark-block-text + .remark-block-text {
+    margin-top: 4px;
 }
 
 /* Assign-more-locations checklist: search + select-all row above a single
@@ -2546,34 +2853,47 @@ tbody tr:hover {
     overflow-y: auto;
     border: 1px solid var(--gray-300);
     border-radius: var(--radius);
-    background: var(--surface);
-    padding: 6px;
+    background: var(--gray-50);
+    padding: 10px;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 2px;
+    gap: 8px;
     align-content: start;
 }
 
+/* Each option reads as its own neat card (border + rounded corners), not a
+   flat packed row -- flex-start so a long wrapped name doesn't drag the
+   checkbox down to a vertical center partway through the text. */
 .checkbox-list-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
-    padding: 6px 8px;
-    font-size: 13.5px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 500;
     color: var(--gray-700);
     cursor: pointer;
-    border-radius: 6px;
-    line-height: 1.3;
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    background: var(--surface);
+    line-height: 1.35;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .checkbox-list-item:hover {
-    background: var(--gray-50);
+    border-color: var(--primary);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.checkbox-list-item:has(input:checked) {
+    border-color: var(--primary);
+    background: var(--primary-light);
 }
 
 .checkbox-list-item input[type="checkbox"] {
     width: 15px;
     height: 15px;
-    margin: 0;
+    margin: 2px 0 0;
     flex-shrink: 0;
     cursor: pointer;
     accent-color: var(--primary);
@@ -2697,6 +3017,21 @@ tbody tr:hover {
     color: var(--gray-600);
     font-size: 15px;
     line-height: 1.6;
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+
+/* pre-line is opt-in, not the default: only #messageModal/#confirmModal
+   actually hold freeform server/JS text where a literal \n should render
+   as a line break. Every other modal's body is real markup (numbered
+   steps, forms, cards), where an inherited pre-line silently turns the
+   raw indentation/newlines in the PHP/HTML source into real blank lines --
+   this bit at least 3 different modals this session (Task Detail, Add
+   User, How It Works) before the pattern was worth fixing at its root
+   instead of re-patching white-space:normal onto every new modal that
+   happens to contain markup. */
+#messageModal .modal-body,
+#confirmModal .modal-body {
     white-space: pre-line;
 }
 
@@ -3094,5 +3429,9 @@ a {
 
     .container {
         padding: 20px;
+    }
+
+    .accessibility-panel {
+        width: 260px;
     }
 }

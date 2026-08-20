@@ -1,10 +1,17 @@
 <?php
 /**
- * Resolves a scanned/manually-entered QR token against today's roster for
- * a task, and tells the client which screen to show next:
+ * Resolves a scanned/manually-entered QR token against a task's currently
+ * assigned locations, and tells the client which screen to show next:
  *   'method_selection' -- pending, not started yet
  *   'completion'        -- in_progress, resume to the after-photos step
- *   'completed'          -- already done today
+ *   'completed'          -- already done for its current 24-hour cycle
+ *
+ * Missed Out is a hard cutoff, not just a report label: once the ticket's
+ * 24-hour window (from assigned_at) has passed without completion, the
+ * lookup query below simply stops matching it -- it's treated exactly like
+ * "not currently assigned to this task" (no special Missed Out messaging
+ * here) -- see api/scan/start.php and api/scan/complete.php for the
+ * matching cutoff on those endpoints.
  */
 require_once __DIR__ . '/../../auth/session.php';
 require_once __DIR__ . '/../../auth/csrf.php';
@@ -40,8 +47,8 @@ if ($qrToken !== '') {
     $locStmt = $pdo->prepare('SELECT id, name FROM ' . T_LOCATIONS . ' WHERE qr_token = ? AND deleted_at IS NULL AND is_active = 1');
     $locStmt->execute([$qrToken]);
 } else {
-    // Manual fallback: identified by location_id (tapped from today's roster
-    // list), never by a free-typed name -- keeps the same qr_token-based
+    // Manual fallback: identified by location_id (tapped from the task's
+    // location list), never by a free-typed name -- keeps the same qr_token-based
     // identity model, just a different, accessible way to select it.
     $locStmt = $pdo->prepare('SELECT id, name FROM ' . T_LOCATIONS . ' WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
     $locStmt->execute([$manualLocationId]);
@@ -53,6 +60,12 @@ if (!$location) {
     exit;
 }
 
+// Missed Out is a hard cutoff, not just a report label: once 24 hours pass
+// from assigned_at without completion, this location simply stops matching
+// here -- it isn't "found and then rejected", it's treated as if it were
+// never assigned at all, same as any other not-currently-assigned location
+// (see the generic message below). No separate "Missed Out" messaging in
+// the scan flow -- it's just quietly not there anymore.
 $tlStmt = $pdo->prepare('
     SELECT id, status,
            spot_spray_answer, spot_spray_remark,
@@ -61,13 +74,15 @@ $tlStmt = $pdo->prepare('
            monitoring_answer, monitoring_remark,
            findings_observation
     FROM ' . T_TASK_LOCATIONS . '
-    WHERE task_id = ? AND location_id = ? AND task_date = CAST(SYSDATETIME() AS DATE) AND unassigned_at IS NULL
+    WHERE task_id = ? AND location_id = ? AND unassigned_at IS NULL
+      AND (status = \'completed\' OR DATEDIFF(SECOND, assigned_at, SYSDATETIME()) < 86400)
+      AND id = (SELECT MAX(id) FROM ' . T_TASK_LOCATIONS . ' WHERE task_id = ? AND location_id = ?)
 ');
-$tlStmt->execute([$taskId, $location['id']]);
+$tlStmt->execute([$taskId, $location['id'], $taskId, $location['id']]);
 $taskLocation = $tlStmt->fetch();
 
 if (!$taskLocation) {
-    echo json_encode(['success' => false, 'message' => $location['name'] . ' is not assigned to this task today.', 'type' => 'error']);
+    echo json_encode(['success' => false, 'message' => $location['name'] . ' is not currently assigned to this task.', 'type' => 'error']);
     exit;
 }
 
@@ -79,7 +94,7 @@ $stage = match ($taskLocation['status']) {
 
 echo json_encode([
     'success' => true,
-    'message' => $stage === 'completed' ? $location['name'] . ' is already completed for today.' : 'Location recognized.',
+    'message' => $stage === 'completed' ? $location['name'] . ' is already completed.' : 'Location recognized.',
     'type' => $stage === 'completed' ? 'info' : 'success',
     'data' => [
         'stage' => $stage,
