@@ -26,13 +26,18 @@ $sql = '
         tl.status = \'completed\'
         OR (tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400)
     )
-    -- Most recently resolved first, not insertion order (tl.id) -- several
-    -- locations assigned to the same task in one batch share close ids but
-    -- finish at very different real times, which made id DESC read as
-    -- "grouped by task" rather than truly by recency. end_time is the real
-    -- completion moment; unassigned_at (when the sweep closed out a missed
-    -- ticket) covers the Missed Out case, which has no end_time.
-    ORDER BY COALESCE(tl.end_time, tl.unassigned_at, tl.assigned_at) DESC';
+    -- Grouped by task (so a Missed Out row sits next to its Completed rows
+    -- instead of scattering across the list), but the task groups themselves
+    -- are still ordered by recency -- most recently active task first -- via
+    -- a window MAX() over each task group\'s own resolution times, rather
+    -- than by t.id/insertion order which would not reflect real activity.
+    -- Within a task, rows are then ordered by recency too.
+    -- end_time is the real completion moment; unassigned_at (when the sweep
+    -- closed out a missed ticket) covers the Missed Out case, which has no
+    -- end_time.
+    ORDER BY MAX(COALESCE(tl.end_time, tl.unassigned_at, tl.assigned_at)) OVER (PARTITION BY t.id) DESC,
+             t.id,
+             COALESCE(tl.end_time, tl.unassigned_at, tl.assigned_at) DESC';
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute();
@@ -90,10 +95,38 @@ $statTasksCovered = count($taskNames);
     <div class="topbar">
         <div class="topbar-title">
             <h1>Task Report</h1>
-            <p><?= $statTotal ?> record<?= $statTotal === 1 ? '' : 's' ?> across <?= $statTasksCovered ?> task<?= $statTasksCovered === 1 ? '' : 's' ?> · <?= $withAttachments ?> with attachments</p>
+            <p>Review completed and missed checks across every task.</p>
         </div>
         <div class="topbar-actions">
             <button type="button" class="btn btn-primary" id="exportPdfBtn" onclick="exportReportToPDF()"><i class="fas fa-file-pdf"></i> Export to PDF</button>
+        </div>
+    </div>
+
+    <!-- Stat Tiles -->
+    <div class="stat-tiles">
+        <div class="stat-tile">
+            <div class="stat-tile-top">
+                <div class="stat-tile-icon periwinkle"><i class="fas fa-file-lines"></i></div>
+            </div>
+            <div class="stat-tile-value"><?= $statTotal ?></div>
+            <div class="stat-tile-label">Total Records</div>
+            <div class="stat-tile-meta">Completed &amp; missed checks</div>
+        </div>
+        <div class="stat-tile">
+            <div class="stat-tile-top">
+                <div class="stat-tile-icon sky"><i class="fas fa-diagram-project"></i></div>
+            </div>
+            <div class="stat-tile-value"><?= $statTasksCovered ?></div>
+            <div class="stat-tile-label">Tasks Covered</div>
+            <div class="stat-tile-meta">Distinct tasks in this report</div>
+        </div>
+        <div class="stat-tile">
+            <div class="stat-tile-top">
+                <div class="stat-tile-icon purple"><i class="fas fa-paperclip"></i></div>
+            </div>
+            <div class="stat-tile-value"><?= $withAttachments ?></div>
+            <div class="stat-tile-label">With Attachments</div>
+            <div class="stat-tile-meta">Records that include photos</div>
         </div>
     </div>
 

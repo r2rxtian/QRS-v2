@@ -47,7 +47,7 @@ $statusStmt = $pdo->prepare('
     SELECT
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-        SUM(CASE WHEN tl.status = \'in_progress\' THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400 THEN 1 ELSE 0 END) AS in_progress_locations,
         SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 THEN 1 ELSE 0 END) AS missed_locations
     FROM ' . T_TASK_LOCATIONS . ' tl
     WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)

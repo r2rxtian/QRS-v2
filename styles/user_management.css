@@ -50,6 +50,8 @@
 }
 
 .input-clearable .form-input {
+    flex: 1;
+    min-width: 0;
     padding-right: 36px;
 }
 

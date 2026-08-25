@@ -872,29 +872,33 @@ select.form-input {
 .stat-tiles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
+    gap: 14px;
     margin-bottom: 24px;
 }
 
 .stat-tile {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 14px;
     background: var(--surface);
     border: 1px solid var(--gray-200);
     border-radius: var(--radius-lg);
-    padding: 20px;
+    padding: 14px 18px;
     box-shadow: var(--shadow-sm);
 }
 
 .stat-tile-top {
+    grid-column: 1;
+    grid-row: 1 / -1;
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 14px;
+    align-items: center;
 }
 
 .stat-tile-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -920,23 +924,26 @@ select.form-input {
 }
 
 .stat-tile-value {
-    font-size: 24px;
+    grid-column: 2;
+    font-size: 22px;
     font-weight: 700;
     color: var(--gray-900);
     line-height: 1.2;
 }
 
 .stat-tile-label {
+    grid-column: 2;
     font-size: 13px;
     font-weight: 600;
     color: var(--gray-700);
-    margin-top: 4px;
+    margin-top: 1px;
 }
 
 .stat-tile-meta {
+    grid-column: 2;
     font-size: 12px;
     color: var(--gray-500);
-    margin-top: 2px;
+    margin-top: 1px;
 }
 
 /* ==========================================================================

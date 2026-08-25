@@ -366,7 +366,7 @@
 .recent-list {
     display: flex;
     flex-direction: column;
-    justify-content: center; /* centers the (usually few) items in .panel's grown height instead of leaving them pinned to the top */
+    justify-content: flex-start;
     gap: 14px;
     flex: 1;
 }

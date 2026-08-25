@@ -42,7 +42,7 @@ $sql = '
         ' . fullNameSql('uml', 'u') . ' AS creator_name, u.employee_id AS creator_employee_id, u.avatar_initials, u.avatar_color,
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-        SUM(CASE WHEN tl.status = \'in_progress\' THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400 THEN 1 ELSE 0 END) AS in_progress_locations,
         SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 THEN 1 ELSE 0 END) AS missed_locations,
         (SELECT MIN(tl2.task_date) FROM ' . T_TASK_LOCATIONS . ' tl2
             WHERE tl2.task_id = t.id AND (tl2.unassigned_at IS NULL OR tl2.unassigned_by IS NULL)
@@ -87,7 +87,14 @@ foreach ($stmt->fetchAll() as $row) {
     $tasks[] = $row;
 
     $statTotal++;
-    if ($status['code'] === 'ongoing') {
+    // A task with a missed location is badged "Missed Out" instead of its
+    // base status in the table below (see the has_missed check on the
+    // Status column) -- kept out of these tiles too, so a task that never
+    // visibly reads "On-going"/"Completed"/"Not Started" in the list isn't
+    // still counted as one.
+    if ($row['has_missed']) {
+        // none of the tiles below
+    } elseif ($status['code'] === 'ongoing') {
         $statOngoing++;
     } elseif ($status['code'] === 'completed') {
         $statCompleted++;

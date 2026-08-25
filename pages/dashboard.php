@@ -54,7 +54,7 @@ $sql = '
     SELECT t.id, t.name,
            COUNT(tl.id) AS total_locations,
            SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-           SUM(CASE WHEN tl.status = \'in_progress\' THEN 1 ELSE 0 END) AS in_progress_locations,
+           SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400 THEN 1 ELSE 0 END) AS in_progress_locations,
            SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 THEN 1 ELSE 0 END) AS missed_locations,
            MAX(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400
                      AND CAST(DATEADD(HOUR, 24, tl.assigned_at) AS DATE) = CAST(SYSDATETIME() AS DATE)
