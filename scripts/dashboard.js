@@ -2,7 +2,8 @@
 // switching the "Tasks Overview" bar chart's range, both without a full
 // page reload (see api/dashboard/calendar_partial.php and
 // api/dashboard/bar_chart_partial.php); and animating the page's stat
-// numbers/percentages and the Location Status donut on load via GSAP.
+// numbers/percentages, the Location Status donut, and the Task Completion
+// Insights dome on load via GSAP.
 
 const PREFERS_REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -27,6 +28,32 @@ function animateCountUp(el, delay) {
         onUpdate: function () {
             el.textContent = Math.round(proxy.value) + suffix;
         },
+    });
+}
+
+// Pops the "Task Completion Insights" dome from small to full size on load,
+// anchored to the same bottom-center point it's already positioned at
+// (bottom:0; left:50%) so it reads as rising/inflating from the card's base
+// rather than scaling in from mid-air. xPercent:-50 redoes the stylesheet's
+// own translateX(-50%) centering through GSAP instead -- once GSAP writes
+// anything to the inline transform, it owns that property outright, so the
+// centering has to be part of the same tween or it's lost the moment this
+// runs.
+function animateDome() {
+    const dome = document.querySelector('.dome');
+    if (!dome || PREFERS_REDUCED_MOTION || typeof gsap === 'undefined') return;
+
+    gsap.fromTo(dome, {
+        scale: 0.35,
+        opacity: 0,
+        xPercent: -50,
+        transformOrigin: 'bottom center',
+    }, {
+        scale: 1,
+        opacity: 1,
+        xPercent: -50,
+        duration: 0.9,
+        ease: 'back.out(1.6)',
     });
 }
 
@@ -159,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
         animateCountUp(el, i * 0.05);
     });
     animateLocationDonut(document.getElementById('locationDonut'));
+    animateDome();
     const barChartContainer = document.getElementById('barChartContainer');
     if (barChartContainer) animateBarChart(barChartContainer);
 });
