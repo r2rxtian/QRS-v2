@@ -77,3 +77,14 @@
     color: var(--white);
     transform: translateY(-1px);
 }
+
+/* Task list in the Filters panel can run to a dozen+ entries (one per task
+   in the report) -- capped to ~5 rows tall (each .filter-option row is
+   ~30px: 13px text + 6px top/bottom padding) and scrollable instead of
+   stretching the whole panel down the page. padding-right keeps the
+   scrollbar from sitting flush against the checkbox labels. */
+.filter-task-list {
+    max-height: 165px;
+    overflow-y: auto;
+    padding-right: 6px;
+}

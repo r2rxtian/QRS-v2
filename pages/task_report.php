@@ -185,9 +185,11 @@ $statTasksCovered = count($taskNames);
                         </div>
                         <div class="filter-group">
                             <div class="filter-group-title">Task</div>
-                            <?php foreach ($taskNames as $taskName): ?>
-                                <label class="filter-option"><input type="checkbox" data-filter="task" value="<?= htmlspecialchars($taskName) ?>" checked> <?= htmlspecialchars($taskName) ?></label>
-                            <?php endforeach; ?>
+                            <div class="filter-task-list">
+                                <?php foreach ($taskNames as $taskName): ?>
+                                    <label class="filter-option"><input type="checkbox" data-filter="task" value="<?= htmlspecialchars($taskName) ?>" checked> <?= htmlspecialchars($taskName) ?></label>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                         <div class="filter-panel-actions">
                             <button type="button" class="btn btn-sm btn-secondary" onclick="clearFilterPanel(this)">Clear</button>
