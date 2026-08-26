@@ -46,7 +46,15 @@ function positionSelectDropdownMenu(trigger, menu) {
     const rect = trigger.getBoundingClientRect();
     menu.style.top = (rect.bottom + 6) + 'px';
     menu.style.left = rect.left + 'px';
-    menu.style.width = rect.width + 'px';
+    // min-width (not a fixed width): a full-width form field's trigger is
+    // already wide enough, but a compact one (e.g. the Daily/Weekly/Monthly
+    // range picker) is narrower than its own longest option needs once the
+    // selected item's checkmark icon is added -- forcing width to match
+    // squeezed that content and made an unwanted horizontal scrollbar
+    // appear inside the menu. min-width keeps the menu at least as wide as
+    // the trigger while letting it grow to fit its actual content.
+    menu.style.minWidth = rect.width + 'px';
+    menu.style.width = 'max-content';
 }
 
 function closeAllSelectDropdowns() {
