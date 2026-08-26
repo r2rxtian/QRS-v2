@@ -146,7 +146,11 @@ $recentTasks = array_slice($todaysTasks, 0, 4);
 // the sub-tasks. Prefer whichever of today's tasks isn't fully completed
 // yet, most recently started; otherwise fall back to the most recently
 // created task that has locations assigned today.
-$tasksWithLocationsToday = array_values(array_filter($todaysTasks, fn($t) => (int) $t['total_locations'] > 0));
+// Excludes has_missed the same way tasks.php/qradmin.php exclude it from
+// their On-going/Completed tiles: a task with a missed location has nothing
+// actually in progress, so it shouldn't win "Current Task" over a genuinely
+// active one, or be shown at all once it's the only candidate left.
+$tasksWithLocationsToday = array_values(array_filter($todaysTasks, fn($t) => (int) $t['total_locations'] > 0 && !$t['has_missed']));
 usort($tasksWithLocationsToday, function ($a, $b) {
     $aActive = $a['status']['code'] !== 'completed' ? 1 : 0;
     $bActive = $b['status']['code'] !== 'completed' ? 1 : 0;
