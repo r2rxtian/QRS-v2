@@ -1388,12 +1388,17 @@ select.form-input {
     color: var(--primary);
 }
 
+/* position:fixed (not absolute) with top/left/width set inline by
+   select-dropdown.js from the trigger's own bounding rect once opened, same
+   fix and same reason as .date-picker-panel: a select-dropdown inside a
+   modal (.modal-body has overflow-y:auto) would otherwise get clipped by
+   that scroll container whenever the menu falls past its visible area,
+   forcing a scroll to see options that just opened. z-index above
+   .modal-overlay's 1000 now that it's reparented to <body> as a sibling
+   of the modal instead of a descendant riding on the modal's own stacking. */
 .select-dropdown-menu {
     display: none;
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    right: 0;
+    position: fixed;
     max-height: 220px;
     overflow-y: auto;
     background: var(--surface);
@@ -1401,10 +1406,10 @@ select.form-input {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
     padding: 8px;
-    z-index: 60;
+    z-index: 1100;
 }
 
-.select-dropdown.open .select-dropdown-menu {
+.select-dropdown-menu.open {
     display: flex;
     flex-direction: column;
     gap: 2px;
