@@ -136,10 +136,28 @@ async function exportReportToPDF() {
 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'landscape' });
+
+        // Company logo, top-left of the first page. Reuses the same
+        // same-origin-image-to-JPEG-data-URL loader already used for each
+        // row's photos (see loadImageForPdf above) instead of a separate
+        // path -- the logo has no transparency, so the JPEG re-encode loses
+        // nothing. Title/generated-date text shifts right of it so neither
+        // one overlaps the other.
+        const LOGO_PATH = '../assets/images/la-rose-noire-logo.png';
+        const LOGO_SIZE = 26; // mm square
+        const TEXT_X = 5 + LOGO_SIZE + 4;
+        try {
+            const logo = await loadImageForPdf(LOGO_PATH);
+            doc.addImage(logo.dataUrl, 'JPEG', 5, 5, LOGO_SIZE, LOGO_SIZE);
+        } catch (e) {
+            // Missing/unreachable logo shouldn't block the export -- title
+            // just leaves that space blank instead.
+        }
+
         doc.setFontSize(14);
-        doc.text('Task Report', 14, 15);
+        doc.text('Task Report', TEXT_X, 17);
         doc.setFontSize(10);
-        doc.text('Generated: ' + new Date().toLocaleString(), 14, 21);
+        doc.text('Generated: ' + new Date().toLocaleString(), TEXT_X, 24);
 
         // Photos read as a small gallery rather than a thumbnail strip,
         // whether or not that particular row has photos -- so the Images
@@ -198,7 +216,7 @@ async function exportReportToPDF() {
         doc.autoTable({
             head: [headers],
             body: body,
-            startY: 26,
+            startY: 34, // clears the enlarged (26mm) logo's bottom edge at y=31
             margin: { left: 5, right: 5 },
             styles: { fontSize: 6.5, cellPadding: 1, valign: 'middle' },
             headStyles: { fontSize: 6.5, halign: 'center', valign: 'middle' },
