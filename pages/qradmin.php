@@ -246,6 +246,16 @@ if (!empty($tasks)) {
                         </div>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label for="allTasksEntries" class="form-label">Show</label>
+                    <select id="allTasksEntries" class="form-input" onchange="onAllTasksEntriesChange(this.value)">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="all">All</option>
+                    </select>
+                    <span class="form-label">entries</span>
+                </div>
             </div>
         </div>
         <div class="table-wrapper">

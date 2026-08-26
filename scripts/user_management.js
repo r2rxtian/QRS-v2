@@ -233,6 +233,9 @@ async function changeUserStatus(button) {
 
 document.addEventListener('DOMContentLoaded', function () {
     if (document.getElementById('usersTable') && typeof paginateTable === 'function') {
-        paginateTable({ tableId: 'usersTable', paginationId: 'usersPagination', rowsPerPage: 10 });
+        const usersPager = paginateTable({ tableId: 'usersTable', paginationId: 'usersPagination', rowsPerPage: 10 });
+        window.onUsersEntriesChange = function(value) {
+            usersPager.setRowsPerPage(value === 'all' ? 'all' : parseInt(value, 10));
+        };
     }
 });

@@ -160,6 +160,16 @@ $statTotal = count($locations);
                     </div>
                 </div>
                 <input type="text" class="form-input table-search-input" data-target="locationsTable" placeholder="Search locations…" style="width: 220px;">
+                <div class="form-group">
+                    <label for="locationsEntries" class="form-label">Show</label>
+                    <select id="locationsEntries" class="form-input" onchange="onLocationsEntriesChange(this.value)">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="all">All</option>
+                    </select>
+                    <span class="form-label">entries</span>
+                </div>
             </div>
         </div>
         <?php if ($canManage): ?>

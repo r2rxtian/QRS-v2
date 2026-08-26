@@ -240,6 +240,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const tasksPager = paginateTable({ tableId: 'tasksTable', paginationId: 'tasksPagination', rowsPerPage: 10 });
     makeSortable('tasksTable', tasksPager);
 
+    window.onTasksEntriesChange = function(value) {
+        tasksPager.setRowsPerPage(value === 'all' ? 'all' : parseInt(value, 10));
+    };
+
     const dateInput = document.getElementById('task_date');
     const dateLabel = document.getElementById('task_date_label');
     if (dateInput && dateLabel) {

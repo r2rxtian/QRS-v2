@@ -205,6 +205,12 @@ function showMessage(message, type = 'info') {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    const locationsPager = paginateTable({ tableId: 'locationsTable', paginationId: 'locationsPagination', rowsPerPage: 8 });
+    // 10, matching the same "Show entries" default used everywhere else
+    // this selector appears (Task Manager, All Tasks, Task Report).
+    const locationsPager = paginateTable({ tableId: 'locationsTable', paginationId: 'locationsPagination', rowsPerPage: 10 });
     makeSortable('locationsTable', locationsPager);
+
+    window.onLocationsEntriesChange = function(value) {
+        locationsPager.setRowsPerPage(value === 'all' ? 'all' : parseInt(value, 10));
+    };
 });

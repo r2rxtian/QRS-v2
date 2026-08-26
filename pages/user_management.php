@@ -89,6 +89,16 @@ $manageableUsers = $stmt->fetchAll();
                         </div>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label for="usersEntries" class="form-label">Show</label>
+                    <select id="usersEntries" class="form-input" onchange="onUsersEntriesChange(this.value)">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="all">All</option>
+                    </select>
+                    <span class="form-label">entries</span>
+                </div>
                 <button type="button" class="btn btn-primary" onclick="showModal('addUserModal')"><i class="fas fa-user-plus"></i> Add User</button>
             </div>
         </div>
