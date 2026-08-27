@@ -217,7 +217,7 @@ async function exportReportToPDF() {
             head: [headers],
             body: body,
             startY: 34, // clears the enlarged (26mm) logo's bottom edge at y=31
-            margin: { left: 5, right: 5 },
+            margin: { left: 5, right: 5, bottom: 16 }, // keeps table rows clear of the document-control footer drawn below
             styles: { fontSize: 6.5, cellPadding: 1, valign: 'middle' },
             headStyles: { fontSize: 6.5, halign: 'center', valign: 'middle' },
             // Without this, autoTable slices a row that doesn't fully fit in
@@ -283,6 +283,34 @@ async function exportReportToPDF() {
                 });
             },
         });
+
+        // Document-control footer, printed on every page: report title +
+        // document code on the left, effectivity date + revision on the
+        // right (same layout as the company's other controlled forms, e.g.
+        // the FSMS Risk Assessment form). Effectivity Date is a fixed value
+        // your QA/compliance process assigns, not something computed from
+        // "today" each export -- update it here once that date is set.
+        const FOOTER_TITLE = 'QR Task Check Accomplishment Report';
+        const FOOTER_DOC_CODE = 'Document Code: IMS-F-091';
+        const FOOTER_EFFECTIVITY = 'Effectivity Date: 08-27-2026'; // placeholder -- replace with the officially assigned date
+        const FOOTER_REVISION = 'Revision: 00';
+
+        const pageCount = doc.internal.getNumberOfPages();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        for (let p = 1; p <= pageCount; p++) {
+            doc.setPage(p);
+            doc.setDrawColor(180);
+            doc.line(5, pageHeight - 11, pageWidth - 5, pageHeight - 11);
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(30, 64, 175);
+            doc.text(FOOTER_TITLE, 5, pageHeight - 7);
+            doc.text(FOOTER_DOC_CODE, 5, pageHeight - 3.5);
+            doc.text(FOOTER_EFFECTIVITY, pageWidth - 5, pageHeight - 7, { align: 'right' });
+            doc.text(FOOTER_REVISION, pageWidth - 5, pageHeight - 3.5, { align: 'right' });
+        }
+        doc.setTextColor(0, 0, 0);
 
         doc.save('task-report-' + new Date().toISOString().slice(0, 10) + '.pdf');
     } finally {
