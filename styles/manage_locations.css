@@ -14,6 +14,52 @@
     color: var(--gray-900);
 }
 
+/* Add Location modal's post-create step (see manage_locations.js
+   submitAddLocation()) -- replaces the form fields in place once creation
+   succeeds, so the modal stays open long enough to actually see/download
+   the QR code instead of it only ever existing as a tiny table thumbnail. */
+.add-location-qr-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 6px 0 2px;
+}
+
+.add-location-qr-success {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--success);
+    margin-bottom: 16px;
+}
+
+.add-location-qr-img {
+    width: 180px;
+    height: 180px;
+    border-radius: 10px;
+    border: 1px solid var(--gray-200);
+    background: var(--surface);
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.add-location-qr-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 6px;
+}
+
+.add-location-qr-caption {
+    font-size: 13px;
+    color: var(--gray-500);
+    margin: 0;
+    max-width: 280px;
+}
+
 .csv-upload-row {
     display: flex;
     align-items: center;

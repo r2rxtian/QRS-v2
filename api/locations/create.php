@@ -50,4 +50,12 @@ $locationId = (int) $stmt->fetchColumn();
 
 writeAuditLog($authUser['id'], 'location.create', 'location', $locationId, ['name' => $name, 'location_type' => $locationType]);
 
-echo json_encode(['success' => true, 'message' => 'Location added successfully!', 'type' => 'success', 'data' => ['location_id' => $locationId]]);
+// name/qr_token/location_type returned alongside the id so the modal can
+// render a QR preview immediately, without a second round-trip just to
+// look up what it already knows it just inserted.
+echo json_encode(['success' => true, 'message' => 'Location added successfully!', 'type' => 'success', 'data' => [
+    'location_id' => $locationId,
+    'name' => $name,
+    'qr_token' => $qrToken,
+    'location_type' => $locationType,
+]]);

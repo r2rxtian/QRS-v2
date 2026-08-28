@@ -547,20 +547,18 @@
 }
 
 /* --- Today's task timeline --- */
-/* Floor is exactly 2 items' worth of height (measured: 58px per item + an
-   18px gap = 134px, +2px for rounding safety) so a short window always
-   shows at least 2 without scrolling; on a taller window this grows with
-   the viewport (up to a point) instead of staying pinned at 2 and leaving
-   the extra room as dead space -- a 3rd/4th item becomes visible instead of
-   needing a scroll, and anything beyond what fits still scrolls inside the
-   card rather than growing it past the main column's height. */
+/* Fixed at exactly 3 items' worth of height (measured: 210px), not a
+   viewport-relative clamp -- a 4th+ item scrolls inside the card instead of
+   growing it, and a fixed `height` (not `max-height`) holds the card at
+   that same size even with zero items, so the card's position and height
+   never shift based on how many tasks there are today. */
 .timeline {
     position: relative;
     display: flex;
     flex-direction: column;
     gap: 18px;
     padding-left: 18px;
-    max-height: clamp(136px, 15vh, 240px);
+    height: 210px;
     overflow-y: auto;
     padding-right: 4px;
 }

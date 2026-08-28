@@ -19,6 +19,7 @@ const QRS_CAPABILITIES = [
     'task.create' => [ROLE_ADMIN],
     'task.delete' => [ROLE_ADMIN],       // soft delete
     'location.create' => [ROLE_ADMIN],
+    'location.update' => [ROLE_ADMIN],
     'location.delete' => [ROLE_ADMIN],
     'location.import_csv' => [ROLE_ADMIN],
     'task_location.assign' => [ROLE_ADMIN],

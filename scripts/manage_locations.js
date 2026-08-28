@@ -20,7 +20,13 @@ function confirmDeleteLocation(button) {
     closeAllKebabs();
     const row = button.closest('tr');
     const locationId = row.dataset.locationId;
-    const locationName = row.querySelector('.location-name').textContent;
+    // .location-name's own textContent also picks up the whitespace/newlines
+    // sitting between the icon div and the name <span> in the PHP template's
+    // markup -- harmless as plain text, but #confirmModal .modal-body is
+    // white-space:pre-line (so multi-line messages render correctly), which
+    // turned that stray whitespace into visible blank lines around the name.
+    // Reading the <span> itself skips the icon markup entirely.
+    const locationName = row.querySelector('.location-name span').textContent.trim();
     document.getElementById('confirmBody').textContent = `Are you sure you want to delete "${locationName}"?`;
 
     const yesBtn = document.getElementById('confirmBtn');
@@ -58,6 +64,12 @@ function confirmDeleteLocation(button) {
     showModal('confirmModal');
 }
 
+// Set once a create actually succeeds, so closeAddLocationModal() knows
+// whether the table behind it needs a reload -- closing out of the plain
+// form step (Cancel, or the X before ever submitting) shouldn't reload for
+// no reason.
+let _addLocationCreated = false;
+
 async function submitAddLocation() {
     const input = document.getElementById('location_name_input');
     const btn = document.getElementById('addLocationSubmitBtn');
@@ -78,16 +90,160 @@ async function submitAddLocation() {
         const response = await fetch('../api/locations/create.php', { method: 'POST', body: formData });
         const data = await response.json();
 
-        closeModal('addLocationModal');
-        showMessage(data.message, data.type || (data.success ? 'success' : 'error'));
+        if (!data.success) {
+            showMessage(data.message, data.type || 'error');
+            return;
+        }
+
+        // Stays open on success instead of closing immediately -- the QR
+        // code is the whole point of adding a location, so the user gets a
+        // chance to actually see and download it here rather than it only
+        // ever existing as a tiny thumbnail back in the table row.
+        _addLocationCreated = true;
+        input.value = '';
+
+        const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(data.data.qr_token);
+        const qrImg = document.getElementById('addLocationQrImg');
+        qrImg.src = qrUrl;
+        qrImg.dataset.downloadName = data.data.name;
+        qrImg.dataset.qrToken = data.data.qr_token; // kept separately so Print can request its own larger size, independent of the smaller preview src
+        document.getElementById('addLocationQrName').textContent = data.data.name + ' · ' + data.data.location_type;
+
+        document.getElementById('addLocationFormStep').style.display = 'none';
+        document.getElementById('addLocationQrStep').style.display = 'block';
+        document.getElementById('addLocationCancelBtn').style.display = 'none';
+        document.getElementById('addLocationSubmitBtn').style.display = 'none';
+        document.getElementById('addLocationDownloadBtn').style.display = '';
+        document.getElementById('addLocationPrintBtn').style.display = '';
+        document.getElementById('addLocationDoneBtn').style.display = '';
+    } catch (err) {
+        showMessage('Could not reach the server. Please try again.', 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// Fetched as a blob (not a plain <a download> on the cross-origin QR URL)
+// so it forces an actual file save reliably regardless of the browser's own
+// cross-origin download-attribute quirks -- the QR API sends permissive
+// CORS headers, so this works without needing our own server in the middle.
+async function downloadAddLocationQr() {
+    const img = document.getElementById('addLocationQrImg');
+    const btn = document.getElementById('addLocationDownloadBtn');
+    btn.disabled = true;
+    try {
+        const response = await fetch(img.src);
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const safeName = (img.dataset.downloadName || 'location').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = safeName + '-qr.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+        showMessage('Could not download the QR code. Please try again.', 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// Same new-window-and-print approach as the table's own printQR() (see
+// above), just reading from the modal's own preview image/name instead of a
+// table row -- printQR() itself can't be reused directly since it locates
+// its image via button.closest('tr'), which doesn't exist in this modal.
+function printAddLocationQr() {
+    const img = document.getElementById('addLocationQrImg');
+    const name = img.dataset.downloadName || 'Location';
+    const safeName = escapeHtml(name);
+    const printUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(img.dataset.qrToken || '');
+    const win = window.open('', '_blank', 'width=400,height=500');
+    win.document.write('<html><head><title>Print QR — ' + safeName + '</title>');
+    win.document.write('<style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;font-family:sans-serif;}img{width:250px;height:250px;}</style>');
+    win.document.write('</head><body>');
+    win.document.write('<img src="' + printUrl + '">');
+    win.document.write('<h3>' + safeName + '</h3>');
+    win.document.write('</body></html>');
+    win.document.close();
+    win.focus();
+    win.print();
+}
+
+// Resets the modal back to its form step every time it closes, so it never
+// reopens still showing the previous location's QR code, and reloads the
+// page only if a location was actually created during this open (no reason
+// to reload just because the user hit Cancel).
+function closeAddLocationModal() {
+    closeModal('addLocationModal');
+    const wasCreated = _addLocationCreated;
+    _addLocationCreated = false;
+
+    document.getElementById('addLocationFormStep').style.display = '';
+    document.getElementById('addLocationQrStep').style.display = 'none';
+    document.getElementById('addLocationCancelBtn').style.display = '';
+    document.getElementById('addLocationSubmitBtn').style.display = '';
+    document.getElementById('addLocationDownloadBtn').style.display = 'none';
+    document.getElementById('addLocationPrintBtn').style.display = 'none';
+    document.getElementById('addLocationDoneBtn').style.display = 'none';
+
+    if (wasCreated) {
+        window.location.reload();
+    }
+}
+
+// Reads the row's own current data straight out of the table -- no extra
+// round-trip to fetch a location by id just to populate a form that's
+// already sitting right there on screen.
+function openEditLocationModal(button) {
+    closeAllKebabs();
+    const row = button.closest('tr');
+    const locationId = row.dataset.locationId;
+    const locationType = row.dataset.loctype;
+    const locationName = row.querySelector('.location-name span').textContent.trim();
+
+    document.getElementById('edit_location_id_input').value = locationId;
+    document.getElementById('edit_location_name_input').value = locationName;
+    document.getElementById('edit_location_type_display').textContent = locationType;
+
+    showModal('editLocationModal');
+}
+
+async function submitEditLocation() {
+    const locationId = document.getElementById('edit_location_id_input').value;
+    const input = document.getElementById('edit_location_name_input');
+    const btn = document.getElementById('editLocationSubmitBtn');
+    const name = input.value.trim();
+
+    if (!name) {
+        showMessage('Please enter a location name.', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.set('csrf_token', QRS_CSRF_TOKEN);
+    formData.set('location_id', locationId);
+    formData.set('location_name', name);
+
+    btn.disabled = true;
+    try {
+        const response = await fetch('../api/locations/update.php', { method: 'POST', body: formData });
+        const data = await response.json();
+
+        closeModal('editLocationModal');
+        showToast(data.message, data.type || (data.success ? 'success' : 'error'));
 
         if (data.success) {
-            input.value = '';
+            // Reload rather than patching the row in place -- Location Name
+            // also drives the row's sort position and its search/filter
+            // text, both of which paginateTable/table-search read straight
+            // from the DOM rather than re-querying.
             setTimeout(() => window.location.reload(), 1000);
         }
     } catch (err) {
-        closeModal('addLocationModal');
-        showMessage('Could not reach the server. Please try again.', 'error');
+        closeModal('editLocationModal');
+        showToast('Could not reach the server. Please try again.', 'error');
     } finally {
         btn.disabled = false;
     }

@@ -228,17 +228,24 @@ async function exportReportToPDF() {
             // photos render small seemingly at random. This forces the whole
             // row onto the next page instead of splitting it.
             rowPageBreak: 'avoid',
+            // halign set per column (not left at headStyles' single default)
+            // so each column's header sits over body text aligned the same
+            // way, instead of every header forcing to center while body
+            // text defaults to left -- free-text columns (name/area/user/
+            // remarks) stay left-aligned since centering a variable-length
+            // name reads worse, short fixed-format values (date/time/code/
+            // status) center to match their own centered header.
             columnStyles: {
-                0: { cellWidth: 16 },  // Task Name
-                1: { cellWidth: 20 },  // Area
-                2: { cellWidth: 20 },  // Scheduled Date
-                3: { cellWidth: 15 },  // Biometrics
-                4: { cellWidth: 14 },  // User
-                5: { cellWidth: 12 },  // Start Time
-                6: { cellWidth: 12 },  // End Time
-                7: { cellWidth: REMARKS_COL_WIDTH }, // Remarks -- drawn manually, see below
-                8: { cellWidth: 13 },  // Status
-                9: { cellWidth: IMAGES_COL_WIDTH, minCellHeight: IMAGES_ROW_HEIGHT }, // Images -- dedicated space, same on every row
+                0: { cellWidth: 16, halign: 'left' },    // Task Name
+                1: { cellWidth: 20, halign: 'left' },    // Area
+                2: { cellWidth: 20, halign: 'center' },  // Scheduled Date
+                3: { cellWidth: 15, halign: 'center' },  // Biometrics
+                4: { cellWidth: 14, halign: 'left' },    // User
+                5: { cellWidth: 12, halign: 'center' },  // Start Time
+                6: { cellWidth: 12, halign: 'center' },  // End Time
+                7: { cellWidth: REMARKS_COL_WIDTH, halign: 'left' }, // Remarks -- drawn manually, see below
+                8: { cellWidth: 13, halign: 'center' },  // Status
+                9: { cellWidth: IMAGES_COL_WIDTH, halign: 'center', minCellHeight: IMAGES_ROW_HEIGHT }, // Images -- dedicated space, same on every row
             },
             // Reserves this row's actual Remarks height (computed above from
             // its real line count) and blanks out the cell's own text so
@@ -253,7 +260,15 @@ async function exportReportToPDF() {
                 if (data.section === 'body' && data.column.index === 7) {
                     const lines = rowRemarksLines[data.row.index] || [];
                     doc.setFontSize(FONT_SIZE);
-                    let y = data.cell.y + CELL_PADDING + LINE_HEIGHT * 0.8;
+                    // Centered within the row's actual height (data.cell.height),
+                    // not the Remarks column's own (often shorter) minCellHeight --
+                    // the Images column's fixed minCellHeight is frequently what
+                    // sets the real row height, and every other column already
+                    // centers via valign:'middle', so a short remark was
+                    // previously left sitting at the top of a much taller row
+                    // instead of matching its neighbors.
+                    const textBlockHeight = Math.max(lines.length, 1) * LINE_HEIGHT;
+                    let y = data.cell.y + (data.cell.height - textBlockHeight) / 2 + LINE_HEIGHT * 0.8;
                     lines.forEach(function (line) {
                         if (line.text !== '') {
                             doc.setFont('helvetica', line.bold ? 'bold' : 'normal');
@@ -272,8 +287,16 @@ async function exportReportToPDF() {
                 // strictly inside its own row's bounds, never bleeding into
                 // the row above/below.
                 const boxSize = Math.max(0, Math.min(THUMB_SIZE, data.cell.height - THUMB_PAD * 2));
+                // Group centered horizontally in the (fixed-width) cell instead
+                // of always starting flush left -- a row with 1 photo used to
+                // sit at the left edge of space reserved for 3, while a row
+                // with 3 filled it entirely; the reserved column width and
+                // thumb size are unchanged, only where the used portion sits
+                // within it.
+                const groupWidth = photos.length > 0 ? photos.length * boxSize + (photos.length - 1) * THUMB_GAP : 0;
+                const groupStartX = data.cell.x + Math.max(THUMB_PAD, (data.cell.width - groupWidth) / 2);
                 photos.forEach(function (photo, i) {
-                    const boxX = data.cell.x + THUMB_PAD + i * (boxSize + THUMB_GAP);
+                    const boxX = groupStartX + i * (boxSize + THUMB_GAP);
                     if (boxSize <= 0 || boxX + boxSize > data.cell.x + data.cell.width) return;
                     const boxY = data.cell.y + Math.max(0, (data.cell.height - boxSize) / 2);
                     const ratio = Math.min(boxSize / photo.width, boxSize / photo.height);
@@ -304,7 +327,7 @@ async function exportReportToPDF() {
             doc.line(5, pageHeight - 11, pageWidth - 5, pageHeight - 11);
             doc.setFontSize(7.5);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(30, 64, 175);
+            doc.setTextColor(0, 0, 0);
             doc.text(FOOTER_TITLE, 5, pageHeight - 7);
             doc.text(FOOTER_DOC_CODE, 5, pageHeight - 3.5);
             doc.text(FOOTER_EFFECTIVITY, pageWidth - 5, pageHeight - 7, { align: 'right' });

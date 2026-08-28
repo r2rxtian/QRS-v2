@@ -688,7 +688,13 @@ button:disabled {
 .main-content {
     margin-left: 280px;
     padding: 28px 36px 48px;
-    max-width: 1400px;
+    /* No max-width: this is a block box after the sidebar's margin-left, so
+       it already fills exactly the remaining viewport width on its own --
+       a max-width here just stopped it short on anything wider than
+       280+1400=1680px, leaving a plain, empty band of background down the
+       right edge of every page (visible above ~1680px-wide windows/
+       monitors) instead of letting the cards/tables inside actually use
+       that space. */
 }
 
 /* Legacy container/page-header wrapper kept for any page that still uses it */
@@ -1760,8 +1766,191 @@ table {
     border-collapse: collapse;
 }
 
+/* Card containers no longer cap out at 1400px (see .main-content), so on a
+   wide monitor these tables have a lot more room than they used to. Two
+   earlier approaches were tried and rejected before this one:
+     1. Plain browser auto-layout spread the leftover width evenly across
+        every column, including short fixed-format ones (a count, a date, a
+        status pill, a row of action icons) -- leaving wide, empty gaps
+        around them instead of the space going to columns actually worth
+        reading.
+     2. Shrinking those short columns to bare content-width (width:1%) fixed
+        that, but then dumped 100% of the freed space into whichever single
+        column was left flexible (Location Name, Task) -- which just moved
+        the awkward empty gap from "around every short column" to "trailing
+        after one long column's text, every single row".
+   table-layout:fixed with an explicit percentage per column (below) fixes
+   both at once: every column -- short or long -- gets a width that's a
+   fixed proportion of however wide the card happens to be, so growing the
+   card grows every column together (real proportional scaling) instead of
+   funneling all the growth into one spot. Percentages are weighted toward
+   whichever column holds the actual identifying text (Task, Location Name,
+   Name), same as before, just capped rather than unbounded.
+   Scoped to these four tables specifically -- Task Report's 10-column
+   table keeps plain auto-layout instead (see #reportTable below): forcing
+   that many columns to always fit the card's width with no overflow would
+   crush its Remarks/Images columns on any narrower screen, where letting it
+   scroll horizontally (.table-wrapper's overflow-x:auto) reads better than
+   forcing everything to fit. */
+#tasksTable,
+#allTasksTable,
+#locationsTable,
+#usersTable {
+    table-layout: fixed;
+}
+
+/* Percentages are anchored with :nth-last-child (counting from the end)
+   rather than :nth-child from the front, because tasksTable/locationsTable
+   both have a leading checkbox column that only renders conditionally (see
+   $canDeleteTask / $hasCheckboxColumn in the page templates) -- counting
+   from the end keeps each rule pointing at the same real column regardless
+   of whether that checkbox is present. When it is present, its own width
+   just adds on top (a harmless few % over 100 that fixed-layout tables
+   scale back down proportionally), rather than needing a second variant of
+   every rule. */
+/* Every rule below also centers its column: a badge, a count, a date, or an
+   icon left-aligned in a column that's wider than its own content just
+   trails a gap behind it -- the exact same "awkward white space" look,
+   only spread across more columns instead of concentrated in one. Centered,
+   any leftover width in the column reads as intentional padding either
+   side of the content instead. Task/Location Name/Assigned By/Name are
+   left out of this and keep the default left-align -- centering a
+   multi-word name or an avatar+name pairing reads worse, not better. */
+#tasksTable th:nth-last-child(1), #tasksTable td:nth-last-child(1), /* Actions */
+#allTasksTable th:nth-last-child(1), #allTasksTable td:nth-last-child(1) {
+    width: 7%;
+    white-space: nowrap;
+    text-align: center;
+}
+#tasksTable th:nth-last-child(2), #tasksTable td:nth-last-child(2), /* Status */
+#allTasksTable th:nth-last-child(2), #allTasksTable td:nth-last-child(2) {
+    width: 9%;
+    white-space: nowrap;
+    text-align: center;
+}
+#tasksTable th:nth-last-child(3), #tasksTable td:nth-last-child(3), /* Schedule */
+#allTasksTable th:nth-last-child(3), #allTasksTable td:nth-last-child(3) {
+    width: 14%;
+    white-space: nowrap;
+    text-align: center;
+}
+#tasksTable th:nth-last-child(4), #tasksTable td:nth-last-child(4), /* Completion */
+#allTasksTable th:nth-last-child(4), #allTasksTable td:nth-last-child(4) {
+    width: 12%;
+    white-space: nowrap;
+    text-align: center;
+}
+#tasksTable th:nth-last-child(5), #tasksTable td:nth-last-child(5), /* Locations */
+#allTasksTable th:nth-last-child(5), #allTasksTable td:nth-last-child(5) {
+    width: 12%;
+    white-space: nowrap;
+    text-align: center;
+}
+#tasksTable th:nth-last-child(6), #tasksTable td:nth-last-child(6), /* Assigned By */
+#allTasksTable th:nth-last-child(6), #allTasksTable td:nth-last-child(6) {
+    width: 21%;
+}
+#tasksTable th:nth-last-child(7), #tasksTable td:nth-last-child(7), /* Task */
+#allTasksTable th:nth-last-child(7), #allTasksTable td:nth-last-child(7) {
+    width: 25%;
+}
+#tasksTable th:nth-last-child(8), #tasksTable td:nth-last-child(8) { /* checkbox, when $canDeleteTask */
+    width: 4%;
+    white-space: nowrap;
+    text-align: center;
+}
+
+#locationsTable th:nth-last-child(1), #locationsTable td:nth-last-child(1) { /* Actions */
+    width: 10%;
+    white-space: nowrap;
+    text-align: center;
+}
+#locationsTable th:nth-last-child(2), #locationsTable td:nth-last-child(2) { /* Date Added */
+    width: 14%;
+    white-space: nowrap;
+    text-align: center;
+}
+#locationsTable th:nth-last-child(3), #locationsTable td:nth-last-child(3) { /* Status */
+    width: 14%;
+    white-space: nowrap;
+    text-align: center;
+}
+#locationsTable th:nth-last-child(4), #locationsTable td:nth-last-child(4) { /* Type */
+    width: 14%;
+    white-space: nowrap;
+    text-align: center;
+}
+#locationsTable th:nth-last-child(5), #locationsTable td:nth-last-child(5) { /* Location Name */
+    width: 40%;
+}
+#locationsTable th:nth-last-child(6), #locationsTable td:nth-last-child(6) { /* QR Code */
+    width: 8%;
+    white-space: nowrap;
+    text-align: center;
+}
+#locationsTable th:nth-last-child(7), #locationsTable td:nth-last-child(7) { /* checkbox, when $hasCheckboxColumn */
+    width: 4%;
+    white-space: nowrap;
+    text-align: center;
+}
+
+#usersTable th:nth-last-child(1), #usersTable td:nth-last-child(1) { /* Actions */
+    width: 8%;
+    white-space: nowrap;
+    text-align: center;
+}
+#usersTable th:nth-last-child(2), #usersTable td:nth-last-child(2) { /* Last Login */
+    width: 16%;
+    white-space: nowrap;
+    text-align: center;
+}
+#usersTable th:nth-last-child(3), #usersTable td:nth-last-child(3) { /* Status */
+    width: 14%;
+    white-space: nowrap;
+    text-align: center;
+}
+#usersTable th:nth-last-child(4), #usersTable td:nth-last-child(4) { /* Role */
+    width: 14%;
+    white-space: nowrap;
+    text-align: center;
+}
+#usersTable th:nth-last-child(5), #usersTable td:nth-last-child(5) { /* Biometrics ID */
+    width: 16%;
+    white-space: nowrap;
+    text-align: center;
+}
+#usersTable th:nth-last-child(6), #usersTable td:nth-last-child(6) { /* Name */
+    width: 32%;
+}
+
+/* Task Report deliberately stays table-layout:auto (see the big comment
+   above) -- but its short/fixed-format columns still get the same
+   shrink-to-content-and-center treatment the other four tables have, so
+   leftover width goes to the columns actually worth reading (Task, Area,
+   User, Remarks) instead of spreading evenly into Scheduled Date/
+   Biometrics/Start Time/End Time/Status too. Not contiguous from the end
+   (Images and Remarks -- both meant to stay flexible -- sit in between),
+   hence the explicit list instead of an :nth-last-child(-n+k) range. Also
+   matches the halign choices already made for these same columns in the
+   exported PDF (see scripts/task_report.js's columnStyles), so the
+   on-screen table and the PDF read the same way. */
+#reportTable th:nth-last-child(2),
+#reportTable td:nth-last-child(2), /* Status */
+#reportTable th:nth-last-child(4),
+#reportTable td:nth-last-child(4), /* End Time */
+#reportTable th:nth-last-child(5),
+#reportTable td:nth-last-child(5), /* Start Time */
+#reportTable th:nth-last-child(7),
+#reportTable td:nth-last-child(7), /* Biometrics */
+#reportTable th:nth-last-child(8),
+#reportTable td:nth-last-child(8) { /* Scheduled Date */
+    width: 1%;
+    white-space: nowrap;
+    text-align: center;
+}
+
 thead th {
-    padding: 14px 16px;
+    padding: 16px 20px;
     text-align: left;
     font-size: 12px;
     font-weight: 600;
@@ -1773,7 +1962,7 @@ thead th {
 }
 
 tbody td {
-    padding: 20px 16px;
+    padding: 22px 20px;
     border-bottom: 1px solid var(--gray-100);
     font-size: 14px;
     color: var(--gray-600);

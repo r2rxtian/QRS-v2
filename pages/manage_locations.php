@@ -230,6 +230,7 @@ $statTotal = count($locations);
                                         <div class="kebab-menu">
                                             <button type="button" onclick="printQR(<?= htmlspecialchars(json_encode($location['name'], JSON_HEX_QUOT | JSON_HEX_APOS | JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES) ?>, this)"><i class="fas fa-print"></i> Print QR</button>
                                             <?php if ($canManage): ?>
+                                                <button type="button" onclick="openEditLocationModal(this)"><i class="fas fa-pen-to-square"></i> Edit</button>
                                                 <button type="button" class="kebab-danger" onclick="confirmDeleteLocation(this)"><i class="fas fa-trash"></i> Delete</button>
                                             <?php endif; ?>
                                         </div>
@@ -251,39 +252,84 @@ $statTotal = count($locations);
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title">Add New Location</h3>
-                <button type="button" class="modal-close" onclick="closeModal('addLocationModal')">
+                <button type="button" class="modal-close" onclick="closeAddLocationModal()">
                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
             <div class="modal-body">
-                <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 8px;">
-                    <label for="location_name_input" class="form-label">Location Name</label>
-                    <input type="text" id="location_name_input" class="form-input" placeholder="Enter location name..." style="width: 100%;">
-                </div>
-                <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 14px;">
-                    <label class="form-label">Type</label>
-                    <div class="select-dropdown" data-for="location_type_input">
-                        <button type="button" class="select-dropdown-trigger" onclick="toggleSelectDropdown(this)">
-                            <i class="fas fa-diagram-project"></i>
-                            <span class="select-dropdown-label"><?= htmlspecialchars(TASK_TYPES[0]) ?></span>
-                            <i class="fas fa-chevron-down select-dropdown-caret"></i>
-                        </button>
-                        <div class="select-dropdown-menu">
-                            <?php foreach (TASK_TYPES as $i => $type): ?>
-                                <div class="select-dropdown-option<?= $i === 0 ? ' selected' : '' ?>" data-value="<?= htmlspecialchars($type) ?>"><?= htmlspecialchars($type) ?></div>
-                            <?php endforeach; ?>
-                        </div>
+                <div id="addLocationFormStep">
+                    <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <label for="location_name_input" class="form-label">Location Name</label>
+                        <input type="text" id="location_name_input" class="form-input" placeholder="Enter location name..." style="width: 100%;">
                     </div>
-                    <select id="location_type_input" class="select-dropdown-native" tabindex="-1" aria-hidden="true">
-                        <?php foreach (TASK_TYPES as $type): ?>
-                            <option value="<?= htmlspecialchars($type) ?>"><?= htmlspecialchars($type) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 14px;">
+                        <label class="form-label">Type</label>
+                        <div class="select-dropdown" data-for="location_type_input">
+                            <button type="button" class="select-dropdown-trigger" onclick="toggleSelectDropdown(this)">
+                                <i class="fas fa-diagram-project"></i>
+                                <span class="select-dropdown-label"><?= htmlspecialchars(TASK_TYPES[0]) ?></span>
+                                <i class="fas fa-chevron-down select-dropdown-caret"></i>
+                            </button>
+                            <div class="select-dropdown-menu">
+                                <?php foreach (TASK_TYPES as $i => $type): ?>
+                                    <div class="select-dropdown-option<?= $i === 0 ? ' selected' : '' ?>" data-value="<?= htmlspecialchars($type) ?>"><?= htmlspecialchars($type) ?></div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <select id="location_type_input" class="select-dropdown-native" tabindex="-1" aria-hidden="true">
+                            <?php foreach (TASK_TYPES as $type): ?>
+                                <option value="<?= htmlspecialchars($type) ?>"><?= htmlspecialchars($type) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <!-- Shown in place of the form once creation succeeds -- stays
+                     up until the user closes the modal themselves (see
+                     closeAddLocationModal() in manage_locations.js), so they
+                     have a chance to actually see/download the QR code
+                     instead of it flashing by in a toast. -->
+                <div id="addLocationQrStep" class="add-location-qr-step" style="display:none;">
+                    <div class="add-location-qr-success"><i class="fas fa-circle-check"></i> Location added. Here's its QR code:</div>
+                    <img id="addLocationQrImg" class="add-location-qr-img" alt="QR code preview">
+                    <div class="add-location-qr-name" id="addLocationQrName"></div>
+                    <p class="add-location-qr-caption">Download this now, or print it later anytime from this location's row.</p>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('addLocationModal')">Cancel</button>
+                <button type="button" class="btn btn-secondary" id="addLocationCancelBtn" onclick="closeAddLocationModal()">Cancel</button>
                 <button type="button" class="btn btn-primary" id="addLocationSubmitBtn" onclick="submitAddLocation()"><i class="fas fa-circle-plus"></i> Add Location</button>
+                <button type="button" class="btn btn-secondary" id="addLocationDownloadBtn" style="display:none;" onclick="downloadAddLocationQr()"><i class="fas fa-download"></i> Download QR</button>
+                <button type="button" class="btn btn-secondary" id="addLocationPrintBtn" style="display:none;" onclick="printAddLocationQr()"><i class="fas fa-print"></i> Print</button>
+                <button type="button" class="btn btn-primary" id="addLocationDoneBtn" style="display:none;" onclick="closeAddLocationModal()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Location Modal -->
+    <div id="editLocationModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Location</h3>
+                <button type="button" class="modal-close" onclick="closeModal('editLocationModal')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit_location_id_input">
+                <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                    <label for="edit_location_name_input" class="form-label">Location Name</label>
+                    <input type="text" id="edit_location_name_input" class="form-input" placeholder="Enter location name..." style="width: 100%;">
+                </div>
+                <!-- Type isn't editable here -- shown only so the modal reads as
+                     "this location's data", not just a bare name field. -->
+                <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 14px;">
+                    <span class="form-label">Type</span>
+                    <span class="method-badge" id="edit_location_type_display"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editLocationModal')">Cancel</button>
+                <button type="button" class="btn btn-primary" id="editLocationSubmitBtn" onclick="submitEditLocation()"><i class="fas fa-check"></i> Save Changes</button>
             </div>
         </div>
     </div>
