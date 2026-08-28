@@ -14,7 +14,14 @@
 (function () {
     const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
     const WARNING_BEFORE_MS = 60 * 1000; // heads-up this long before the actual logout
-    const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000;
+    // Deliberately shorter than IDLE_TIMEOUT_MS, not equal to it: a
+    // heartbeat that only fires at the same 15-minute mark as the idle
+    // cutoff is a race against that cutoff's own 5-second poll (see
+    // CHECK_INTERVAL_MS below) instead of a guaranteed refresh before it --
+    // a quietly-reading (no clicks) user could lose that race and see a
+    // "session expired" they didn't earn. 12 minutes leaves a real 3-minute
+    // margin so the refresh always lands well before the timeout.
+    const HEARTBEAT_INTERVAL_MS = 12 * 60 * 1000;
     const CHECK_INTERVAL_MS = 5000;
 
     let lastActivityAt = Date.now();

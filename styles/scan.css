@@ -538,6 +538,24 @@ textarea.form-input {
     background-color: var(--primary-light);
 }
 
+/* Applied once the 3-photo cap (UPLOAD_MAX_PHOTOS_PER_SUBMISSION) is
+   reached -- see updatePhotoUploadControls() in scripts/scan.js. Grays
+   both pickers out and blocks clicks/keyboard activation; the underlying
+   <input type="file"> also gets the real `disabled` attribute so a
+   label-bypassing interaction (e.g. a screen reader jumping straight to
+   the input) can't reopen the file picker either. */
+.file-input-label.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.file-input-label.disabled:hover {
+    border-color: var(--gray-300);
+    color: var(--gray-700);
+    background-color: var(--surface);
+}
+
 input[type="file"] {
     display: none;
 }

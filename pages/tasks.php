@@ -443,14 +443,14 @@ if (!empty($tasks)) {
                         </div>
                     </div>
                     <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 8px;">
-                        <label for="task_name" class="form-label">Task Name</label>
+                        <label for="task_name" class="form-label">Task Name <span class="required-asterisk">*</span></label>
                         <div class="input-icon-wrap">
                             <i class="fas fa-file-lines"></i>
                             <input type="text" id="task_name" class="form-input" placeholder="Enter task name">
                         </div>
                     </div>
                     <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px;">
-                        <label class="form-label">Task Type</label>
+                        <label class="form-label">Task Type <span class="required-asterisk">*</span></label>
                         <div class="task-type-cards">
                             <?php foreach (TASK_TYPES as $type): $meta = TASK_TYPE_META[$type]; ?>
                                 <button type="button" class="task-type-card" data-value="<?= htmlspecialchars($type) ?>" onclick="selectTaskTypeCard(this)">
@@ -494,7 +494,7 @@ if (!empty($tasks)) {
                         <p style="color: var(--gray-500); font-size: 12.5px; margin: -2px 0 0;">Defaults to today — pick a future date to schedule this task's locations for that day instead.</p>
                     </div>
                     <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px;">
-                        <label class="form-label">Locations</label>
+                        <label class="form-label">Locations <span class="required-asterisk">*</span></label>
                         <div class="task-locations-summary">
                             <div class="task-locations-summary-icon"><i class="fas fa-location-dot"></i></div>
                             <div class="task-locations-summary-text"><span id="taskLocationsSummaryCount" data-count-for="">0</span> location(s) selected</div>

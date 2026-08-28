@@ -27,7 +27,7 @@ if ($taskId <= 0) {
                COUNT(tl.id) AS total_locations,
                SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations
         FROM ' . T_TASKS . ' t
-        LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND tl.unassigned_at IS NULL
+        LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
             AND (tl.status = \'completed\' OR DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400)
             AND tl.id = (
                 SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
@@ -143,11 +143,24 @@ if (!$task) {
 // Missed Out locations are excluded entirely -- see api/scan/lookup.php's
 // reasoning. They simply don't appear in this task's scannable list once
 // 24 hours pass, rather than showing up as a tappable row that then fails.
+//
+// "still relevant" (unassigned_at IS NULL OR unassigned_by IS NULL) -- not
+// just unassigned_at IS NULL -- for the same reason dashboard.php/tasks.php/
+// qradmin.php all use it (see rules/status.php's sweepResolvedLocations()
+// docblock): the sweep auto-unassigns a location the instant its ticket
+// completes, on whichever page load happens to run next. Without the OR,
+// a location a worker just completed would vanish from this very sidebar
+// the moment ANYONE's next page load triggered that sweep -- often within
+// the same reload the completing worker's own submit triggered -- which is
+// exactly the "completed locations disappear" symptom this fixes. Multiple
+// workers on the same task now each see every location's real current
+// status (including ones a different worker just finished), not just
+// whichever locations haven't been auto-freed yet.
 $rowsStmt = $pdo->prepare('
     SELECT tl.id AS task_location_id, l.id AS location_id, l.name AS location_name, tl.status
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
-    WHERE tl.task_id = ? AND tl.unassigned_at IS NULL
+    WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
       AND (tl.status = \'completed\' OR DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400)
       AND tl.id = (
           SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
@@ -340,15 +353,15 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
                             <p class="scan-field-desc">Add up to 3 photos as proof of completion.</p>
                             <div class="photo-upload-box">
                                 <div class="file-input-group">
-                                    <label class="file-input-label">
+                                    <label class="file-input-label" id="galleryPhotoLabel">
                                         <i class="fas fa-image"></i>
                                         <span class="file-input-label-text">
                                             <strong>Choose Photos</strong>
                                             <small>Upload from gallery</small>
                                         </span>
-                                        <input type="file" id="completion_photos" multiple accept="image/*">
+                                        <input type="file" id="completion_photos" multiple accept="image/jpeg,image/png,image/webp">
                                     </label>
-                                    <label class="file-input-label" onclick="openPhotoCamera()">
+                                    <label class="file-input-label" id="cameraPhotoLabel" onclick="openPhotoCamera()">
                                         <i class="fas fa-camera"></i>
                                         <span class="file-input-label-text">
                                             <strong>Take Photo</strong>
@@ -381,7 +394,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
                         </div>
 
                         <input type="hidden" id="completion_task_location_id">
-                        <button type="button" class="btn btn-primary btn-block btn-lg" id="completeCheckBtn" onclick="submitCompleteCheck()">
+                        <button type="button" class="btn btn-primary btn-block btn-lg" id="completeCheckBtn" onclick="submitCompleteCheck()" disabled>
                             <i class="fas fa-check-double"></i> Submit & Complete
                         </button>
                     </div>

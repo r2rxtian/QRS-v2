@@ -68,14 +68,23 @@ function locationStatusBadge(bool $isAssigned): array
 
 /**
  * Role-based action routing: completed tasks always link to the report.
- * Field Workers on a not-started/on-going/unassigned task go to the scan
- * flow (their job is fieldwork) -- unless the task has a missed-out
- * location, in which case it's locked the same way a completed task is
- * (see the Amendment 7 lockout used elsewhere for $hasMissed): scan.php
- * itself already refuses to resolve a missed ticket, so routing there
- * would just dead-end into a generic error instead of surfacing what
- * actually happened. Everyone else gets the shared Task Detail popup (see
+ * Field Workers on a not-started/unassigned task go to the scan flow
+ * (their job is fieldwork) -- unless the task has a missed-out location,
+ * in which case it's locked the same way a completed task is (see the
+ * Amendment 7 lockout used elsewhere for $hasMissed): scan.php itself
+ * already refuses to resolve a missed ticket, so routing there would just
+ * dead-end into a generic error instead of surfacing what actually
+ * happened. Everyone else gets the shared Task Detail popup (see
  * scripts/task-detail-modal.js) instead of a page navigation.
+ *
+ * An On-going task also routes a Field Worker to View rather than Scan --
+ * "on-going" means at least one of its locations is already in_progress,
+ * i.e. someone (possibly a different worker) is actively mid-checklist on
+ * it right now. Landing a second worker straight into the scan flow for
+ * that task risked them scanning a location someone else already started
+ * and resuming/overwriting that in-progress check. View still lets them
+ * see the task's real progress; scanning a location that's genuinely still
+ * pending is one tap away from there.
  *
  * Returns either ['type'=>'link','url'=>...,'label'=>...] for an <a href>,
  * or ['type'=>'popup','label'=>...] for a button that calls
@@ -88,6 +97,9 @@ function resolveTaskAction(array $status, int $taskId, string $roleName, bool $h
     }
 
     if ($roleName === ROLE_USER) {
+        if ($status['code'] === 'ongoing') {
+            return ['type' => 'popup', 'label' => 'View'];
+        }
         return ['type' => 'link', 'url' => 'scan.php?task_id=' . $taskId, 'label' => 'Scan'];
     }
 

@@ -344,13 +344,36 @@ $statTotal = count($locations);
                 </button>
             </div>
             <div class="modal-body">
+                <?php
+                // Real, downloadable starting point -- not just a description of
+                // the format. A data: URI is enough here (this is a normal page
+                // download, not a sandboxed Artifact), so no server-side file or
+                // extra endpoint is needed just to hand back 3 lines of CSV.
+                $csvTemplateContent = "Location Name,Type\nMain Office,Treatment\nBackup Generator Room,Monitoring\n";
+                $csvTemplateHref = 'data:text/csv;charset=utf-8,' . rawurlencode($csvTemplateContent);
+                ?>
+                <div class="csv-template-box">
+                    <div class="csv-template-box-text">
+                        <strong>Required columns:</strong> <code>Location Name</code>, <code>Type</code>
+                        <p>Type must be exactly <strong>Treatment</strong> or <strong>Monitoring</strong> — anything else (or a missing Location Name) is skipped, not guessed at. Leaving Type blank defaults to Treatment, so older single-column CSVs still work.</p>
+                    </div>
+                    <table class="csv-template-example">
+                        <thead><tr><th>Location Name</th><th>Type</th></tr></thead>
+                        <tbody>
+                            <tr><td>Main Office</td><td>Treatment</td></tr>
+                            <tr><td>Backup Generator Room</td><td>Monitoring</td></tr>
+                        </tbody>
+                    </table>
+                    <a class="btn btn-secondary btn-sm" href="<?= htmlspecialchars($csvTemplateHref) ?>" download="location_import_template.csv">
+                        <i class="fas fa-download"></i> Download CSV Template
+                    </a>
+                </div>
                 <div class="csv-upload-row">
                     <label class="file-input-label">
                         <i class="fas fa-file-csv"></i> Choose CSV file
                         <input type="file" id="csv_file_input" accept=".csv">
                     </label>
                 </div>
-                <p style="font-size:13px; color: var(--gray-500); margin-top: 12px;">Column expected: Location Name</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('csvModal')">Cancel</button>

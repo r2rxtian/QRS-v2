@@ -7,6 +7,11 @@ let html5QrCode = null;
 let capturedPhotosData = [];
 let completionPhotosData = []; // accumulates File objects across BOTH gallery picks and camera captures — a native <input type=file> replaces its FileList on every re-pick, so this is the source of truth
 const MAX_COMPLETION_PHOTOS = 3;
+// Mirrors rules/constants.php's UPLOAD_ALLOWED_MIME_TYPES. Client-side only
+// (the server re-validates by real file content, not this) -- this just
+// catches a wrong file type the instant it's picked instead of letting it
+// sit in the preview until submit fails.
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const CHECKLIST_KEYS = ['spot_spray', 'misting', 'mist_blower', 'monitoring'];
 const CHECKLIST_LABELS = { spot_spray: 'Spot Spray', misting: 'Misting', mist_blower: 'Mist Blower', monitoring: 'Monitoring' };
 const CHECKLIST_ICONS = { spot_spray: 'fa-spray-can', misting: 'fa-cloud-rain', mist_blower: 'fa-fan', monitoring: 'fa-eye' };
@@ -212,25 +217,68 @@ document.addEventListener('DOMContentLoaded', function () {
         // no browser-level "add to selection" for repeated picker sessions),
         // so merge into the running accumulator instead of trusting this.files.
         const newFiles = Array.from(this.files);
+        let wrongType = 0;
         let skipped = 0;
         for (const file of newFiles) {
+            // Checked BEFORE the count cap, and rejected outright (never
+            // added to the accumulator) -- picking a non-image file should
+            // never even occupy one of the 3 slots while the user figures
+            // out it was rejected.
+            if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+                wrongType++;
+                continue;
+            }
             if (completionPhotosData.length >= MAX_COMPLETION_PHOTOS) {
                 skipped++;
                 continue;
             }
             completionPhotosData.push(file);
         }
-        if (skipped > 0) {
-            showMessage('You can attach at most ' + MAX_COMPLETION_PHOTOS + ' photos — ' + skipped + ' extra selection(s) were skipped.', 'error');
+
+        const problems = [];
+        if (wrongType > 0) problems.push(wrongType + ' file(s) skipped — only JPG, PNG, and WEBP photos are allowed.');
+        if (skipped > 0) problems.push(skipped + ' extra selection(s) skipped — you can attach at most ' + MAX_COMPLETION_PHOTOS + ' photos.');
+        if (problems.length > 0) {
+            showMessage(problems.join(' '), 'error');
         }
+
         rebuildCompletionPhotosInput();
     });
+
+    document.getElementById('confirm_code').addEventListener('input', updateCompleteButtonState);
 
     const completionRemarkField = document.getElementById('completion_remark');
     completionRemarkField.addEventListener('input', function () {
         document.getElementById('completionRemarkCount').textContent = this.value.length;
     });
 });
+
+// ---------------------------------------------------------------------
+// Completion screen: live disabled-state for both photo pickers (once the
+// 3-photo cap is hit) and the Submit & Complete button (until a photo is
+// attached AND a confirm code is typed) -- both preconditions the server
+// already enforces (api/scan/complete.php), surfaced live instead of only
+// after a failed submit.
+// ---------------------------------------------------------------------
+
+function updatePhotoUploadControls() {
+    const atMax = completionPhotosData.length >= MAX_COMPLETION_PHOTOS;
+
+    const galleryInput = document.getElementById('completion_photos');
+    const galleryLabel = document.getElementById('galleryPhotoLabel');
+    const cameraLabel = document.getElementById('cameraPhotoLabel');
+
+    if (galleryInput) galleryInput.disabled = atMax;
+    if (galleryLabel) galleryLabel.classList.toggle('disabled', atMax);
+    if (cameraLabel) cameraLabel.classList.toggle('disabled', atMax);
+}
+
+function updateCompleteButtonState() {
+    const btn = document.getElementById('completeCheckBtn');
+    if (!btn) return;
+    const confirmCode = document.getElementById('confirm_code').value.trim();
+    btn.disabled = completionPhotosData.length === 0 || confirmCode === '';
+}
 
 // ---------------------------------------------------------------------
 // Confirm code: masked by default, toggle to reveal
@@ -351,6 +399,8 @@ function updatePhotoCountLabel() {
     if (label) {
         label.textContent = completionPhotosData.length + ' / ' + MAX_COMPLETION_PHOTOS + ' photos';
     }
+    updatePhotoUploadControls();
+    updateCompleteButtonState();
 }
 
 function updatePhotoPreview(containerId, input) {
@@ -400,6 +450,15 @@ function removeCompletionPhoto(index) {
 // ---------------------------------------------------------------------
 
 function openPhotoCamera() {
+    // Belt-and-suspenders alongside the .disabled/pointer-events:none state
+    // updatePhotoUploadControls() puts on #cameraPhotoLabel at the cap --
+    // this is what actually stops a keyboard/assistive-tech activation that
+    // bypasses the label's own pointer-events:none.
+    if (completionPhotosData.length >= MAX_COMPLETION_PHOTOS) {
+        showMessage('You can attach at most ' + MAX_COMPLETION_PHOTOS + ' photos total.', 'error');
+        return;
+    }
+
     capturedPhotosData = [];
     document.getElementById('capturedPhotos').innerHTML = '';
 

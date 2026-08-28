@@ -882,6 +882,13 @@ button:disabled {
     white-space: nowrap;
 }
 
+/* Shared with styles/scan.css's identical rule -- that copy is scoped to
+   pages/scan.php's own checklist markup; this one covers every other page
+   (e.g. the Create Task modal) that flags a required field the same way. */
+.required-asterisk {
+    color: var(--danger);
+}
+
 .form-input,
 input[type="text"].form-input,
 select.form-input {

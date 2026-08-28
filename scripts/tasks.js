@@ -126,33 +126,33 @@ function openCreateTaskModal() {
 async function submitCreateTask() {
     const nameInput = document.getElementById('task_name');
     const typeSelect = document.getElementById('task_type');
+    const dateInput = document.getElementById('task_date');
     const btn = document.getElementById('createTaskSubmitBtn');
 
     const taskName = nameInput.value.trim();
-    if (!taskName) {
-        showMessage('Please enter a task name.', 'error');
-        return;
-    }
-
     const taskType = typeSelect ? typeSelect.value : '';
-    if (!taskType) {
-        showMessage('Please select a Task Type.', 'error');
-        return;
-    }
-
-    const dateInput = document.getElementById('task_date');
     const taskDate = dateInput ? dateInput.value : '';
-    if (!taskDate) {
-        showMessage('Please pick a schedule date.', 'error');
-        return;
-    }
-
-    const locationsSelect = document.getElementById('task_locations_select_' + taskType);
+    // Only exists once a Task Type is chosen (see onTaskTypeChange()) --
+    // with none chosen yet, there's nothing to read locations from, which
+    // is exactly the "Locations" error below.
+    const locationsSelect = taskType ? document.getElementById('task_locations_select_' + taskType) : null;
     const selectedLocationIds = locationsSelect
         ? Array.from(locationsSelect.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value)
         : [];
-    if (!selectedLocationIds.length) {
-        showMessage('Please assign at least one location — a task can\'t be created without one.', 'error');
+
+    // Collect every missing/invalid field before showing anything -- a user
+    // who fixes one field and resubmits should never be met with a second,
+    // previously-hidden error; they see the complete list up front instead.
+    const errors = [];
+    if (!taskName) errors.push('Task Name');
+    if (!taskType) errors.push('Task Type');
+    if (!taskDate) errors.push('Schedule Date');
+    if (!selectedLocationIds.length) errors.push('Locations (select at least one)');
+
+    if (errors.length > 0) {
+        // #msgBody is white-space:pre-line (see styles/app.css), so the \n
+        // below render as real line breaks, not a wall of collapsed text.
+        showMessage('Please complete the following required fields:\n\n' + errors.map(e => '• ' + e).join('\n'), 'error');
         return;
     }
 

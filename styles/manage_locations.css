@@ -67,6 +67,59 @@
     flex-wrap: wrap;
 }
 
+/* --- CSV import: template/format guide shown above the file picker --- */
+.csv-template-box {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.csv-template-box-text {
+    font-size: 13px;
+    color: var(--gray-700);
+}
+
+.csv-template-box-text code {
+    background: var(--gray-100);
+    color: var(--gray-800);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.csv-template-box-text p {
+    margin: 6px 0 0;
+    color: var(--gray-500);
+    line-height: 1.5;
+}
+
+.csv-template-example {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 12.5px;
+}
+
+.csv-template-example th,
+.csv-template-example td {
+    border: 1px solid var(--gray-200);
+    padding: 6px 10px;
+    text-align: left;
+}
+
+.csv-template-example th {
+    background: var(--gray-100);
+    color: var(--gray-600);
+    font-weight: 600;
+}
+
+.csv-template-example td {
+    color: var(--gray-700);
+    background: var(--surface);
+}
+
 .file-input-label {
     display: inline-flex;
     align-items: center;
