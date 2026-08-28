@@ -33,9 +33,44 @@ function paginateTable(options) {
         const start = (currentPage - 1) * perPage;
         const end = start + perPage;
 
+        const nowVisible = [];
         rows.forEach((row, index) => {
-            row.style.display = (index >= start && index < end) ? '' : 'none';
+            const shouldShow = index >= start && index < end;
+            row.style.display = shouldShow ? '' : 'none';
+            if (shouldShow) nowVisible.push(row);
         });
+
+        // Small entrance for whichever rows this call just made visible --
+        // covers the very first showPage(1) on page load and every later
+        // page click alike, since both just end up here. This used to live
+        // in scripts/motion.js instead, applied once up front to every row
+        // in the table regardless of pagination -- for a table with
+        // hundreds of rows (Manage Locations' 240+) that meant a single
+        // stagger spread across all of them, so paging forward before a
+        // row's turn in that stagger arrived landed on rows still sitting
+        // at opacity:0, i.e. blank. Doing it here instead of there means
+        // it only ever runs across whatever's actually visible right now
+        // (a page's worth, ~10-50 rows), and it's a plain synchronous call
+        // in the same function that decides visibility -- no cross-script
+        // load-order assumptions left to get wrong.
+        //
+        // stagger is given as a total { amount }, not a fixed per-row
+        // delay, specifically so this stays safe if a table's row count
+        // grows a lot -- a fixed per-row delay (the old 0.03s/row that
+        // caused the bug above) always re-introduces the same failure as
+        // soon as ANY visible group gets large enough, and "Show entries:
+        // All" makes that trivial to hit on any table, today or after
+        // future data growth, by showing every row as one single visible
+        // group with nothing paginated away to bound it. An { amount }
+        // spreads the existing 0.3s duration across however many rows are
+        // in that group instead of adding to it per row, so the whole
+        // reveal finishes in roughly the same ~0.3-0.4s whether it's 10
+        // rows or 10,000.
+        if (window.gsap && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            gsap.fromTo(nowVisible, { opacity: 0, y: 10 }, {
+                opacity: 1, y: 0, duration: 0.3, stagger: { amount: 0.3, from: 'start' }, ease: 'power2.out', overwrite: true, clearProps: 'all',
+            });
+        }
 
         renderControls();
     }

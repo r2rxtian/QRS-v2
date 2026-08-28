@@ -38,16 +38,33 @@
     // nothing flashes at full opacity before its tween starts. A page
     // missing one of these (e.g. no .stat-tiles) just contributes nothing
     // to `matched` -- no per-page wiring needed.
-    const groups = [
-        '.stat-tiles > .stat-tile',
-        'table tbody tr',
-    ];
-    const matched = groups
+    // Stat tiles are never paginated/filtered, so they're safe to reveal
+    // immediately, same as .main-content above.
+    //
+    // Table rows are NOT handled here -- see paginateTable()'s own
+    // showPage() in scripts/pagination.js instead. An earlier version of
+    // this file tried to reveal 'table tbody tr' from here too, deferred a
+    // tick via setTimeout so pagination would have already hidden the
+    // rows past page 1 first. That assumption turned out to be false: a
+    // setTimeout(fn, 0) queued while this script runs can fire before a
+    // LATER <script src> (pagination.js) even finishes loading, because
+    // the browser is free to drain an already-due timer while it's
+    // otherwise idle waiting on that next script's fetch -- there's no
+    // reliable ordering between the two. In practice that meant every row
+    // in a large table (Manage Locations' 240+) got staggered 0.03s apart
+    // from a single pass over the FULL unpaginated set, so paging forward
+    // before a row's turn in that stagger arrived landed on rows still
+    // sitting at the opacity:0 this file had set them to -- i.e. blank,
+    // which is what looked like "broken pagination". Only pagination.js
+    // actually knows which rows are visible at any given moment (initial
+    // load or ten pages later), so it's the only place this can be done
+    // correctly.
+    const staticGroups = ['.stat-tiles > .stat-tile'];
+    const staticMatched = staticGroups
         .map((selector) => document.querySelectorAll(selector))
         .filter((list) => list.length);
-
-    matched.forEach((list) => gsap.set(list, { opacity: 0, y: 10 }));
-    matched.forEach((list) => gsap.to(list, {
+    staticMatched.forEach((list) => gsap.set(list, { opacity: 0, y: 10 }));
+    staticMatched.forEach((list) => gsap.to(list, {
         opacity: 1, y: 0, duration: 0.35, stagger: 0.03, overwrite: true, clearProps: 'all',
     }));
 })();
