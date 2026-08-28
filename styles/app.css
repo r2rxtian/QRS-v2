@@ -109,6 +109,74 @@
     box-sizing: border-box;
 }
 
+/* ==========================================================================
+   Custom Scrollbar (WebKit / Blink — Chrome, Edge, Safari)
+   Rounded "pill inside a capsule" look: applied to every element via the
+   universal selector so it's truly global -- the main page scroll, the
+   sidebar's own overflow-y, modal bodies, dropdown menus, and every
+   horizontally-scrolling .table-wrapper all pick it up automatically
+   without needing a class on each one. Built from the app's own brand
+   gradient (var(--periwinkle) -> var(--dusty-purple), same pair the brand
+   mark uses) rather than a hardcoded blue, so it re-themes with dark mode
+   and the accent-color picker (see scripts/theme.js) instead of clashing
+   with whatever accent the user has chosen.
+   ========================================================================== */
+*::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+}
+
+*::-webkit-scrollbar-track {
+    background: linear-gradient(180deg, var(--gray-50), var(--gray-200));
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--periwinkle), var(--dusty-purple));
+    border-radius: 999px;
+    /* A surface-colored border, not padding/margin, is what actually
+       narrows the visible thumb inside the track -- so the gap it creates
+       still respects the track's own rounded shape underneath, matching
+       the reference image's pill floating inside a wider capsule. */
+    border: 3px solid var(--gray-50);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--dusty-purple), var(--periwinkle));
+}
+
+*::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* The reference design is a clean capsule with no up/down arrow caps --
+   the default scrollbar-button boxes would otherwise square off each end
+   and break the fully-rounded pill look. Every button/state combination is
+   targeted explicitly (not just the bare pseudo-element) because some
+   Chromium builds -- Windows' "Fluent" scrollbar renderer included --
+   don't reliably honor display:none on the unqualified selector alone. */
+*::-webkit-scrollbar-button,
+*::-webkit-scrollbar-button:single-button,
+*::-webkit-scrollbar-button:vertical:start:decrement,
+*::-webkit-scrollbar-button:vertical:end:increment,
+*::-webkit-scrollbar-button:horizontal:start:decrement,
+*::-webkit-scrollbar-button:horizontal:end:increment {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+/* Firefox doesn't support the ::-webkit-scrollbar-* pseudo-elements (or
+   gradients/borders on scrollbar parts at all) -- this is the closest
+   equivalent its box-model-free scrollbar-color API allows, so Firefox
+   users still get a themed (if flatter) scrollbar instead of falling back
+   to an unstyled default. Not what was asked for, but free to include. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--dusty-purple) var(--gray-100);
+}
+
 body {
     margin: 0;
     padding: 0;
