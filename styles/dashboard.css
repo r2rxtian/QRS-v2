@@ -19,21 +19,28 @@
    Only dashboard.php needs a two-column grid (main content + right rail
    side by side), so that grid behavior belongs here, not in the shared
    file. */
-/* Main content and the right rail are sized via clamp()/vh below to
-   naturally land close to one viewport-height on most screens, without
-   forcing it. Deliberately NOT locked to a hard 100vh + overflow:hidden
-   here -- that approach gave .main-content and .right-rail their own
-   independent scroll boxes, so on any screen where either one didn't quite
-   fit, it silently grew its own separate internal scrollbar (two scrollbars
-   competing for attention, one of them looking cut off from the cards it
-   belonged to). A single ordinary page is far less surprising: if
-   everything fits, there's no scrollbar at all; if it doesn't fit on a
-   given screen, the ONE normal page scrollbar appears, same as any other
-   page in this app -- never two independent ones side by side. */
+/* Locked to exactly one viewport height, no page-level scroll (client
+   spec) -- min-height (the previous approach here) let the whole page grow
+   taller than 100vh whenever content demanded it, which is what let the
+   right rail's list-based widget (originally Recent Activity, now Upcoming
+   Tasks -- see .upcoming-card further down) silently stretch the entire
+   dashboard once it had real rows to show instead of a fixed-size donut
+   graphic. height (not min-height) plus overflow:hidden makes that
+   impossible now: nothing inside can force this shell taller than the
+   screen.
+   This does NOT reintroduce the "two independent scrollboxes" problem an
+   earlier version of this comment warned about (main-content and
+   right-rail each silently growing their own separate internal scrollbar,
+   competing for attention) -- neither column scrolls as a whole. Only
+   .upcoming-list does (see further down), by design, because it's the one
+   place content genuinely varies in length. Main content and the calendar/
+   today's-tasks rail cards keep the same clamp()/vh sizing they always
+   had, which already fit inside one viewport height on its own. */
 .app-shell {
     display: grid;
     grid-template-columns: 1fr 320px;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
 }
 
 /* ==========================================================================
@@ -394,11 +401,13 @@
     font-size: 13px;
     font-weight: 600;
     color: var(--gray-900);
+    overflow-wrap: break-word;
 }
 
 .recent-item-meta {
     font-size: 12px;
     color: var(--gray-500);
+    overflow-wrap: break-word;
 }
 
 /* Status badges (reused across tables/lists) */
@@ -433,7 +442,7 @@
 }
 
 /* ==========================================================================
-   Right Rail — calendar / today's timeline / status donut
+   Right Rail — calendar / today's timeline / upcoming tasks
    ========================================================================== */
 
 .right-rail {
@@ -441,6 +450,16 @@
     display: flex;
     flex-direction: column;
     gap: clamp(10px, 1.8vh, 24px);
+    /* CSS Grid's default row sizing is auto (grow to fit content), not an
+       actual stretch-to-fill-the-container height, even though .app-shell
+       is a fixed 100vh now -- without an explicit height here, this had no
+       real bound for its own flex children (the 3 rail cards below) to
+       negotiate against, so flex-grow/min-height:0 on .upcoming-card had
+       nothing meaningful to shrink to fit. 100% of .app-shell's own fixed
+       height is that actual bound. Undone in the max-width:1300px rule
+       below, where this stops being a side-by-side column at all. */
+    height: 100%;
+    min-height: 0;
 }
 
 .rail-card {
@@ -455,10 +474,10 @@
 }
 
 /* Calendar and Today's Tasks are deliberately compact and fixed to their
-   content's natural size; Location Status is the one that grows (see
-   .donut-card below) to absorb whatever room that frees up, so its own
-   bottom edge lands flush with .bottom-grid's bottom in the main column
-   instead of the rail trailing off shorter (or taller) than it. */
+   content's natural size; Upcoming Tasks is the one that grows (see
+   .upcoming-card further down) to absorb whatever room that frees up, so
+   its own bottom edge lands flush with .bottom-grid's bottom in the main
+   column instead of the rail trailing off shorter (or taller) than it. */
 /* --- Calendar --- */
 .calendar-header {
     display: flex;
@@ -658,122 +677,77 @@
     color: var(--danger-text);
 }
 
-/* --- Location status donut ---
-   Ring and legend used to be stacked (legend below, hidden until hover) --
-   now they sit side-by-side and the legend is always visible/fixed, per
-   request. The ring shrank (132px -> 100px) to make room for the legend
-   column within the rail card's ~248px content width without growing the
-   card's overall height. */
-/* Calendar and Today's Tasks stay their natural (now compact) size;
-   Location Status is the one flexible card -- it grows to soak up whatever
-   vertical room that compacting freed, via .app-shell's default CSS Grid
-   stretch (which already gives .right-rail a definite height matching
-   .main-content's), so its bottom edge lands flush with .bottom-grid's
-   bottom instead of the rail falling short. */
-.donut-card {
+/* --- Upcoming Tasks (replaces the old Location Status donut) ---
+   Recent Activity briefly lived here instead (client-requested dashboard
+   refactor) before turning out to be an Admin-only concern that has no
+   business on a dashboard Admin and User both see -- this widget and its
+   CSS classes took over the exact same slot/mechanics, just with
+   role-neutral content (upcoming scheduled tasks) instead.
+   Calendar and Today's Tasks stay their natural (compact) size; this is
+   the one flexible rail card -- it grows to soak up whatever vertical room
+   that compacting freed, via .app-shell's default CSS Grid stretch (which
+   already gives .right-rail a definite height matching .main-content's),
+   so its bottom edge lands flush with .bottom-grid's bottom instead of the
+   rail falling short. Same role .donut-card used to play here.
+   min-height:0 overrides flexbox's default "never shrink below my
+   content's natural size" floor -- without it, this card would refuse to
+   settle at its flex-grow-computed share once it actually had several real
+   rows to show (some wrapping to two lines) instead of a fixed-size donut
+   graphic, forcing .right-rail taller than its allotted space and, since
+   .app-shell is now a hard 100vh with overflow:hidden (see top of file),
+   simply clipping instead of the whole page quietly growing to fit. */
+.upcoming-card {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+    min-height: 0;
 }
 
-.donut-body {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    flex: 1;
+/* The actual fix for that overflow: once the card can no longer just grow
+   to fit everything, its own list needs somewhere for the excess to go.
+   min-height:0 here too (same reason as .upcoming-card above -- .recent-
+   list's own flex:1 doesn't by itself grant permission to shrink below its
+   rows' combined natural height) lets this settle at whatever space the
+   card actually has, with overflow-y:auto turning "more rows than fit"
+   into "scroll to see the rest" instead of either clipping them or
+   stretching the card past its home. */
+.upcoming-list {
+    min-height: 0;
+    overflow-y: auto;
+    /* Vertical scroll only -- explicit, not left to default, because a
+       non-'visible' overflow-y on its own makes overflow-x compute to
+       'auto' too (the CSS overflow spec: one axis can't stay 'visible'
+       once the other isn't), which would let a stray wide row scroll the
+       list sideways instead of just wrapping. */
+    overflow-x: hidden;
 }
 
-/* Sized bigger than the card's own natural (un-grown) footprint would need
-   -- since .donut-card now flex-grows to match .bottom-grid's height (see
-   above), a ring sized for the old compact card would just float small in
-   a lot of surrounding whitespace instead of actually using the room. */
-.donut-wrap {
-    position: relative;
-    width: 118px;
-    height: 118px;
-    flex-shrink: 0;
-}
-
-.donut {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: var(--gray-200); /* fallback; real split is set inline per-request from actual data */
-    transition: background 0.3s ease;
-}
-
-.donut-center {
-    position: absolute;
-    inset: 15px;
-    border-radius: 50%;
-    background: var(--surface);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.donut-center span {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--gray-900);
-}
-
-.donut-center small {
-    font-size: 11px;
-    color: var(--gray-500);
-}
-
-.donut-legend {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+/* The name+meta column is a plain, unclassed <div> in the markup (see
+   pages/dashboard.php) -- targeted here via its fixed position right after
+   the icon rather than needing a class added just for this. Flex items
+   default to min-width:auto, i.e. never shrink narrower than their own
+   content's intrinsic width (the longest unbroken run of text) -- without
+   overriding that, a longer task name than the card is wide wouldn't wrap
+   at all, it would just push the row wider than its container, which
+   combined with overflow-x:hidden above would silently clip text rather
+   than wrap it. min-width:0 lets it shrink to the space actually available
+   and wrap normally instead. */
+.recent-item-icon + div {
     flex: 1;
     min-width: 0;
 }
 
-.donut-legend li {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12.5px;
-    color: var(--gray-600);
-    white-space: nowrap;
-}
-
-.donut-legend .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.donut-legend .dot.green {
-    background: var(--success);
-}
-
-.donut-legend .dot.sky {
-    background: var(--sky);
-}
-
-.donut-legend .dot.purple {
-    background: var(--dusty-purple);
-}
-
-.donut-legend .dot.red {
-    background: var(--danger);
-}
-
-.donut-legend li b {
+/* .recent-list/.recent-item/.recent-item-icon/-name/-meta (further up this
+   file) already do the heavy lifting -- shared with "Recent Task Reports",
+   both are just an icon + a two-line text block, one per row. The only
+   genuinely new piece here is the date on the right. */
+.upcoming-item-date {
     margin-left: auto;
-    padding-left: 6px;
-    color: var(--gray-900);
-    font-weight: 600;
-    font-size: 12.5px;
+    padding-left: 10px;
+    font-size: 12px;
+    color: var(--gray-400);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 /* ==========================================================================
@@ -791,8 +765,18 @@
        collapse to one column here too -- without this, .right-rail's own
        reflow below is still trapped inside app-shell's fixed 320px-wide
        second grid track and can never actually spread out full-width. */
+    /* The fixed-100vh/overflow:hidden lock (see the base .app-shell rule)
+       only makes sense while main-content and the right rail sit side by
+       side sharing one screen's worth of height -- once they stack into a
+       single column below this width, their combined height routinely
+       needs more than 100vh, and that's fine: this is back to being an
+       an ordinary page with an ordinary scrollbar down here, same as
+       every other page in the app once it no longer fits on one screen. */
     .app-shell {
         grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
     }
 
     .right-rail {
@@ -801,6 +785,8 @@
         align-items: start;
         padding: 0 36px 48px;
         margin-left: 280px; /* clears the still-fixed profile sidebar above the 1024px drawer breakpoint, same as .main-content */
+        height: auto; /* undoes the desktop rule's height:100% -- no longer a fixed-height column sharing .app-shell's height */
+        min-height: 0;
     }
 }
 
@@ -931,19 +917,6 @@
 .bar-col:hover .bar {
     background-color: var(--periwinkle);
     box-shadow: 0 4px 12px rgba(167, 172, 217, 0.3);
-}
-
-.donut {
-    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.08));
-    transition: all 0.3s ease;
-}
-
-.donut-legend li {
-    transition: all 0.2s ease;
-}
-
-.donut-legend li:hover {
-    transform: translateX(4px);
 }
 
 @media (prefers-reduced-motion: reduce) {

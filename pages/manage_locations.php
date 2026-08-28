@@ -222,7 +222,7 @@ $statTotal = count($locations);
                                     </div>
                                 </td>
                                 <td><span class="method-badge"><?= htmlspecialchars($location['location_type']) ?></span></td>
-                                <td><span class="status-badge <?= htmlspecialchars($location['badge']['class']) ?>"><?= htmlspecialchars($location['badge']['label']) ?></span></td>
+                                <td><span class="status-badge <?= htmlspecialchars($location['badge']['class']) ?>" title="<?= htmlspecialchars($location['badge']['label']) ?>"><?= htmlspecialchars($location['badge']['label']) ?></span></td>
                                 <td><?= htmlspecialchars((new DateTime($location['created_at']))->format('Y-m-d')) ?></td>
                                 <td>
                                     <div class="kebab-wrap">

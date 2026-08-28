@@ -95,6 +95,15 @@ async function handleLoginSubmit(event) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    // auth/logout.php redirects here with ?reason=idle when
+    // scripts/session-guard.js was the one that ended the session (15
+    // real minutes with no mouse/keyboard/scroll activity), rather than
+    // someone clicking "Logout" themselves -- surfacing that here means
+    // this doesn't read as an unexplained, out-of-nowhere sign-out.
+    if (new URLSearchParams(window.location.search).get('reason') === 'idle') {
+        showAuthMessage('You were signed out after 15 minutes of inactivity. Please log in again.', 'info');
+    }
+
     const passwordInput = document.getElementById('login_password');
     if (passwordInput) {
         passwordInput.addEventListener('focus', updateMascotState);

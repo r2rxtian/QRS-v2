@@ -98,12 +98,14 @@ function resetAccentColor() {
     saveAccentColor(DEFAULT_ACCENT);
 }
 
+let _accessibilityOutsideClickBound = false;
+
 function toggleAccessibilityPanel(button) {
     const panel = document.getElementById('accessibilityPanel');
     const isOpen = panel.classList.contains('open');
 
     if (isOpen) {
-        panel.classList.remove('open');
+        closeAccessibilityPanel();
         return;
     }
 
@@ -121,31 +123,85 @@ function toggleAccessibilityPanel(button) {
     if (panel.parentElement !== document.body) {
         document.body.appendChild(panel);
     }
-    panel.classList.add('open');
+    // Positioned BEFORE .open is added, not after -- .open is what starts
+    // the opacity/transform transition (see app.css), so the very first
+    // painted frame needs to already be at the final coordinates. Doing it
+    // the other way round would animate in from wherever the panel's
+    // stale left/top happened to be left over from its last opening (or
+    // its default position, the first time), a visible jump on top of the
+    // intended fade+scale.
     positionAccessibilityPanel(button, panel);
+    panel.classList.add('open');
+    panel._trigger = button;
+
+    // Bound once globally rather than per-open/close -- window resize can
+    // happen while the panel is open just as easily as while it's closed,
+    // and re-running the same collision math on resize is what keeps it
+    // from drifting off-screen if the window shrinks under it.
+    if (!_accessibilityOutsideClickBound) {
+        _accessibilityOutsideClickBound = true;
+        window.addEventListener('resize', function () {
+            const p = document.getElementById('accessibilityPanel');
+            if (p && p.classList.contains('open') && p._trigger) {
+                positionAccessibilityPanel(p._trigger, p);
+            }
+        });
+    }
+}
+
+function closeAccessibilityPanel() {
+    const panel = document.getElementById('accessibilityPanel');
+    if (panel) panel.classList.remove('open');
 }
 
 // .accessibility-panel is position:fixed (see app.css for why), so its
-// left/top/bottom have to be computed here against the trigger's actual
-// on-screen position instead of relying on a CSS anchor -- recomputed on
-// every open, so window resizes between opens are handled for free.
+// left/top have to be computed here against the trigger's actual on-screen
+// position instead of relying on a CSS anchor -- recomputed on every open
+// (and on resize, see above), so layout changes between opens are handled
+// for free. Same algorithm regardless of viewport size (desktop's wide
+// sidebar-rail vs. tablet's off-canvas drawer) -- both just want "opening
+// out of the sidebar's own column, never spilling out over the page next
+// to it", the collision checks below are what keep it on-screen either way
+// rather than needing separate breakpoint-specific positioning logic.
 function positionAccessibilityPanel(trigger, panel) {
     const rect = trigger.getBoundingClientRect();
-    const panelWidth = panel.offsetWidth || 280;
-    const gap = 12;
-    const fitsRight = rect.right + gap + panelWidth <= window.innerWidth;
+    const sidebar = document.querySelector('.profile-sidebar');
+    const sidebarRect = sidebar ? sidebar.getBoundingClientRect() : rect;
+    // Not display:none while closed (see app.css) specifically so these
+    // read the panel's real size instead of a guessed fallback -- a
+    // fallback can't account for the accent-swatch grid wrapping onto an
+    // extra row on a narrower panel, etc.
+    const panelWidth = panel.offsetWidth || 272;
+    const panelHeight = panel.offsetHeight || 240;
+    const gap = 8;
+    const margin = 8; // minimum breathing room from any viewport edge
 
-    if (fitsRight) {
-        panel.style.left = (rect.right + gap) + 'px';
-        panel.style.top = 'auto';
-        panel.style.bottom = Math.max(8, window.innerHeight - rect.bottom) + 'px';
+    // Horizontal: centered within the sidebar's own column (the popover is
+    // a few px narrower than the sidebar itself, see app.css), not out to
+    // the trigger's right -- opening "beside" it read fine in isolation
+    // but in practice landed right on top of whatever dashboard card
+    // happened to sit next to the sidebar at that height. Centered under
+    // the sidebar instead, it stays inside the sidebar's own footprint
+    // and never reaches into the page next to it at all. Only clamped for
+    // the pathological case of a viewport narrower than the panel itself.
+    let left = sidebarRect.left + (sidebarRect.width - panelWidth) / 2;
+    left = Math.max(margin, Math.min(left, window.innerWidth - panelWidth - margin));
+
+    // Vertical: opens directly below the trigger (reads as "coming out of
+    // this menu item"), flipping to above it instead if there's no room
+    // below -- e.g. the trigger sitting near the bottom of a short window.
+    let top;
+    const fitsBelow = rect.bottom + gap + panelHeight <= window.innerHeight - margin;
+    if (fitsBelow) {
+        top = rect.bottom + gap;
     } else {
-        // Not enough room to the right (narrow window) -- drop it below the
-        // trigger instead, clamped so it never runs off the left edge.
-        panel.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - panelWidth - 8)) + 'px';
-        panel.style.bottom = 'auto';
-        panel.style.top = (rect.bottom + 8) + 'px';
+        top = rect.top - gap - panelHeight;
     }
+    top = Math.max(margin, Math.min(top, window.innerHeight - panelHeight - margin));
+
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+    panel.style.bottom = 'auto';
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -166,6 +222,17 @@ document.addEventListener('click', function (e) {
     if (e.target.closest('.accessibility-trigger') || e.target.closest('#accessibilityPanel')) {
         return;
     }
+    closeAccessibilityPanel();
+});
+
+document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
     const panel = document.getElementById('accessibilityPanel');
-    if (panel) panel.classList.remove('open');
+    if (panel && panel.classList.contains('open')) {
+        closeAccessibilityPanel();
+        // Sends focus back to the trigger, same as a native <details>/menu
+        // would on Escape -- otherwise it silently lands on <body>, and
+        // keyboard users lose their place entirely.
+        if (panel._trigger) panel._trigger.focus();
+    }
 });

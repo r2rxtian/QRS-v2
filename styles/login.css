@@ -501,6 +501,13 @@ body {
     color: #065F46;
 }
 
+/* Neutral heads-up, not a success or a failure -- used for the "you were
+   signed out due to inactivity" notice (see login.js reading ?reason=idle). */
+.auth-message.info {
+    background: #DBEAFE;
+    color: #1E40AF;
+}
+
 :root[data-theme="dark"] .auth-message.error {
     background: #3A1E22;
     color: #FCA5A5;
@@ -509,6 +516,11 @@ body {
 :root[data-theme="dark"] .auth-message.success {
     background: #17352B;
     color: #6EE7B7;
+}
+
+:root[data-theme="dark"] .auth-message.info {
+    background: #1E2A47;
+    color: #93C5FD;
 }
 
 /* ==========================================================================

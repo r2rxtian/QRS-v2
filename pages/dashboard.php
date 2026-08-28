@@ -6,6 +6,7 @@ require_once __DIR__ . '/../conn/db.php';
 require_once __DIR__ . '/../rules/constants.php';
 require_once __DIR__ . '/../rules/status.php';
 require_once __DIR__ . '/../authz/capabilities.php';
+require_once __DIR__ . '/../auth/csrf.php';
 
 $pdo = db();
 $isAdmin = $currentUser['role_name'] === ROLE_ADMIN;
@@ -164,35 +165,6 @@ $currentTaskName = $currentTask['name'] ?? null;
 $currentTaskCompleted = $currentTask ? (int) $currentTask['completed_locations'] : 0;
 $currentTaskTotal = $currentTask ? (int) $currentTask['total_locations'] : 0;
 
-// Pending / completed / in-progress counts across every location's
-// CURRENT ticket -- same "latest ticket per pair" scoping as the query
-// above, not a "today" date filter. Uses the same
-// still-relevant condition (unassigned_at IS NULL OR unassigned_by IS
-// NULL) as the main query above -- without it, a completed/missed
-// location would drop out of this count within one page load of
-// resolving (once the sweep auto-unassigns it), making the donut below
-// almost always read as "mostly not started."
-$tlSql = '
-    SELECT tl.status, tl.start_time, tl.end_time,
-           CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 THEN 1 ELSE 0 END AS is_missed
-    FROM ' . T_TASK_LOCATIONS . ' tl
-    JOIN ' . T_TASKS . ' t ON t.id = tl.task_id
-    WHERE t.deleted_at IS NULL AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
-      AND tl.id = (
-          SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
-          WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
-      )' . $taskTypeSql;
-$tlStmt = $pdo->prepare($tlSql);
-$tlStmt->execute($taskTypeParams);
-$currentLocationRows = $tlStmt->fetchAll();
-
-$completedCount = count(array_filter($currentLocationRows, fn($r) => $r['status'] === 'completed'));
-$inProgressCount = count(array_filter($currentLocationRows, fn($r) => $r['status'] === 'in_progress'));
-// Missed is checked independently of status -- a missed location's status
-// column stays whatever it was (usually still 'pending'), it never
-// auto-changes -- so without this, a missed location would be
-// indistinguishable from one that's still genuinely fresh with time left.
-$missedCount = count(array_filter($currentLocationRows, fn($r) => (int) $r['is_missed'] === 1));
 
 // "Missed Out Tasks" (Sheet 4 of the client's spec): locations still on
 // the active roster whose current ticket has been open 24+ hours (from
@@ -281,36 +253,34 @@ for ($i = 5; $i >= 0; $i--) {
 }
 $barMax = max(1, ...array_column($barMonths, 'count'));
 
-// Location status donut (locations touched by a task, plus overall
-// available/assigned split for locations generally). A live snapshot of
-// every location's current ticket (see $currentLocationRows above), not
-// scoped to today and not a cumulative all-time history either.
-// "Not Started" deliberately excludes missed ones -- a missed location's
-// status column stays 'pending' forever (nothing auto-changes it), so
-// without this it would be indistinguishable from a location that's still
-// genuinely fresh with time left on its 24-hour clock.
-$hasLocationData = count($currentLocationRows) > 0;
-$donutTotal = max(1, count($currentLocationRows));
-$donutCompletedPct = $hasLocationData ? round(($completedCount / $donutTotal) * 100) : 0;
-$donutOngoingPct = $hasLocationData ? round(($inProgressCount / $donutTotal) * 100) : 0;
-$donutMissedPct = $hasLocationData ? round(($missedCount / $donutTotal) * 100) : 0;
-$donutNotStartedPct = $hasLocationData ? max(0, 100 - $donutCompletedPct - $donutOngoingPct - $donutMissedPct) : 0;
+// Upcoming Tasks preview -- replaces the old Location Status donut
+// (client-requested dashboard refactor). Audit activity turned out to be
+// an Admin-only concern (see pages/audit_logs.php, the sidebar nav entry),
+// so it has no business previewing on a dashboard both roles share --
+// this shows the same thing to Admin and User alike instead: whatever
+// tasks have a location scheduled after today, soonest first. Same
+// $taskTypeSql/$taskTypeParams task-type filter as every other query on
+// this page.
+$upcomingSql = '
+    SELECT TOP 6 t.id, t.name, MIN(tl.task_date) AS next_date, COUNT(tl.id) AS location_count
+    FROM ' . T_TASKS . ' t
+    JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id
+    WHERE t.deleted_at IS NULL AND tl.task_date > CAST(SYSDATETIME() AS DATE)' . $taskTypeSql . '
+    GROUP BY t.id, t.name
+    ORDER BY next_date ASC
+';
+$upcomingStmt = $pdo->prepare($upcomingSql);
+$upcomingStmt->execute($taskTypeParams);
+$upcomingTasks = $upcomingStmt->fetchAll();
 
-// The ring itself: real conic-gradient stops driven by the percentages
-// above (not fixed arcs), so it only ever shows color for statuses that
-// actually have locations in them. No data at all -> plain neutral ring,
-// not a false "100% Not Started".
-if ($hasLocationData) {
-    $donutOngoingEnd = $donutCompletedPct + $donutOngoingPct;
-    $donutMissedEnd = $donutOngoingEnd + $donutMissedPct;
-    $donutStyle = sprintf(
-        'background: conic-gradient(var(--success) 0%% %1$d%%, var(--sky) %1$d%% %2$d%%, var(--danger) %2$d%% %3$d%%, var(--dusty-purple) %3$d%% 100%%);',
-        $donutCompletedPct,
-        $donutOngoingEnd,
-        $donutMissedEnd
-    );
-} else {
-    $donutStyle = 'background: var(--gray-200);';
+// "Tomorrow" reads better than "Aug 29" for the one date most worth
+// calling out specially; anything further off just shows as a plain
+// month/day (no year -- this list never reaches far enough ahead for that
+// to be ambiguous).
+function upcomingDateLabel(DateTime $date, DateTime $today): string
+{
+    $diffDays = (int) $today->diff($date)->format('%r%a');
+    return $diffDays === 1 ? 'Tomorrow' : $date->format('M j');
 }
 ?>
 <!DOCTYPE html>
@@ -537,34 +507,42 @@ if ($hasLocationData) {
                 </div>
             </div>
 
-            <!-- Location Status Donut -->
-            <div class="card rail-card donut-card">
+            <!-- Upcoming Tasks (replaces the old Location Status donut --
+                 Recent Activity briefly lived here instead, but that's an
+                 Admin-only concern (see pages/audit_logs.php), and Admin
+                 and User share this same dashboard. This is role-neutral. -->
+            <div class="card rail-card upcoming-card">
                 <div class="panel-header">
-                    <h3>Location Status</h3>
+                    <h3>Upcoming Tasks</h3>
                 </div>
-                <div class="donut-body">
-                    <div class="donut-wrap">
-                        <div class="donut" id="locationDonut" data-has-data="<?= $hasLocationData ? '1' : '0' ?>" data-completed="<?= $donutCompletedPct ?>" data-ongoing="<?= $donutOngoingPct ?>" data-missed="<?= $donutMissedPct ?>" style="<?= htmlspecialchars($donutStyle) ?>"></div>
-                        <div class="donut-center">
-                            <span class="count-up" data-count-to="<?= $donutCompletedPct ?>" data-suffix="%"><?= $donutCompletedPct ?>%</span>
-                            <small>Completed</small>
+                <div class="recent-list upcoming-list">
+                    <?php if (empty($upcomingTasks)): ?>
+                        <p style="color: var(--gray-500); font-size: 14px;">Nothing scheduled ahead yet.</p>
+                    <?php endif; ?>
+                    <?php foreach ($upcomingTasks as $ut):
+                        $nextDate = new DateTime($ut['next_date']);
+                        $locationCount = (int) $ut['location_count'];
+                        ?>
+                        <div class="recent-item upcoming-item">
+                            <div class="recent-item-icon"><i class="fas fa-calendar-days"></i></div>
+                            <div>
+                                <div class="recent-item-name"><?= htmlspecialchars($ut['name']) ?></div>
+                                <div class="recent-item-meta"><?= $locationCount ?> location<?= $locationCount === 1 ? '' : 's' ?></div>
+                            </div>
+                            <span class="upcoming-item-date"><?= htmlspecialchars(upcomingDateLabel($nextDate, $dbToday)) ?></span>
                         </div>
-                    </div>
-                    <ul class="donut-legend">
-                        <li><span class="dot green"></span> Completed <b class="count-up" data-count-to="<?= $donutCompletedPct ?>" data-suffix="%"><?= $donutCompletedPct ?>%</b></li>
-                        <li><span class="dot sky"></span> On-going <b class="count-up" data-count-to="<?= $donutOngoingPct ?>" data-suffix="%"><?= $donutOngoingPct ?>%</b></li>
-                        <li><span class="dot red"></span> Missed Out <b class="count-up" data-count-to="<?= $donutMissedPct ?>" data-suffix="%"><?= $donutMissedPct ?>%</b></li>
-                        <li><span class="dot purple"></span> Not Started <b class="count-up" data-count-to="<?= $donutNotStartedPct ?>" data-suffix="%"><?= $donutNotStartedPct ?>%</b></li>
-                    </ul>
+                    <?php endforeach; ?>
                 </div>
             </div>
 
         </aside>
     </div>
 
+    <script>const QRS_CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;</script>
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/select-dropdown.js"></script>
     <script src="../scripts/motion.js"></script>
+    <script src="../scripts/session-guard.js"></script>
     <script src="../scripts/dashboard.js"></script>
     <script src="../scripts/logout-confirm.js"></script>
 </body>

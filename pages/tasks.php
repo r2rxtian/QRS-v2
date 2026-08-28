@@ -389,7 +389,7 @@ if (!empty($tasks)) {
                                     <?php if ($task['has_missed']): ?>
                                         <span class="status-badge status-missed" title="At least one location has been open 24+ hours without completion -- open the task to see which"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
                                     <?php else: ?>
-                                        <span class="status-badge <?= htmlspecialchars($task['status']['class']) ?>"><?= htmlspecialchars($task['status']['label']) ?></span>
+                                        <span class="status-badge <?= htmlspecialchars($task['status']['class']) ?>" title="<?= htmlspecialchars($task['status']['label']) ?>"><?= htmlspecialchars($task['status']['label']) ?></span>
                                     <?php endif; ?>
                                 </td>
                                 <td>

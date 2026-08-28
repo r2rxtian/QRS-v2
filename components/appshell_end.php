@@ -30,6 +30,7 @@ require_once __DIR__ . '/../auth/csrf.php';
 
 <script>const QRS_CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;</script>
 <script src="../scripts/motion.js"></script>
+<script src="../scripts/session-guard.js"></script>
 <script src="../scripts/task-detail-modal.js"></script>
 <script src="../scripts/location-search.js"></script>
 <script src="../scripts/logout-confirm.js"></script>

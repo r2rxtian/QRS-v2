@@ -57,41 +57,6 @@ function animateDome() {
     });
 }
 
-// Sweeps the Location Status ring's conic-gradient from 0% up to its real
-// Completed/On-going/Missed/Not Started split, matching the count-up
-// happening in its center label and legend at the same time.
-function animateLocationDonut(el) {
-    if (!el || el.dataset.hasData !== '1') return;
-
-    const completed = parseFloat(el.dataset.completed) || 0;
-    const ongoing = parseFloat(el.dataset.ongoing) || 0;
-    const missed = parseFloat(el.dataset.missed) || 0;
-
-    const paintDonut = function (c, o, m) {
-        const ongoingEnd = c + o;
-        const missedEnd = ongoingEnd + m;
-        el.style.background = 'conic-gradient(var(--success) 0% ' + c + '%, var(--sky) ' + c + '% ' + ongoingEnd
-            + '%, var(--danger) ' + ongoingEnd + '% ' + missedEnd + '%, var(--dusty-purple) ' + missedEnd + '% 100%)';
-    };
-
-    if (PREFERS_REDUCED_MOTION || typeof gsap === 'undefined') {
-        paintDonut(completed, ongoing, missed);
-        return;
-    }
-
-    const proxy = { c: 0, o: 0, m: 0 };
-    gsap.to(proxy, {
-        c: completed,
-        o: ongoing,
-        m: missed,
-        duration: 1.2,
-        ease: 'power2.out',
-        onUpdate: function () {
-            paintDonut(proxy.c, proxy.o, proxy.m);
-        },
-    });
-}
-
 // Grows each "Tasks Overview" bar up from 0 to its real height, staggered
 // left-to-right. Reads the height already set on each .bar (by PHP on
 // first load, or by loadBarChart() below on a range switch) rather than
@@ -185,7 +150,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.count-up').forEach(function (el, i) {
         animateCountUp(el, i * 0.05);
     });
-    animateLocationDonut(document.getElementById('locationDonut'));
     animateDome();
     const barChartContainer = document.getElementById('barChartContainer');
     if (barChartContainer) animateBarChart(barChartContainer);
