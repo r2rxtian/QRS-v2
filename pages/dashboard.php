@@ -564,6 +564,7 @@ if ($hasLocationData) {
 
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/select-dropdown.js"></script>
+    <script src="../scripts/motion.js"></script>
     <script src="../scripts/dashboard.js"></script>
     <script src="../scripts/logout-confirm.js"></script>
 </body>

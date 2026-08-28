@@ -3462,23 +3462,15 @@ tbody tr:hover {
 }
 
 
-/* Simple fade on load -- just enough that a fresh page doesn't feel flat/
-   instant. No per-card/title slide-ups.
-   Scoped to .main-content rather than body: every navigation in this app
-   is a full page load (no client-side router), so .profile-sidebar/
-   .icon-rail do get torn down and rebuilt like everything else each time --
-   this can't make them literally persist across page loads. What it does
-   fix is the animation itself: opacity animated on body drags its entire
-   subtree along with it (compositing an ancestor's opacity fades every
-   descendant, sidebar included), so the sidebar was visibly flashing
-   in sync with the page on every click through the nav. .main-content is a
-   sibling of .profile-sidebar/.icon-rail, not an ancestor (see
-   components/appshell_start.php), so animating it instead renders the
-   sidebar at full opacity immediately -- static and unbroken -- while only
-   the content pane still fades in. */
-.main-content {
-    animation: fadeIn 0.25s ease-out;
-}
+/* The page-transition fade used to live here as a plain CSS animation on
+   .main-content (kept off .profile-sidebar/.icon-rail -- its siblings, not
+   its ancestors, per components/appshell_start.php -- so the sidebar
+   rendered at full opacity immediately instead of flashing in sync with
+   the page on every navigation). It's now scripts/motion.js instead,
+   ported from DocHubPR's own motion layer: same sidebar-excluded behavior,
+   plus a staggered reveal for each page's stat tiles/table rows on top of
+   the plain fade, and it degrades to nothing (motion.js no-ops) rather
+   than fighting a redundant CSS animation when GSAP hasn't loaded. */
 
 /* Button interactions */
 .btn, .view-btn {
