@@ -275,8 +275,20 @@ $statTasksCovered = count($taskNames);
                                 </td>
                                 <td><?= htmlspecialchars($biometricsLast3) ?></td>
                                 <td><?= htmlspecialchars($r['completed_by_name'] ?? '—') ?></td>
-                                <td><?= $r['start_time'] ? htmlspecialchars((new DateTime($r['start_time']))->format('Y-m-d H:i:s')) : 'Not Started' ?></td>
-                                <td><?= $r['end_time'] ? htmlspecialchars((new DateTime($r['end_time']))->format('Y-m-d H:i:s')) : 'Not Completed' ?></td>
+                                <td<?= $r['start_time'] ? ' data-sort-value="' . htmlspecialchars((new DateTime($r['start_time']))->format('Y-m-d H:i:s')) . '"' : '' ?>>
+                                    <?php if ($r['start_time']): $startTimeObj = new DateTime($r['start_time']); ?>
+                                        <span class="datetime-stack"><span><?= htmlspecialchars($startTimeObj->format('Y-m-d')) ?></span> <span class="datetime-stack-time"><?= htmlspecialchars($startTimeObj->format('H:i:s')) ?></span></span>
+                                    <?php else: ?>
+                                        Not Started
+                                    <?php endif; ?>
+                                </td>
+                                <td<?= $r['end_time'] ? ' data-sort-value="' . htmlspecialchars((new DateTime($r['end_time']))->format('Y-m-d H:i:s')) . '"' : '' ?>>
+                                    <?php if ($r['end_time']): $endTimeObj = new DateTime($r['end_time']); ?>
+                                        <span class="datetime-stack"><span><?= htmlspecialchars($endTimeObj->format('Y-m-d')) ?></span> <span class="datetime-stack-time"><?= htmlspecialchars($endTimeObj->format('H:i:s')) ?></span></span>
+                                    <?php else: ?>
+                                        Not Completed
+                                    <?php endif; ?>
+                                </td>
                                 <td class="remarks-cell">
                                     <?php if (!$hasAnyRemark): ?>
                                         <span class="cell-icon-text"><i class="fas fa-comment"></i> No remarks</span>

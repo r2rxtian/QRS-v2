@@ -88,3 +88,24 @@
     overflow-y: auto;
     padding-right: 6px;
 }
+
+/* Start Time / End Time: date on its own line, time below -- a plain
+   "YYYY-MM-DD HH:MM:SS" was the widest thing forcing these two columns
+   (and the User column next to them) to stay wide just to avoid wrapping
+   mid-string; stacked, the widest line either column ever needs is just
+   the 10-character date, so the column itself can narrow and hand that
+   freed width back to User. The space in the markup between the two
+   inner <span>s (see task_report.php) is a real text node, not visual --
+   it's what keeps a plain .textContent read (search/sort, and the PDF
+   export's own date-time parsing) seeing "2026-08-20 17:04:06", same as
+   before this was two lines instead of one. */
+.datetime-stack {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.4;
+}
+
+.datetime-stack-time {
+    color: var(--gray-400);
+    font-size: 12px;
+}

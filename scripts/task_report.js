@@ -69,13 +69,17 @@ async function exportReportToPDF() {
 
         const headers = ['Task Name', 'Area', 'Scheduled Date', 'Biometrics', 'User', 'Start Time', 'End Time', 'Remarks', 'Status', 'Images'];
 
-        // Start/End Time already carry a full "YYYY-MM-DD HH:MM:SS" on screen,
-        // but the date is redundant here since Scheduled Date already shows
-        // it -- stripping it in the export keeps those columns compact
-        // without losing information.
-        function compactTimeText(text) {
-            const m = text.match(/^\d{4}-\d{2}-\d{2} (\d{2}:\d{2}:\d{2})$/);
-            return m ? m[1] : text;
+        // Start/End Time carry a full "YYYY-MM-DD HH:MM:SS" on screen --
+        // stacked onto two lines (date, then time) rather than left as one
+        // long horizontal string, an embedded "\n" is all autoTable needs
+        // to render and auto-size a multi-line cell on its own, no manual
+        // didDrawCell handling required (unlike Remarks below, which needs
+        // per-line bold/normal styling autoTable has no built-in way to
+        // express). Narrower per-line text is what lets these two columns
+        // give some of their width back to User (see columnStyles).
+        function stackDateTime(text) {
+            const m = text.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/);
+            return m ? m[1] + '\n' + m[2] : text;
         }
 
         // The Remarks cell holds several labeled ".remark-block" groups
@@ -118,8 +122,8 @@ async function exportReportToPDF() {
                     textCells.push(cells[idx].textContent.trim());
                 }
             }
-            textCells[5] = compactTimeText(textCells[5]); // Start Time
-            textCells[6] = compactTimeText(textCells[6]); // End Time
+            textCells[5] = stackDateTime(textCells[5]); // Start Time
+            textCells[6] = stackDateTime(textCells[6]); // End Time
             const imgEls = Array.from(cells[9].querySelectorAll('img'));
 
             const photos = [];
@@ -189,7 +193,7 @@ async function exportReportToPDF() {
         // otherwise still be computing at that point.
         const FONT_SIZE = 6.5;
         const CELL_PADDING = 1;
-        const OTHER_FIXED_COLS_WIDTH = 16 + 20 + 20 + 15 + 14 + 12 + 12 + 13; // every column except Remarks/Images
+        const OTHER_FIXED_COLS_WIDTH = 16 + 20 + 20 + 15 + 16 + 14 + 14 + 13; // every column except Remarks/Images
         const PAGE_MARGIN = 5;
         const REMARKS_COL_WIDTH = doc.internal.pageSize.getWidth() - PAGE_MARGIN * 2 - OTHER_FIXED_COLS_WIDTH - IMAGES_COL_WIDTH;
         const REMARKS_TEXT_WIDTH = REMARKS_COL_WIDTH - CELL_PADDING * 2;
@@ -240,9 +244,9 @@ async function exportReportToPDF() {
                 1: { cellWidth: 20, halign: 'left' },    // Area
                 2: { cellWidth: 20, halign: 'center' },  // Scheduled Date
                 3: { cellWidth: 15, halign: 'center' },  // Biometrics
-                4: { cellWidth: 14, halign: 'left' },    // User
-                5: { cellWidth: 12, halign: 'center' },  // Start Time
-                6: { cellWidth: 12, halign: 'center' },  // End Time
+                4: { cellWidth: 16, halign: 'left', cellPadding: { top: 1, right: 1.5, bottom: 1, left: 1.5 } },    // User -- widened; Start/End Time need less width now that each stacks onto two shorter lines instead of one long one
+                5: { cellWidth: 14, halign: 'center', cellPadding: { top: 1, right: 1, bottom: 1, left: 1 } },  // Start Time
+                6: { cellWidth: 14, halign: 'center', cellPadding: { top: 1, right: 1, bottom: 1, left: 1 } },  // End Time
                 7: { cellWidth: REMARKS_COL_WIDTH, halign: 'left' }, // Remarks -- drawn manually, see below
                 8: { cellWidth: 13, halign: 'center' },  // Status
                 9: { cellWidth: IMAGES_COL_WIDTH, halign: 'center', minCellHeight: IMAGES_ROW_HEIGHT }, // Images -- dedicated space, same on every row
