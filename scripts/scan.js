@@ -180,6 +180,12 @@ function checklistIsComplete() {
     });
 }
 
+function updateStartButtonState() {
+    const btn = document.getElementById('startCheckBtn');
+    if (!btn) return;
+    btn.disabled = !checklistIsComplete();
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('checklistQuestions').addEventListener('click', function (e) {
         const btn = e.target.closest('.answer-btn');
@@ -197,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function () {
         remarkField.style.display = needsRemark ? '' : 'none';
 
         checklistState[key] = { answer: answer, remark: (checklistState[key] && checklistState[key].remark) || '' };
-        document.getElementById('startCheckBtn').disabled = !checklistIsComplete();
+        updateStartButtonState();
     });
 
     document.getElementById('checklistQuestions').addEventListener('input', function (e) {
@@ -209,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!checklistState[key]) checklistState[key] = { answer: null, remark: '' };
         checklistState[key].remark = field.value.trim();
 
-        document.getElementById('startCheckBtn').disabled = !checklistIsComplete();
+        updateStartButtonState();
     });
 
     document.getElementById('completion_photos').addEventListener('change', function () {
@@ -277,7 +283,10 @@ function updateCompleteButtonState() {
     const btn = document.getElementById('completeCheckBtn');
     if (!btn) return;
     const confirmCode = document.getElementById('confirm_code').value.trim();
-    btn.disabled = completionPhotosData.length === 0 || confirmCode === '';
+    const hasValidPhotoCount = completionPhotosData.length >= 1
+        && completionPhotosData.length <= MAX_COMPLETION_PHOTOS;
+    const photosAreValid = completionPhotosData.every(file => ALLOWED_PHOTO_TYPES.includes(file.type));
+    btn.disabled = !hasValidPhotoCount || !photosAreValid || confirmCode === '';
 }
 
 // ---------------------------------------------------------------------
@@ -329,11 +338,11 @@ async function submitStartCheck() {
         if (data.success) {
             setTimeout(() => window.location.reload(), 1000);
         } else {
-            btn.disabled = false;
+            updateStartButtonState();
         }
     } catch (err) {
         showMessage('Could not reach the server. Please try again.', 'error');
-        btn.disabled = false;
+        updateStartButtonState();
     }
 }
 
@@ -377,11 +386,11 @@ async function submitCompleteCheck() {
         if (data.success) {
             setTimeout(() => window.location.reload(), 1000);
         } else {
-            btn.disabled = false;
+            updateCompleteButtonState();
         }
     } catch (err) {
         showMessage('Could not reach the server. Please try again.', 'error');
-        btn.disabled = false;
+        updateCompleteButtonState();
     }
 }
 

@@ -556,6 +556,19 @@ textarea.form-input {
     background-color: var(--surface);
 }
 
+/* Scan actions remain visibly unavailable until their phase's required
+   inputs pass the live validation in scripts/scan.js. */
+#startCheckBtn:disabled,
+#completeCheckBtn:disabled {
+    background: var(--gray-300);
+    color: var(--gray-500);
+    box-shadow: none;
+    opacity: 1;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none;
+}
+
 input[type="file"] {
     display: none;
 }
