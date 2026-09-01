@@ -141,27 +141,37 @@ async function exportReportToPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'landscape' });
 
-        // Company logo, top-left of the first page. Reuses the same
-        // same-origin-image-to-JPEG-data-URL loader already used for each
-        // row's photos (see loadImageForPdf above) instead of a separate
-        // path -- the logo has no transparency, so the JPEG re-encode loses
-        // nothing. Title/generated-date text shifts right of it so neither
-        // one overlaps the other.
+        // Company identity block at the top-left of the first page. The
+        // contact details intentionally sit directly beside the logo, matching
+        // the layout used on La Rose Noire's controlled paper forms.
         const LOGO_PATH = '../assets/images/la-rose-noire-logo.png';
         const LOGO_SIZE = 26; // mm square
-        const TEXT_X = 5 + LOGO_SIZE + 4;
+        const COMPANY_TEXT_X = 5 + LOGO_SIZE + 4;
+        const PAGE_RIGHT = doc.internal.pageSize.getWidth() - 5;
         try {
             const logo = await loadImageForPdf(LOGO_PATH);
             doc.addImage(logo.dataUrl, 'JPEG', 5, 5, LOGO_SIZE, LOGO_SIZE);
         } catch (e) {
-            // Missing/unreachable logo shouldn't block the export -- title
-            // just leaves that space blank instead.
+            // Missing/unreachable logo shouldn't block the export.
         }
 
-        doc.setFontSize(14);
-        doc.text('Task Report', TEXT_X, 17);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
-        doc.text('Generated: ' + new Date().toLocaleString(), TEXT_X, 24);
+        doc.text('La Rose Noire Philippines, Inc.', COMPANY_TEXT_X, 9);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.text('Lot 1-A & B, Clark IE-05 Area, M.A. Roxas Highway,', COMPANY_TEXT_X, 13.5);
+        doc.text('Clark Freeport Zone, Philippines', COMPANY_TEXT_X, 17);
+        doc.text('Tel: +63 45 499-3010   |   Fax: +63 45 499 2346', COMPANY_TEXT_X, 21);
+        doc.text('Email: office@la-rose-noire.com', COMPANY_TEXT_X, 25);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('Task Report', PAGE_RIGHT, 14, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text('Generated: ' + new Date().toLocaleString(), PAGE_RIGHT, 20, { align: 'right' });
 
         // Photos read as a small gallery rather than a thumbnail strip,
         // whether or not that particular row has photos -- so the Images
