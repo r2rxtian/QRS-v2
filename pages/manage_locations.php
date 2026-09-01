@@ -355,7 +355,7 @@ $statTotal = count($locations);
                 <div class="csv-template-box">
                     <div class="csv-template-box-text">
                         <strong>Required columns:</strong> <code>Location Name</code>, <code>Type</code>
-                        <p>Type must be exactly <strong>Treatment</strong> or <strong>Monitoring</strong> — anything else (or a missing Location Name) is skipped, not guessed at. Leaving Type blank defaults to Treatment, so older single-column CSVs still work.</p>
+                        <p>The header names and order must match the template exactly. Type must be <strong>Treatment</strong> or <strong>Monitoring</strong>; invalid rows are skipped. A blank Type defaults to Treatment.</p>
                     </div>
                     <table class="csv-template-example">
                         <thead><tr><th>Location Name</th><th>Type</th></tr></thead>

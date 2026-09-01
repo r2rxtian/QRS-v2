@@ -35,6 +35,31 @@ function normalizeLocationName(string $raw): string
     return trim(preg_replace('/\s+/', ' ', $raw));
 }
 
+// Validate the template before touching the database. A UTF-8 BOM on the
+// first header is harmless and commonly added by spreadsheet applications,
+// but the column names, order, and count must otherwise match the template.
+$requiredHeaders = ['Location Name', 'Type'];
+$headerRow = fgetcsv($handle, 0, ',');
+if ($headerRow === false) {
+    fclose($handle);
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'The CSV is empty. Please use the correct location import template.', 'type' => 'error']);
+    exit;
+}
+
+$headerRow = array_map('trim', $headerRow);
+$headerRow[0] = ltrim($headerRow[0] ?? '', "\xEF\xBB\xBF");
+if ($headerRow !== $requiredHeaders) {
+    fclose($handle);
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Invalid CSV template. Please use the correct template with these columns in order: Location Name, Type.',
+        'type' => 'error',
+    ]);
+    exit;
+}
+
 $pdo = db();
 $existing = [];
 foreach ($pdo->query('SELECT name FROM ' . T_LOCATIONS . ' WHERE deleted_at IS NULL')->fetchAll(PDO::FETCH_COLUMN) as $name) {
@@ -47,19 +72,10 @@ $inserted = 0;
 $duplicates = 0;
 $blank = 0;
 $invalidType = 0;
-$rowNum = 0;
 
 while (($row = fgetcsv($handle, 0, ',')) !== false) {
-    $rowNum++;
     $rawName = $row[0] ?? '';
     $rawType = trim($row[1] ?? '');
-
-    if ($rowNum === 1) {
-        $rawName = ltrim($rawName, "\xEF\xBB\xBF");
-        if (strcasecmp(trim($rawName), 'Location Name') === 0) {
-            continue; // header row
-        }
-    }
 
     $name = normalizeLocationName($rawName);
     if ($name === '') {
@@ -73,10 +89,9 @@ while (($row = fgetcsv($handle, 0, ',')) !== false) {
         continue;
     }
 
-    // Type column is optional, for backward compatibility with older
-    // single-column CSVs (Location Name only) -- a blank cell defaults to
-    // 'Treatment', matching qrs_locations.location_type's own DEFAULT.
-    // A cell that IS present but doesn't match either TASK_TYPES value is
+    // A blank Type cell defaults to 'Treatment', matching
+    // qrs_locations.location_type's own DEFAULT. A value that doesn't
+    // match either TASK_TYPES value is
     // rejected outright rather than silently guessed at -- see
     // pages/manage_locations.php's downloadable template for the exact
     // expected values ("Monitoring" / "Treatment").
