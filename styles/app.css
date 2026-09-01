@@ -66,6 +66,18 @@
     --shadow: 0 1px 3px 0 rgba(17, 24, 39, 0.08), 0 1px 2px -1px rgba(17, 24, 39, 0.08);
     --shadow-md: 0 4px 6px -1px rgba(17, 24, 39, 0.08), 0 2px 4px -2px rgba(17, 24, 39, 0.06);
     --shadow-lg: 0 10px 20px -6px rgba(17, 24, 39, 0.12);
+
+    /* Shared responsive layout tokens. Desktop values remain the defaults;
+       tablet/mobile overrides are applied in the dedicated ranges below. */
+    --sidebar-desktop: 280px;
+    --sidebar-tablet: 76px;
+    --page-padding-desktop: 36px;
+    --page-padding-tablet: 18px;
+    --page-padding-mobile: 14px;
+    --card-padding-desktop: 24px;
+    --card-padding-tablet: 16px;
+    --layout-gap-desktop: 20px;
+    --layout-gap-tablet: 14px;
 }
 
 /* ==========================================================================
@@ -247,7 +259,7 @@ button:disabled {
     position: fixed;
     top: 0;
     left: 0;
-    width: 280px;
+    width: var(--sidebar-desktop);
     height: 100vh;
     overflow-y: hidden;
     background: var(--surface);
@@ -834,7 +846,7 @@ button:disabled {
    ========================================================================== */
 
 .main-content {
-    margin-left: 280px;
+    margin-left: var(--sidebar-desktop);
     padding: 28px 36px 48px;
     /* No max-width: this is a block box after the sidebar's margin-left, so
        it already fills exactly the remaining viewport width on its own --
@@ -3850,10 +3862,216 @@ a {
    Responsive
    ========================================================================== */
 
-@media (max-width: 1024px) {
-    /* Sidebar becomes an off-canvas drawer instead of disappearing entirely —
-       toggled via the hamburger button (.sidebar-toggle) in the appbar. */
+/* Tablet is a deliberate compact shell, not a squeezed desktop shell. */
+@media (min-width: 768px) and (max-width: 1199px) {
     .profile-sidebar {
+        width: var(--sidebar-tablet);
+        padding: 18px 10px;
+        align-items: stretch;
+        transform: translateX(0);
+    }
+
+    .brand-lockup {
+        justify-content: center;
+        padding: 2px 0 18px;
+    }
+
+    .brand-lockup-name,
+    .nav-section-label,
+    .sidebar-footer-logo,
+    .sidebar-theme-label,
+    .topbar-user-info,
+    .logout-divider {
+        display: none;
+    }
+
+    .sidebar-nav {
+        gap: 8px;
+    }
+
+    .sidebar-link,
+    .logout-link {
+        justify-content: center;
+        min-height: 48px;
+        padding: 0;
+        gap: 0;
+        font-size: 0;
+    }
+
+    .sidebar-link i,
+    .logout-link i {
+        width: auto;
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .sidebar-footer-card {
+        border: 0;
+        border-radius: 0;
+    }
+
+    .sidebar-theme-row {
+        justify-content: center;
+        min-height: 52px;
+        padding: 8px 0;
+        background: transparent;
+    }
+
+    .profile-sidebar .topbar-user {
+        justify-content: center;
+        padding: 10px 0;
+    }
+
+    .profile-sidebar .topbar-user-avatar-wrap img {
+        width: 44px;
+        height: 44px;
+    }
+
+    .main-content {
+        margin-left: var(--sidebar-tablet);
+        padding: var(--page-padding-tablet);
+    }
+
+    .app-shell > *,
+    .main-content > *,
+    .card,
+    .card-header > *,
+    .stat-tiles > *,
+    .table-wrapper,
+    .form-group,
+    .input-icon-wrap,
+    .checklist-toolbar > * {
+        min-width: 0;
+    }
+
+    input,
+    textarea,
+    select,
+    .form-input,
+    .select-dropdown {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .topbar {
+        margin-bottom: 20px;
+        gap: 14px;
+    }
+
+    .topbar-title h1 {
+        font-size: 26px;
+    }
+
+    .topbar-actions {
+        flex-wrap: wrap;
+    }
+
+    .btn,
+    .form-input,
+    input[type="text"].form-input,
+    select.form-input,
+    .select-dropdown-trigger {
+        min-height: 44px;
+    }
+
+    .kebab-btn,
+    .modal-close,
+    .icon-btn-sm {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .modal {
+        width: calc(100% - 32px);
+    }
+
+    .modal-lg,
+    .modal-split {
+        width: calc(100% - 32px);
+        max-width: 800px;
+    }
+
+    .table-wrapper {
+        max-width: 100%;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #tasksTable,
+    #allTasksTable,
+    #locationsTable,
+    #usersTable,
+    #reportTable {
+        width: 100%;
+        min-width: 0;
+        table-layout: auto;
+    }
+
+    #auditLogTable {
+        min-width: 620px;
+    }
+
+    thead th {
+        padding: 14px 12px;
+    }
+
+    tbody td {
+        padding: 16px 12px;
+    }
+
+    .tablet-hide,
+    #locationsTable th:nth-last-child(6),
+    #locationsTable td:nth-last-child(6),
+    #locationsTable th:nth-last-child(2),
+    #locationsTable td:nth-last-child(2),
+    #tasksTable th:nth-last-child(6),
+    #tasksTable td:nth-last-child(6),
+    #tasksTable th:nth-last-child(4),
+    #tasksTable td:nth-last-child(4),
+    #allTasksTable th:nth-last-child(6),
+    #allTasksTable td:nth-last-child(6),
+    #allTasksTable th:nth-last-child(4),
+    #allTasksTable td:nth-last-child(4),
+    #usersTable th:nth-child(2),
+    #usersTable td:nth-child(2),
+    #usersTable th:nth-child(5),
+    #usersTable td:nth-child(5),
+    #reportTable th:nth-child(4),
+    #reportTable td:nth-child(4),
+    #reportTable th:nth-child(6),
+    #reportTable td:nth-child(6),
+    #reportTable th:nth-child(7),
+    #reportTable td:nth-child(7) {
+        display: none !important;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 999px) {
+    .modal-body-split {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .modal-body-right {
+        border-left: 0;
+        border-top: 1px solid var(--gray-200);
+    }
+}
+
+/* Mobile keeps the existing full navigation as an off-canvas drawer. */
+@media (max-width: 767px) {
+    .app-shell > *,
+    .main-content > *,
+    .card,
+    .stat-tiles > *,
+    .topbar,
+    .topbar > * {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .profile-sidebar {
+        width: var(--sidebar-desktop);
+        padding: 28px 20px;
         transform: translateX(-100%);
         box-shadow: var(--shadow-lg);
     }
@@ -3873,12 +4091,38 @@ a {
 
     .main-content {
         margin-left: 0;
+        padding: var(--page-padding-mobile);
+    }
+
+    .stat-tiles {
+        grid-template-columns: 1fr;
+    }
+
+    .topbar-title h1 {
+        font-size: 24px;
+    }
+
+    .topbar-actions,
+    .topbar-actions .btn {
+        width: 100%;
+    }
+
+    .topbar-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .modal,
+    .modal-lg,
+    .modal-split {
+        width: calc(100% - 24px);
+        max-height: calc(100vh - 24px);
     }
 }
 
 @media (max-width: 640px) {
     .main-content {
-        padding: 20px;
+        padding: var(--page-padding-mobile);
     }
 
     .container {

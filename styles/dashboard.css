@@ -52,7 +52,7 @@
    grows toward the max, so the whole column's natural height tracks 100vh
    automatically instead of being tuned to one guessed screen size. */
 .main-content {
-    margin-left: 280px;
+    margin-left: var(--sidebar-desktop);
     padding: clamp(18px, 2.8vh, 42px) 36px clamp(20px, 3.8vh, 58px);
     max-width: 1400px;
     display: flex;
@@ -784,39 +784,180 @@
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         align-items: start;
         padding: 0 36px 48px;
-        margin-left: 280px; /* clears the still-fixed profile sidebar above the 1024px drawer breakpoint, same as .main-content */
+        margin-left: var(--sidebar-desktop);
         height: auto; /* undoes the desktop rule's height:100% -- no longer a fixed-height column sharing .app-shell's height */
         min-height: 0;
     }
 }
 
-@media (max-width: 900px) {
-    .bottom-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 1024px) {
+/* Tablet composition: compact persistent icon rail, deliberate content
+   stacking, and a width-driven dome with its statistics in a 2x2 grid. */
+@media (min-width: 768px) and (max-width: 1199px) {
     .main-content {
-        margin-left: 0;
+        margin-left: var(--sidebar-tablet);
+        max-width: none;
+        padding: var(--page-padding-tablet);
     }
 
     .right-rail {
-        margin-left: 0;
+        margin-left: var(--sidebar-tablet);
+        padding: 0 var(--page-padding-tablet) 32px;
+        grid-template-columns: 1fr;
+        gap: var(--layout-gap-tablet);
     }
 
     .stat-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--layout-gap-tablet);
+    }
+
+    .stat-tile,
+    .insights-hero,
+    .bottom-grid > *,
+    .right-rail > * {
+        min-width: 0;
+    }
+
+    .insights-hero {
+        padding: 20px var(--card-padding-tablet) 22px;
+    }
+
+    .insights-hero .insights-subtitle {
+        margin-bottom: 20px;
+    }
+
+    .dome-wrap {
+        width: 100%;
+        max-width: 560px;
+        height: auto;
+        padding-top: 190px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .dome {
+        top: 0;
+        bottom: auto;
+        width: min(100%, 340px);
+        height: auto;
+        aspect-ratio: 2 / 1;
+    }
+
+    .dome-center {
+        top: 92px;
+        bottom: auto;
+        width: min(80%, 280px);
+    }
+
+    .orbit-card,
+    .orbit-top-left,
+    .orbit-top-right,
+    .orbit-bottom-left,
+    .orbit-bottom-right {
+        position: static;
+        min-width: 0;
+        padding: 12px 14px;
+        text-align: center;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .bottom-grid {
         grid-template-columns: 1fr;
+        gap: var(--layout-gap-tablet);
+    }
+
+    .panel,
+    .rail-card {
+        padding: var(--card-padding-tablet);
+    }
+
+    .timeline-card {
+        order: 1;
+    }
+
+    .calendar-card {
+        order: 2;
+    }
+
+    .upcoming-card {
+        order: 3;
+    }
+
+    .timeline {
+        height: auto;
+        max-height: 260px;
     }
 }
 
-@media (max-width: 640px) {
-    .main-content {
-        padding: 20px;
+@media (min-width: 1000px) and (max-width: 1199px) {
+    .stat-tiles {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .right-rail {
-        padding: 0 20px 32px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .upcoming-card {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 767px) {
+    .main-content {
+        margin-left: 0;
+        padding: var(--page-padding-mobile);
+    }
+
+    .right-rail {
+        margin-left: 0;
+        padding: 0 var(--page-padding-mobile) 28px;
+        grid-template-columns: 1fr;
+    }
+
+    .stat-tiles,
+    .bottom-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .insights-hero {
+        padding: 18px var(--page-padding-mobile) 20px;
+    }
+
+    .dome-wrap {
+        width: 100%;
+        height: auto;
+        padding-top: 160px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .dome {
+        top: 0;
+        bottom: auto;
+        width: min(100%, 290px);
+        height: auto;
+        aspect-ratio: 2 / 1;
+    }
+
+    .dome-center {
+        top: 72px;
+        bottom: auto;
+        width: min(85%, 250px);
+    }
+
+    .orbit-card,
+    .orbit-top-left,
+    .orbit-top-right,
+    .orbit-bottom-left,
+    .orbit-bottom-right {
+        position: static;
+        min-width: 0;
+        padding: 11px 14px;
+        text-align: center;
+        box-shadow: var(--shadow-sm);
     }
 }
 

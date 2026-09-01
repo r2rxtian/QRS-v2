@@ -58,7 +58,7 @@ $avatarPhotoUrl = employeePhotoUrl($shellUser['employee_id']);
             <div class="nav-section-label">Main Menu</div>
             <nav class="sidebar-nav">
                 <?php foreach ($mainNavItems as $item): ?>
-                    <a href="<?= htmlspecialchars($item['href']) ?>" class="sidebar-link<?= $currentPage === $item['href'] ? ' active' : '' ?>">
+                    <a href="<?= htmlspecialchars($item['href']) ?>" class="sidebar-link<?= $currentPage === $item['href'] ? ' active' : '' ?>" title="<?= htmlspecialchars($item['label']) ?>" aria-label="<?= htmlspecialchars($item['label']) ?>">
                         <i class="fas <?= htmlspecialchars($item['icon']) ?>"></i> <?= htmlspecialchars($item['label']) ?>
                     </a>
                 <?php endforeach; ?>
@@ -67,10 +67,10 @@ $avatarPhotoUrl = employeePhotoUrl($shellUser['employee_id']);
             <div class="nav-section-label">General</div>
             <nav class="sidebar-nav">
                 <?php if ($shellUser['role_name'] === ROLE_ADMIN): ?>
-                    <a href="user_management.php" class="sidebar-link<?= $currentPage === 'user_management.php' ? ' active' : '' ?>">
+                    <a href="user_management.php" class="sidebar-link<?= $currentPage === 'user_management.php' ? ' active' : '' ?>" title="User Management" aria-label="User Management">
                         <i class="fas fa-users-gear"></i> User Management
                     </a>
-                    <a href="audit_logs.php" class="sidebar-link<?= $currentPage === 'audit_logs.php' ? ' active' : '' ?>">
+                    <a href="audit_logs.php" class="sidebar-link<?= $currentPage === 'audit_logs.php' ? ' active' : '' ?>" title="Audit Logs" aria-label="Audit Logs">
                         <i class="fas fa-clock-rotate-left"></i> Audit Logs
                     </a>
                 <?php endif; ?>
@@ -101,7 +101,7 @@ $avatarPhotoUrl = employeePhotoUrl($shellUser['employee_id']);
                 </div>
             </div>
 
-            <a href="../auth/logout.php" class="logout-link">
+            <a href="../auth/logout.php" class="logout-link" title="Logout" aria-label="Logout">
                 <i class="fas fa-right-from-bracket"></i>
                 <span class="logout-divider"></span>
                 Logout
