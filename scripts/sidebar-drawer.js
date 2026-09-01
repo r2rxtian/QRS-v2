@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // it opens a popover in place, so auto-closing the drawer the instant
     // it's tapped would yank the nav away out from under it instead of
     // just leaving it open behind the popover.
-    document.querySelectorAll('.profile-sidebar .sidebar-link:not(.accessibility-trigger), .profile-sidebar .logout-link').forEach(link => {
+    document.querySelectorAll('.profile-sidebar .sidebar-link, .profile-sidebar .logout-link').forEach(link => {
         link.addEventListener('click', closeSidebarDrawer);
     });
 });

@@ -4,25 +4,25 @@
    ========================================================================== */
 
 :root {
-    --teal-slate: #668586;
-    --teal-soft: #82AEB1;
-    --sky: #93C6D6;
-    --periwinkle: #A7ACD9;
-    --dusty-purple: #9E8FB2;
+    --teal-slate: #294D38;
+    --teal-soft: #5D8B68;
+    --sky: #8CAF94;
+    --periwinkle: #477B57;
+    --dusty-purple: #345F43;
 
-    --primary: var(--periwinkle);
-    --primary-hover: #8d93c9;
-    --primary-light: #EEF0FB;
+    --primary: #477B57;
+    --primary-hover: #345F43;
+    --primary-light: #E6F0E8;
 
-    --gray-50: #F9FAFB;
-    --gray-100: #F3F4F6;
-    --gray-200: #E5E7EB;
-    --gray-300: #D1D5DB;
-    --gray-400: #9CA3AF;
-    --gray-500: #6B7280;
-    --gray-600: #4B5563;
-    --gray-700: #374151;
-    --gray-900: #111827;
+    --gray-50: #F4F9F8;
+    --gray-100: #EAF3F1;
+    --gray-200: #D5E5E2;
+    --gray-300: #B7CFCA;
+    --gray-400: #89A8A3;
+    --gray-500: #607D78;
+    --gray-600: #45635F;
+    --gray-700: #304A47;
+    --gray-900: #142724;
     --white: #FFFFFF;
     --surface: var(--white);
 
@@ -33,17 +33,17 @@
 /* Dark mode — same token names, inverted values. Set via [data-theme="dark"]
    on <html> by scripts/theme.js (applied early, before first paint). */
 :root[data-theme="dark"] {
-    --gray-50: #15171D;
-    --gray-100: #1B1E26;
-    --gray-200: #2A2E38;
-    --gray-300: #3A3F4C;
-    --gray-400: #8890A3;
-    --gray-500: #9CA3B8;
-    --gray-600: #B8BECD;
-    --gray-700: #D5D9E3;
-    --gray-900: #F7F8FA;
-    --surface: #1E212A;
-    --primary-light: #262A3D;
+    --gray-50: #070808;
+    --gray-100: #0D0F0E;
+    --gray-200: #202321;
+    --gray-300: #343835;
+    --gray-400: #777D79;
+    --gray-500: #9BA19D;
+    --gray-600: #B9BFBB;
+    --gray-700: #D4D8D5;
+    --gray-900: #F7F8F7;
+    --surface: #111312;
+    --primary-light: #202B23;
 }
 
 * {
@@ -56,7 +56,7 @@ body {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     /* Soft purple → blue, oversized + shifted slowly for a barely-there
        animated feel (see .Page entrance below for the animation itself) */
-    background: linear-gradient(120deg, #F1EEFC 0%, #ECEFFA 25%, #E7F0FB 50%, #EDEEFB 75%, #F3EEFC 100%);
+    background: linear-gradient(120deg, #F3F7F3 0%, #EAF2EB 28%, #E2ECE4 52%, #EDF3EE 76%, #F7F9F6 100%);
     background-size: 400% 400%;
     display: flex;
     align-items: center;
@@ -66,7 +66,7 @@ body {
 }
 
 :root[data-theme="dark"] body {
-    background: linear-gradient(120deg, #15131F 0%, #171A24 25%, #14181E 50%, #16151F 75%, #171420 100%);
+    background: linear-gradient(120deg, #020303 0%, #080908 28%, #030404 52%, #0A0B0A 76%, #050605 100%);
 }
 
 /* ==========================================================================
@@ -75,15 +75,15 @@ body {
 
 .auth-shell {
     position: relative;
-    width: 920px;
+    width: 980px;
     max-width: 100%;
-    height: 560px;
+    height: 590px;
     border-radius: var(--radius-lg);
     overflow: hidden;
     background: var(--surface);
     box-shadow:
-        0 30px 60px -24px rgba(30, 40, 60, 0.28),
-        0 10px 24px -10px rgba(30, 40, 60, 0.14);
+        0 30px 60px -24px rgba(23, 56, 43, 0.28),
+        0 10px 24px -10px rgba(23, 56, 43, 0.14);
 }
 
 /* --- Left panel: brand-aligned backdrop, task-checklist hero visual --- */
@@ -94,7 +94,7 @@ body {
     background-image:
         linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-        linear-gradient(155deg, #241f38 0%, #4a4270 55%, #8f85b8 100%);
+        linear-gradient(155deg, #17382B 0%, #28533D 56%, #477B57 100%);
     background-size: 26px 26px, 26px 26px, 100% 100%;
 }
 
@@ -123,12 +123,12 @@ body {
 .auth-photo-content {
     /* .auth-photo spans the full card (inset:0) so its background covers the
        seam/bump too — but the content itself must stay confined to the
-       visible dark portion (0 to auth-card-rect's left:400px), or it centers
+       visible dark portion (0 to auth-card-rect's left:420px), or it centers
        against the full width and gets clipped by the white bump/rect. */
     position: absolute;
     left: 0;
     top: 0;
-    width: 400px;
+    width: 420px;
     height: 100%;
     z-index: 2;
     display: flex;
@@ -145,7 +145,7 @@ body {
     background: rgba(255, 255, 255, 0.96);
     border-radius: 16px;
     padding: 14px 16px;
-    box-shadow: 0 24px 40px -14px rgba(10, 8, 30, 0.55);
+    box-shadow: 0 24px 40px -14px rgba(12, 35, 25, 0.48);
     transform: rotate(-3deg);
     /* Entrance + the continuous float loop are both set later, in the
        Animations section, since the entrance needs a delay to stagger
@@ -267,7 +267,7 @@ body {
     position: absolute;
     top: 0;
     bottom: 0;
-    left: 400px;
+    left: 420px;
     right: 0;
     background: var(--surface);
     z-index: 2;
@@ -275,11 +275,11 @@ body {
 
 .auth-card-bump {
     position: absolute;
-    left: 315px;
+    left: 331px;
     top: 50%;
     transform: translateY(-50%);
-    width: 170px;
-    height: 170px;
+    width: 178px;
+    height: 178px;
     border-radius: 50%;
     background: var(--surface);
     z-index: 2;
@@ -288,8 +288,8 @@ body {
 /* --- Form panel --- */
 .auth-form {
     position: absolute;
-    left: 460px;
-    right: 64px;
+    left: 485px;
+    right: 68px;
     top: 50%;
     transform: translateY(-50%);
     z-index: 3;
@@ -385,7 +385,7 @@ body {
 
 .mascot-wrap {
     position: absolute;
-    left: 400px;
+    left: 420px;
     top: 50%;
     transform: translate(-50%, -50%);
     z-index: 4;
@@ -402,8 +402,8 @@ body {
     justify-content: center;
     box-shadow:
         0 0 0 4px var(--white),
-        0 0 26px rgba(167, 172, 217, 0.55),
-        0 12px 20px -8px rgba(167, 172, 217, 0.55);
+        0 0 26px rgba(71, 123, 87, 0.28),
+        0 12px 20px -8px rgba(71, 123, 87, 0.28);
 }
 
 .mascot-antenna {
@@ -468,7 +468,7 @@ body {
     font-family: inherit;
     cursor: pointer;
     margin-top: 22px;
-    box-shadow: 0 10px 20px -8px rgba(167, 172, 217, 0.65);
+    box-shadow: 0 10px 20px -8px rgba(71, 123, 87, 0.32);
 }
 
 .btn-login:disabled {
@@ -659,12 +659,12 @@ body {
 
 .btn-login:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px -6px rgba(167, 172, 217, 0.5);
+    box-shadow: 0 12px 24px -6px rgba(71, 123, 87, 0.26);
 }
 
 .btn-login:active {
     transform: translateY(0);
-    box-shadow: 0 6px 14px -6px rgba(167, 172, 217, 0.5);
+    box-shadow: 0 6px 14px -6px rgba(71, 123, 87, 0.26);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -58,10 +58,10 @@ if ($taskId <= 0) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="../styles/app.css?v=10">
-        <link rel="stylesheet" href="../styles/scan.css?v=2">
+        <link rel="stylesheet" href="../styles/app.css?v=13">
+        <link rel="stylesheet" href="../styles/scan.css?v=3">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-        <script src="../scripts/theme.js?v=5"></script>
+        <script src="../scripts/theme.js?v=6"></script>
     </head>
 
     <body>
@@ -206,10 +206,10 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=10">
-    <link rel="stylesheet" href="../styles/scan.css?v=2">
+    <link rel="stylesheet" href="../styles/app.css?v=13">
+    <link rel="stylesheet" href="../styles/scan.css?v=3">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="../scripts/theme.js?v=5"></script>
+    <script src="../scripts/theme.js?v=6"></script>
 </head>
 
 <body>

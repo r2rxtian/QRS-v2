@@ -12,19 +12,19 @@
 
 :root {
     /* Brand palette — identical to styles/dashboard.css / styles/login.css */
-    --teal-slate: #668586;
-    --teal-soft: #82AEB1;
-    --sky: #93C6D6;
-    --periwinkle: #A7ACD9;
-    --dusty-purple: #9E8FB2;
+    --teal-slate: #526B59;
+    --teal-soft: #78947F;
+    --sky: #9BB3A0;
+    --periwinkle: #527A63;
+    --dusty-purple: #40614E;
 
-    --primary: var(--periwinkle);
-    --primary-hover: #8d93c9;
-    --primary-light: #EEF0FB;
+    --primary: #527A63;
+    --primary-hover: #40614E;
+    --primary-light: #E7F0EA;
 
-    --accent-teal: var(--teal-soft);
-    --accent-sky: var(--sky);
-    --accent-purple: var(--dusty-purple);
+    --accent-teal: #6F927B;
+    --accent-sky: #8FAE99;
+    --accent-purple: #527A63;
 
     --success: #059669;
     --success-bg: #D1FAE5;
@@ -40,23 +40,23 @@
     --danger-bg: #FEE2E2;
     --danger-text: #991B1B;
 
-    --gray-50: #F9FAFB;
-    --gray-100: #F3F4F6;
-    --gray-200: #E5E7EB;
-    --gray-300: #D1D5DB;
-    --gray-400: #9CA3AF;
-    --gray-500: #6B7280;
-    --gray-600: #4B5563;
-    --gray-700: #374151;
-    --gray-800: #1F2937;
-    --gray-900: #111827;
+    --gray-50: #F4F9F8;
+    --gray-100: #EAF3F1;
+    --gray-200: #D5E5E2;
+    --gray-300: #B7CFCA;
+    --gray-400: #89A8A3;
+    --gray-500: #607D78;
+    --gray-600: #45635F;
+    --gray-700: #304A47;
+    --gray-800: #203633;
+    --gray-900: #142724;
     --white: #FFFFFF;
     /* Surface = card/sidebar/modal background. Same as --white in light mode,
        but diverges from it in dark mode (unlike --white, which stays literal
        white for text/icons on colored buttons). */
     --surface: var(--white);
 
-    --ink-rail: #14181f;
+    --ink-rail: #102522;
 
     --radius: 10px;
     --radius-lg: 16px;
@@ -75,17 +75,18 @@
    hex, so no component-level dark rules are needed beyond this block.
    ========================================================================== */
 :root[data-theme="dark"] {
-    --gray-50: #15171D;
-    --gray-100: #1B1E26;
-    --gray-200: #2A2E38;
-    --gray-300: #3A3F4C;
-    --gray-400: #8890A3;
-    --gray-500: #9CA3B8;
-    --gray-600: #B8BECD;
-    --gray-700: #D5D9E3;
-    --gray-800: #E7E9EF;
-    --gray-900: #F7F8FA;
-    --surface: #1E212A;
+    --gray-50: #070808;
+    --gray-100: #0D0F0E;
+    --gray-200: #202321;
+    --gray-300: #343835;
+    --gray-400: #777D79;
+    --gray-500: #9BA19D;
+    --gray-600: #B9BFBB;
+    --gray-700: #D4D8D5;
+    --gray-800: #E7EAE8;
+    --gray-900: #F7F8F7;
+    --surface: #111312;
+    --ink-rail: #030404;
 
     --success-bg: #113828;
     --success-text: #6EE7B7;
@@ -97,7 +98,7 @@
 
     /* Fallback only — theme.js recomputes this per chosen accent color against
        the dark surface as soon as it runs, via an inline style that overrides this. */
-    --primary-light: #262A3D;
+    --primary-light: #202B23;
 
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
     --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
@@ -665,6 +666,32 @@ button:disabled {
     aspect-ratio: 1920 / 420;
     object-fit: contain;
     image-rendering: smooth;
+}
+
+.sidebar-theme-row {
+    min-height: 48px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid var(--gray-100);
+    background: color-mix(in srgb, var(--primary-light) 42%, var(--surface));
+}
+
+.sidebar-theme-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--gray-700);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.sidebar-theme-label i {
+    width: 16px;
+    color: var(--primary);
+    text-align: center;
 }
 
 .profile-sidebar .topbar-user {
@@ -3636,7 +3663,7 @@ tbody tr:hover {
 }
 
 .btn-primary:hover {
-    box-shadow: 0 8px 16px rgba(167, 172, 217, 0.3);
+    box-shadow: 0 8px 16px rgba(82, 122, 99, 0.24);
 }
 
 .btn-secondary:hover {
@@ -3695,7 +3722,7 @@ tbody tr {
 
 .form-input:focus, textarea:focus, select:focus {
     transform: scale(1.02);
-    box-shadow: 0 0 0 3px rgba(167, 172, 217, 0.1);
+    box-shadow: 0 0 0 3px rgba(82, 122, 99, 0.1);
 }
 
 /* Status badge animations */
@@ -3748,7 +3775,7 @@ tbody tr:hover .avatar-cell img {
 /* Stat tile icon glow on hover */
 .stat-tile:hover .stat-tile-icon {
     transform: scale(1.1);
-    filter: drop-shadow(0 4px 12px rgba(167, 172, 217, 0.3));
+    filter: drop-shadow(0 4px 12px rgba(82, 122, 99, 0.24));
     transition: all 0.3s ease;
 }
 
