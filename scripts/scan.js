@@ -11,7 +11,16 @@ const MAX_COMPLETION_PHOTOS = 3;
 // (the server re-validates by real file content, not this) -- this just
 // catches a wrong file type the instant it's picked instead of letting it
 // sit in the preview until submit fails.
-const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png'];
+const ALLOWED_PHOTO_EXTENSIONS = ['jpg', 'png'];
+
+function isAllowedPhoto(file) {
+    const extension = file.name.split('.').pop().toLowerCase();
+    return ALLOWED_PHOTO_TYPES.includes(file.type)
+        && ALLOWED_PHOTO_EXTENSIONS.includes(extension)
+        && (file.type !== 'image/jpeg' || extension === 'jpg')
+        && (file.type !== 'image/png' || extension === 'png');
+}
 const CHECKLIST_KEYS = ['spot_spray', 'misting', 'mist_blower', 'monitoring'];
 const CHECKLIST_LABELS = { spot_spray: 'Spot Spray', misting: 'Misting', mist_blower: 'Mist Blower', monitoring: 'Monitoring' };
 const CHECKLIST_ICONS = { spot_spray: 'fa-spray-can', misting: 'fa-cloud-rain', mist_blower: 'fa-fan', monitoring: 'fa-eye' };
@@ -258,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // added to the accumulator) -- picking a non-image file should
             // never even occupy one of the 3 slots while the user figures
             // out it was rejected.
-            if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+            if (!isAllowedPhoto(file)) {
                 wrongType++;
                 continue;
             }
@@ -270,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const problems = [];
-        if (wrongType > 0) problems.push(wrongType + ' file(s) skipped — only JPG, PNG, and WEBP photos are allowed.');
+        if (wrongType > 0) problems.push(wrongType + ' file(s) skipped — only .jpg and .png photos are allowed.');
         if (skipped > 0) problems.push(skipped + ' extra selection(s) skipped — you can attach at most ' + MAX_COMPLETION_PHOTOS + ' photos.');
         if (problems.length > 0) {
             showMessage(problems.join(' '), 'error');
@@ -313,7 +322,7 @@ function updateCompleteButtonState() {
     const confirmCode = document.getElementById('confirm_code').value.trim();
     const hasValidPhotoCount = completionPhotosData.length >= 1
         && completionPhotosData.length <= MAX_COMPLETION_PHOTOS;
-    const photosAreValid = completionPhotosData.every(file => ALLOWED_PHOTO_TYPES.includes(file.type));
+    const photosAreValid = completionPhotosData.every(isAllowedPhoto);
     btn.disabled = !hasValidPhotoCount || !photosAreValid || confirmCode === '';
 }
 

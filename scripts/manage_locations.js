@@ -283,10 +283,15 @@ async function submitCsvImport() {
         const data = await response.json();
 
         closeModal('csvModal');
-        showMessage(data.message, data.type || (data.success ? 'success' : 'error'));
+        showMessage(
+            data.message,
+            data.success ? 'success' : 'error',
+            data.success ? 'Import Successful' : 'Import Unsuccessful'
+        );
 
         if (data.success) {
             fileInput.value = '';
+            updateCsvSelectedFilename();
             await refreshLocationsView();
         }
     } catch (err) {
@@ -295,6 +300,17 @@ async function submitCsvImport() {
     } finally {
         btn.disabled = false;
     }
+}
+
+function updateCsvSelectedFilename() {
+    const fileInput = document.getElementById('csv_file_input');
+    const filename = document.getElementById('csvSelectedFile');
+    if (!fileInput || !filename) return;
+
+    const selectedFile = fileInput.files[0];
+    filename.textContent = selectedFile ? selectedFile.name : 'No file selected';
+    filename.title = selectedFile ? selectedFile.name : '';
+    filename.classList.toggle('has-file', Boolean(selectedFile));
 }
 
 function deleteSelected() {
@@ -367,15 +383,18 @@ function closeModal(id) {
     document.getElementById(id).classList.remove('active');
 }
 
-function showMessage(message, type = 'info') {
+function showMessage(message, type = 'info', title = '') {
     const titleEl = document.getElementById('msgTitle');
     const bodyEl = document.getElementById('msgBody');
-    titleEl.textContent = type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Notification';
+    titleEl.textContent = title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Notification');
     bodyEl.textContent = message;
     showModal('messageModal');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('csv_file_input')?.addEventListener('change', updateCsvSelectedFilename);
+    updateCsvSelectedFilename();
+
     // 10, matching the same "Show entries" default used everywhere else
     // this selector appears (Task Manager, All Tasks, Task Report).
     const locationsPager = paginateTable({ tableId: 'locationsTable', paginationId: 'locationsPagination', rowsPerPage: 10 });

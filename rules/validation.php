@@ -33,7 +33,13 @@ function validateUploadedImage(array $file): ?string
     finfo_close($finfo);
 
     if (!in_array($detectedMime, UPLOAD_ALLOWED_MIME_TYPES, true)) {
-        return 'Only JPG, PNG, and WEBP photos are allowed.';
+        return 'Only .jpg and .png photos are allowed.';
+    }
+
+    $extension = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+    $expectedExtension = $detectedMime === 'image/jpeg' ? 'jpg' : 'png';
+    if ($extension !== $expectedExtension) {
+        return 'The photo extension must match its file type. Only .jpg and .png photos are allowed.';
     }
 
     return null;
@@ -53,7 +59,6 @@ function storeUploadedImage(array $file): ?array
     $extensionByMime = [
         'image/jpeg' => 'jpg',
         'image/png' => 'png',
-        'image/webp' => 'webp',
     ];
     $extension = $extensionByMime[$mime] ?? 'jpg';
 

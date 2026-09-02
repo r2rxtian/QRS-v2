@@ -121,7 +121,7 @@ define('TASK_TYPE_META', [
 define('UPLOAD_MAX_PHOTOS_PER_SUBMISSION', 3);
 
 // Photo upload rules
-define('UPLOAD_ALLOWED_MIME_TYPES', ['image/jpeg', 'image/png', 'image/webp']);
+define('UPLOAD_ALLOWED_MIME_TYPES', ['image/jpeg', 'image/png']);
 define('UPLOAD_MAX_BYTES', 8 * 1024 * 1024); // 8MB per file
 define('UPLOAD_DIR', __DIR__ . '/../assets/uploads/photos/');
 define('UPLOAD_URL_PATH', '../assets/uploads/photos/'); // relative to pages/*.php

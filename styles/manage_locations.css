@@ -144,5 +144,20 @@
     display: none;
 }
 
+.csv-selected-file {
+    min-width: 0;
+    max-width: 320px;
+    overflow: hidden;
+    color: var(--gray-600);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.csv-selected-file.has-file {
+    color: var(--gray-900);
+    font-weight: 600;
+}
+
 /* .bulk-actions / .checkbox-label live in app.css -- shared with the Task
    Manager's bulk-select bar. */

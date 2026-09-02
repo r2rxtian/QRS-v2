@@ -360,7 +360,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
                                             <strong>Choose Photos</strong>
                                             <small>Upload from gallery</small>
                                         </span>
-                                        <input type="file" id="completion_photos" multiple accept="image/jpeg,image/png,image/webp">
+                                        <input type="file" id="completion_photos" multiple accept=".jpg,.png">
                                     </label>
                                     <label class="file-input-label" id="cameraPhotoLabel" onclick="openPhotoCamera()">
                                         <i class="fas fa-camera"></i>
@@ -595,7 +595,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/select-dropdown.js"></script>
-    <script src="../scripts/scan.js"></script>
+    <script src="../scripts/scan.js?v=2"></script>
 </body>
 
 </html>

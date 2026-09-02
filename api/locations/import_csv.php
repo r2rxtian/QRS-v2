@@ -47,6 +47,12 @@ if ($headerRow === false) {
     exit;
 }
 
+if (strtolower(pathinfo((string) $_FILES['csv_file']['name'], PATHINFO_EXTENSION)) !== 'csv') {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Only .csv files using the location import template are allowed.', 'type' => 'error']);
+    exit;
+}
+
 $headerRow = array_map('trim', $headerRow);
 $headerRow[0] = ltrim($headerRow[0] ?? '', "\xEF\xBB\xBF");
 if ($headerRow !== $requiredHeaders) {
@@ -61,31 +67,44 @@ if ($headerRow !== $requiredHeaders) {
 }
 
 $pdo = db();
-$existing = [];
+$knownNames = [];
 foreach ($pdo->query('SELECT name FROM ' . T_LOCATIONS . ' WHERE deleted_at IS NULL')->fetchAll(PDO::FETCH_COLUMN) as $name) {
-    $existing[mb_strtolower(normalizeLocationName($name))] = true;
+    $knownNames[mb_strtolower(normalizeLocationName($name))] = true;
 }
 
-$insert = $pdo->prepare('INSERT INTO ' . T_LOCATIONS . ' (name, location_type, qr_token, created_by) VALUES (?, ?, ?, ?)');
-
-$inserted = 0;
-$duplicates = 0;
-$blank = 0;
-$invalidType = 0;
+$records = [];
+$duplicateRows = [];
+$validationErrors = [];
+$rowNumber = 1;
 
 while (($row = fgetcsv($handle, 0, ',')) !== false) {
+    $rowNumber++;
+
+    // Ignore truly empty lines, but reject partially populated records.
+    if (count($row) === 1 && trim((string) ($row[0] ?? '')) === '') {
+        continue;
+    }
+    if (count($row) !== count($requiredHeaders)) {
+        $validationErrors[] = "Row $rowNumber must contain exactly 2 columns.";
+        continue;
+    }
+
     $rawName = $row[0] ?? '';
     $rawType = trim($row[1] ?? '');
 
     $name = normalizeLocationName($rawName);
     if ($name === '') {
-        $blank++;
+        $validationErrors[] = "Row $rowNumber is missing a location name.";
+        continue;
+    }
+    if (mb_strlen($name) > 150) {
+        $validationErrors[] = "Row $rowNumber has a location name longer than 150 characters.";
         continue;
     }
 
     $key = mb_strtolower($name);
-    if (isset($existing[$key])) {
-        $duplicates++;
+    if (isset($knownNames[$key])) {
+        $duplicateRows[] = "row $rowNumber (\"$name\")";
         continue;
     }
 
@@ -107,26 +126,81 @@ while (($row = fgetcsv($handle, 0, ',')) !== false) {
         }
     }
     if ($matchedType === null) {
-        $invalidType++;
+        $validationErrors[] = "Row $rowNumber has an invalid Type; use Monitoring or Treatment.";
         continue;
     }
 
-    $qrToken = bin2hex(random_bytes(8));
-    $insert->execute([$name, $matchedType, $qrToken, $authUser['id']]);
-    $existing[$key] = true;
-    $inserted++;
+    $knownNames[$key] = true;
+    $records[] = ['name' => $name, 'type' => $matchedType];
 }
 fclose($handle);
 
-writeAuditLog($authUser['id'], 'location.import_csv', null, null, [
-    'inserted' => $inserted, 'duplicates' => $duplicates, 'blank' => $blank, 'invalid_type' => $invalidType,
-]);
+if ($duplicateRows || $validationErrors || !$records) {
+    $messages = [];
+    if ($duplicateRows) {
+        $messages[] = 'Duplicate locations detected: ' . implode(', ', $duplicateRows) . '.';
+    }
+    if ($validationErrors) {
+        $messages[] = implode(' ', $validationErrors);
+    }
+    if (!$records && !$duplicateRows && !$validationErrors) {
+        $messages[] = 'The CSV does not contain any location records.';
+    }
+    $messages[] = 'No locations were imported. Correct the file and try again.';
 
-$message = "CSV processed: $inserted inserted, $duplicates duplicates skipped, $blank blank rows skipped";
-$message .= $invalidType > 0 ? ", $invalidType row(s) skipped (Type must be Monitoring or Treatment)." : '.';
+    http_response_code(422);
+    echo json_encode([
+        'success' => false,
+        'message' => implode(' ', $messages),
+        'type' => 'error',
+    ]);
+    exit;
+}
+
+$insert = $pdo->prepare('INSERT INTO ' . T_LOCATIONS . ' (name, location_type, qr_token, created_by) VALUES (?, ?, ?, ?)');
+
+try {
+    $pdo->beginTransaction();
+    foreach ($records as $record) {
+        $insert->execute([
+            $record['name'],
+            $record['type'],
+            bin2hex(random_bytes(8)),
+            $authUser['id'],
+        ]);
+    }
+    $pdo->commit();
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
+    if ($e instanceof PDOException && $e->getCode() === '23000') {
+        http_response_code(409);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Duplicate locations were detected while importing. No locations were imported; refresh the file and try again.',
+            'type' => 'error',
+        ]);
+        exit;
+    }
+
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'The import could not be completed. No locations were imported.',
+        'type' => 'error',
+    ]);
+    exit;
+}
+
+$inserted = count($records);
+writeAuditLog($authUser['id'], 'location.import_csv', null, null, [
+    'inserted' => $inserted,
+]);
 
 echo json_encode([
     'success' => true,
-    'message' => $message,
+    'message' => "$inserted location(s) imported successfully.",
     'type' => 'success',
 ]);

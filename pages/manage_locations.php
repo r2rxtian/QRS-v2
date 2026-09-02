@@ -62,7 +62,7 @@ $statTotal = count($locations);
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles/app.css?v=14">
-    <link rel="stylesheet" href="../styles/manage_locations.css">
+    <link rel="stylesheet" href="../styles/manage_locations.css?v=2">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -76,6 +76,7 @@ $statTotal = count($locations);
             <p>Add, edit, and generate QR codes for each location.</p>
         </div>
         <div class="topbar-actions">
+            <a class="btn btn-secondary" href="../api/locations/export_csv.php"><i class="fas fa-file-export"></i> Export CSV</a>
             <?php if ($canManage): ?>
                 <button type="button" class="btn btn-secondary" onclick="showModal('csvModal')"><i class="fas fa-file-csv"></i> Import CSV</button>
                 <button type="button" class="btn btn-primary" onclick="showModal('addLocationModal')"><i class="fas fa-circle-plus"></i> Add Location</button>
@@ -373,6 +374,7 @@ $statTotal = count($locations);
                         <i class="fas fa-file-csv"></i> Choose CSV file
                         <input type="file" id="csv_file_input" accept=".csv">
                     </label>
+                    <span class="csv-selected-file" id="csvSelectedFile" aria-live="polite">No file selected</span>
                 </div>
             </div>
             <div class="modal-footer">
@@ -419,7 +421,7 @@ $statTotal = count($locations);
     <script src="../scripts/select-dropdown.js"></script>
     <script src="../scripts/filters.js?v=2"></script>
     <script src="../scripts/toast.js"></script>
-    <script src="../scripts/manage_locations.js"></script>
+    <script src="../scripts/manage_locations.js?v=2"></script>
 </body>
 
 </html>

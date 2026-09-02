@@ -22,6 +22,7 @@ const QRS_CAPABILITIES = [
     'location.update' => [ROLE_ADMIN],
     'location.delete' => [ROLE_ADMIN],
     'location.import_csv' => [ROLE_ADMIN],
+    'location.export_csv' => [ROLE_ADMIN, ROLE_USER],
     'task_location.assign' => [ROLE_ADMIN],
     'task_location.unassign' => [ROLE_ADMIN],
     'scan.start' => [ROLE_ADMIN, ROLE_USER],
