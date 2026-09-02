@@ -127,14 +127,22 @@ function resolveTaskAction(array $status, int $taskId, string $roleName, bool $h
  */
 function sweepResolvedLocations(PDO $pdo): void
 {
+    // Persist expiration as a first-class state. The UI countdown calls the
+    // same transition immediately at zero; this sweep remains the server-side
+    // safety net for periods when nobody has the application open.
+    $pdo->exec('
+        UPDATE ' . T_TASK_LOCATIONS . '
+        SET status = \'missed\', updated_at = SYSDATETIME()
+        WHERE unassigned_at IS NULL
+          AND status IN (\'pending\', \'in_progress\')
+          AND DATEDIFF(SECOND, assigned_at, SYSDATETIME()) >= 86400
+    ');
+
     $pdo->exec('
         UPDATE ' . T_TASK_LOCATIONS . '
         SET unassigned_at = SYSDATETIME(), unassigned_by = NULL
         WHERE unassigned_at IS NULL
-          AND (
-              status = \'completed\'
-              OR (status <> \'completed\' AND DATEDIFF(SECOND, assigned_at, SYSDATETIME()) >= 86400)
-          )
+          AND status IN (\'completed\', \'missed\')
     ');
 }
 

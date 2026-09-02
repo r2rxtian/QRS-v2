@@ -158,7 +158,7 @@ CREATE TABLE dbo.qrs_task_locations (
     CONSTRAINT CK_qrs_tl_misting_answer     CHECK (misting_answer     IN ('Yes', 'No', 'N/A')),
     CONSTRAINT CK_qrs_tl_mist_blower_answer CHECK (mist_blower_answer IN ('Yes', 'No', 'N/A')),
     CONSTRAINT CK_qrs_tl_monitoring_answer  CHECK (monitoring_answer  IN ('Yes', 'No', 'N/A')),
-    CONSTRAINT CK_qrs_tl_status CHECK (status IN ('pending','in_progress','completed'))
+    CONSTRAINT CK_qrs_tl_status CHECK (status IN ('pending','in_progress','completed','missed'))
 );
 GO
 CREATE INDEX IX_qrs_tl_task_date ON dbo.qrs_task_locations(task_id, task_date);

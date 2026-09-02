@@ -90,6 +90,7 @@ $rowsStmt = $pdo->prepare('
            tl.monitoring_answer, tl.monitoring_remark,
            tl.findings_observation,
            tl.start_time, tl.end_time, tl.status,
+           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, 86400, tl.assigned_at)) AS remaining_seconds,
            CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) >= 86400 THEN 1 ELSE 0 END AS is_missed
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
@@ -226,6 +227,7 @@ if ($canModifyLocations) {
                     <?php foreach ($assignedRows as $row): ?>
                         <div class="location-tag" data-location-id="<?= (int) $row['location_id'] ?>">
                             <span><?= htmlspecialchars($row['location_name']) ?></span>
+                            <span class="expiration-countdown" data-expiration-countdown data-task-location-id="<?= (int) $row['id'] ?>" data-remaining-seconds="<?= max(0, (int) $row['remaining_seconds']) ?>"><i class="fas fa-hourglass-half"></i> --:--:--</span>
                             <?php if ($canModifyLocations): ?>
                                 <button type="button" onclick="unassignLocationInModal(this)">✕ Unassign</button>
                             <?php endif; ?>

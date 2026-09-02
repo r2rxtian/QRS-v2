@@ -4133,3 +4133,29 @@ a {
         width: 260px;
     }
 }
+
+.expiration-countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 7px;
+    border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+    border-radius: 999px;
+    color: var(--warning-dark, #8a5a00);
+    background: color-mix(in srgb, var(--warning) 10%, transparent);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.expiration-countdown.is-expired {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.location-tag.is-missed {
+    border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+}

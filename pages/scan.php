@@ -157,7 +157,8 @@ if (!$task) {
 // status (including ones a different worker just finished), not just
 // whichever locations haven't been auto-freed yet.
 $rowsStmt = $pdo->prepare('
-    SELECT tl.id AS task_location_id, l.id AS location_id, l.name AS location_name, tl.status
+    SELECT tl.id AS task_location_id, l.id AS location_id, l.name AS location_name, tl.status,
+           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, 86400, tl.assigned_at)) AS remaining_seconds
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
@@ -474,6 +475,9 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
                                     <i class="fas fa-hand-point-right scan-location-list-here-icon" aria-hidden="true"></i>
                                     <span class="scan-location-list-icon"><i class="fas fa-<?= $rowIsDone ? 'check' : ($row['status'] === 'in_progress' ? 'hourglass-half' : 'clock') ?>"></i></span>
                                     <span class="scan-location-list-name"><?= htmlspecialchars($row['location_name']) ?></span>
+                                    <?php if (!$rowIsDone): ?>
+                                        <span class="expiration-countdown" data-expiration-countdown data-task-location-id="<?= (int) $row['task_location_id'] ?>" data-remaining-seconds="<?= max(0, (int) $row['remaining_seconds']) ?>">--:--:--</span>
+                                    <?php endif; ?>
                                     <span class="scan-location-list-status <?= $rowStatusClass ?>"><?= $rowStatusLabel ?></span>
                                     <?php if (!$rowIsDone): ?><i class="fas fa-chevron-right scan-location-list-chevron"></i><?php endif; ?>
                                 </button>

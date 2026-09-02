@@ -16,6 +16,34 @@ document.addEventListener('change', function (e) {
     if (e.target.classList.contains('row-check')) updateLocationSelectedCount();
 });
 
+async function refreshLocationsView() {
+    const response = await fetch(window.location.href, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Could not refresh the location list.');
+
+    const nextDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const replacements = [
+        ['.stat-tiles', '.stat-tiles'],
+        ['#locationsTable tbody', '#locationsTable tbody'],
+    ];
+    if (!nextDocument.querySelector('#locationsTable tbody')) {
+        throw new Error('The refreshed location view was not available.');
+    }
+    replacements.forEach(([currentSelector, nextSelector]) => {
+        const current = document.querySelector(currentSelector);
+        const next = nextDocument.querySelector(nextSelector);
+        if (current && next) current.replaceWith(next);
+    });
+
+    window.__pagers?.locationsTable?.refresh();
+    const selectAll = document.getElementById('select_all');
+    if (selectAll) selectAll.checked = false;
+    updateLocationSelectedCount();
+}
+
 function confirmDeleteLocation(button) {
     closeAllKebabs();
     const row = button.closest('tr');
@@ -47,11 +75,7 @@ function confirmDeleteLocation(button) {
             showToast(data.message, data.type || (data.success ? 'success' : 'error'));
 
             if (data.success) {
-                // Reload (not just row.remove()) so the stat tiles above the
-                // table -- Total Locations, Available, Currently Assigned --
-                // stay in sync instead of showing pre-delete counts until
-                // the user manually refreshes.
-                setTimeout(() => window.location.reload(), 1000);
+                await refreshLocationsView();
             }
         } catch (err) {
             closeModal('confirmModal');
@@ -101,6 +125,7 @@ async function submitAddLocation() {
         // ever existing as a tiny thumbnail back in the table row.
         _addLocationCreated = true;
         input.value = '';
+        await refreshLocationsView();
 
         const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(data.data.qr_token);
         const qrImg = document.getElementById('addLocationQrImg');
@@ -171,13 +196,10 @@ function printAddLocationQr() {
     win.print();
 }
 
-// Resets the modal back to its form step every time it closes, so it never
-// reopens still showing the previous location's QR code, and reloads the
-// page only if a location was actually created during this open (no reason
-// to reload just because the user hit Cancel).
+// Resets the modal back to its form step every time it closes. The table is
+// already synchronized in the background as soon as creation succeeds.
 function closeAddLocationModal() {
     closeModal('addLocationModal');
-    const wasCreated = _addLocationCreated;
     _addLocationCreated = false;
 
     document.getElementById('addLocationFormStep').style.display = '';
@@ -188,9 +210,6 @@ function closeAddLocationModal() {
     document.getElementById('addLocationPrintBtn').style.display = 'none';
     document.getElementById('addLocationDoneBtn').style.display = 'none';
 
-    if (wasCreated) {
-        window.location.reload();
-    }
 }
 
 // Reads the row's own current data straight out of the table -- no extra
@@ -235,11 +254,7 @@ async function submitEditLocation() {
         showToast(data.message, data.type || (data.success ? 'success' : 'error'));
 
         if (data.success) {
-            // Reload rather than patching the row in place -- Location Name
-            // also drives the row's sort position and its search/filter
-            // text, both of which paginateTable/table-search read straight
-            // from the DOM rather than re-querying.
-            setTimeout(() => window.location.reload(), 1000);
+            await refreshLocationsView();
         }
     } catch (err) {
         closeModal('editLocationModal');
@@ -272,7 +287,7 @@ async function submitCsvImport() {
 
         if (data.success) {
             fileInput.value = '';
-            setTimeout(() => window.location.reload(), 1200);
+            await refreshLocationsView();
         }
     } catch (err) {
         closeModal('csvModal');
@@ -309,7 +324,7 @@ function deleteSelected() {
             showToast(data.message, data.type || (data.success ? 'success' : 'error'));
 
             if (data.success) {
-                setTimeout(() => window.location.reload(), 1000);
+                await refreshLocationsView();
             }
         } catch (err) {
             closeModal('confirmModal');

@@ -16,6 +16,35 @@ function showMessage(message, type = 'info') {
     showModal('messageModal');
 }
 
+async function refreshTasksView() {
+    const response = await fetch(window.location.href, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Could not refresh the task list.');
+
+    const nextDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const replacements = [
+        ['.stat-tiles', '.stat-tiles'],
+        ['#tasksTable tbody', '#tasksTable tbody'],
+        ['#taskLocationsPanel', '#taskLocationsPanel'],
+    ];
+    if (!nextDocument.querySelector('#tasksTable tbody')) {
+        throw new Error('The refreshed task view was not available.');
+    }
+    replacements.forEach(([currentSelector, nextSelector]) => {
+        const current = document.querySelector(currentSelector);
+        const next = nextDocument.querySelector(nextSelector);
+        if (current && next) current.replaceWith(next);
+    });
+
+    window.__pagers?.tasksTable?.refresh();
+    const selectAll = document.getElementById('select_all');
+    if (selectAll) selectAll.checked = false;
+    updateTaskSelectedCount();
+}
+
 function toggleSelectAll(checkbox) {
     document.querySelectorAll('.row-check').forEach(c => c.checked = checkbox.checked);
     updateTaskSelectedCount();
@@ -59,7 +88,7 @@ function deleteSelected() {
             showToast(data.message, data.type || (data.success ? 'success' : 'error'));
 
             if (data.success) {
-                setTimeout(() => window.location.reload(), 1000);
+                await refreshTasksView();
             }
         } catch (err) {
             closeModal('confirmModal');
@@ -173,7 +202,7 @@ async function submitCreateTask() {
 
         if (data.success) {
             nameInput.value = '';
-            setTimeout(() => window.location.reload(), 1000);
+            await refreshTasksView();
         }
     } catch (err) {
         closeModal('createTaskModal');
@@ -208,11 +237,7 @@ function confirmDelete(button) {
             showToast(data.message, data.type || (data.success ? 'success' : 'error'));
 
             if (data.success) {
-                // Reload (not just row.remove()) so the stat tiles above the
-                // table -- Total Tasks, On-going, Completed, Sub-Tasks
-                // Completed -- stay in sync instead of showing pre-delete
-                // counts until the user manually refreshes.
-                setTimeout(() => window.location.reload(), 1000);
+                await refreshTasksView();
             }
         } catch (err) {
             closeModal('confirmModal');
