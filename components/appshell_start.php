@@ -64,17 +64,17 @@ $avatarPhotoUrl = employeePhotoUrl($shellUser['employee_id']);
                 <?php endforeach; ?>
             </nav>
 
-            <div class="nav-section-label">General</div>
-            <nav class="sidebar-nav">
-                <?php if ($shellUser['role_name'] === ROLE_ADMIN): ?>
+            <?php if ($shellUser['role_name'] === ROLE_ADMIN): ?>
+                <div class="nav-section-label">General</div>
+                <nav class="sidebar-nav">
                     <a href="user_management.php" class="sidebar-link<?= $currentPage === 'user_management.php' ? ' active' : '' ?>" title="User Management" aria-label="User Management">
                         <i class="fas fa-users-gear"></i> User Management
                     </a>
                     <a href="audit_logs.php" class="sidebar-link<?= $currentPage === 'audit_logs.php' ? ' active' : '' ?>" title="Audit Logs" aria-label="Audit Logs">
                         <i class="fas fa-clock-rotate-left"></i> Audit Logs
                     </a>
-                <?php endif; ?>
-            </nav>
+                </nav>
+            <?php endif; ?>
         </div>
 
         <div class="sidebar-footer-card">
