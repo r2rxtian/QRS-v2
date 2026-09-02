@@ -9,6 +9,26 @@
     gap: 8px;
 }
 
+/* Tablet: preserve the complete report schema instead of hiding Biometrics
+   and timestamp columns. The shared .table-wrapper already owns horizontal
+   overflow; restoring the table floor makes that scrolling engage. */
+@media (min-width: 768px) and (max-width: 1199px) {
+    #reportTable {
+        width: 100%;
+        min-width: 1180px;
+        table-layout: auto;
+    }
+
+    #reportTable th:nth-child(4),
+    #reportTable td:nth-child(4),
+    #reportTable th:nth-child(6),
+    #reportTable td:nth-child(6),
+    #reportTable th:nth-child(7),
+    #reportTable td:nth-child(7) {
+        display: table-cell !important;
+    }
+}
+
 .attachment-list img {
     width: 68px;
     height: 68px;
