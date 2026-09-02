@@ -19,13 +19,16 @@ function makeSortable(tableId, pager) {
         return { sortBy: function () {} };
     }
 
-    const tbody = table.tBodies[0];
+    let tbody = table.tBodies[0];
 
     function sortBy(colIndex, type, direction) {
         if (colIndex === '' || colIndex === null || colIndex === undefined) return;
         colIndex = parseInt(colIndex, 10);
         if (Number.isNaN(colIndex)) return;
 
+        // Live-region synchronization can replace tbody without replacing
+        // the table itself, so always sort the currently mounted body.
+        tbody = table.tBodies[0];
         const rows = Array.from(tbody.querySelectorAll('tr'));
 
         rows.sort((rowA, rowB) => {

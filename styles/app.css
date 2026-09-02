@@ -1928,6 +1928,13 @@ select.form-input {
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
+/* Pagination reserves the tallest measured page for the active page-size
+   selection. It prevents page-to-page shake but is recalculated when the
+   user changes Show Entries, filters rows, or receives live data. */
+.table-wrapper.table-wrapper--paginated {
+    min-height: var(--table-page-min-height, 0);
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -1953,16 +1960,14 @@ table {
    funneling all the growth into one spot. Percentages are weighted toward
    whichever column holds the actual identifying text (Task, Location Name,
    Name), same as before, just capped rather than unbounded.
-   Scoped to these four tables specifically -- Task Report's 10-column
-   table keeps plain auto-layout instead (see #reportTable below): forcing
-   that many columns to always fit the card's width with no overflow would
-   crush its Remarks/Images columns on any narrower screen, where letting it
-   scroll horizontally (.table-wrapper's overflow-x:auto) reads better than
-   forcing everything to fit. */
+   Scoped to the application data tables. Wider schemas such as Task Report
+   use their own larger min-width, so the fixed columns remain readable and
+   the wrapper scrolls horizontally on narrower screens. */
 #tasksTable,
 #allTasksTable,
 #locationsTable,
-#usersTable {
+#usersTable,
+#reportTable {
     table-layout: fixed;
 }
 
@@ -1978,9 +1983,9 @@ table {
    reads far better on a tablet than every cell's content overlapping or
    truncating. Chosen per table from its own column count/content
    (avatar cells and QR thumbnails need more room than a bare badge), not
-   a single shared number. #reportTable (auto-layout, more columns, see
-   the big comment above) and #auditLogTable (plain 4-column auto-layout)
-   get their own floor for the same reason just below.
+   a single shared number. #reportTable (with more columns) and
+   #auditLogTable (plain 4-column auto-layout) get their own floor for the
+   same reason just below.
    IMPORTANT: table-layout:fixed applies these widths to BOTH the header
    cell and the body cell in the same column -- a floor picked only from
    body content (a lone kebab icon under "Actions", a short badge under
@@ -2153,40 +2158,11 @@ table {
     width: 24%;
 }
 
-/* Task Report deliberately stays table-layout:auto (see the big comment
-   above) -- but its short/fixed-format columns still get the same
-   shrink-to-content-and-center treatment the other four tables have, so
-   leftover width goes to the columns actually worth reading (Task, Area,
-   User, Remarks) instead of spreading evenly into Scheduled Date/
-   Biometrics/Start Time/End Time/Status too. Not contiguous from the end
-   (Images and Remarks -- both meant to stay flexible -- sit in between),
-   hence the explicit list instead of an :nth-last-child(-n+k) range. Also
-   matches the halign choices already made for these same columns in the
-   exported PDF (see scripts/task_report.js's columnStyles), so the
-   on-screen table and the PDF read the same way. */
-#reportTable th:nth-last-child(2),
-#reportTable td:nth-last-child(2), /* Status */
-#reportTable th:nth-last-child(4),
-#reportTable td:nth-last-child(4), /* End Time */
-#reportTable th:nth-last-child(5),
-#reportTable td:nth-last-child(5), /* Start Time */
-#reportTable th:nth-last-child(7),
-#reportTable td:nth-last-child(7), /* Biometrics */
-#reportTable th:nth-last-child(8),
-#reportTable td:nth-last-child(8) { /* Scheduled Date */
-    width: 1%;
-    white-space: nowrap;
-    text-align: center;
-}
-
-/* Same tablet floor as the fixed-layout tables above, just larger --
-   10 columns (Task, Area, User, Remarks left flexible; the rest pinned
-   to content-width via width:1% + white-space:nowrap right above) still
-   need real room apiece before auto-layout starts crushing them, and
-   without a floor here .table-wrapper's overflow-x:auto never engages
-   on a tablet-width card. */
+/* Task Report defines its ten stable percentages through a <colgroup> in
+   task_report.php. Its larger floor preserves those widths and lets the
+   wrapper scroll rather than recalculating columns for each visible page. */
 #reportTable {
-    min-width: 1180px;
+    min-width: 1480px;
 }
 
 /* auditLogTable stays plain auto-layout (just 4 columns: Timestamp,
@@ -3737,23 +3713,43 @@ tbody tr {
     box-shadow: 0 0 0 3px rgba(82, 122, 99, 0.1);
 }
 
-/* Status badge animations */
+/* Table pills may change color when their state changes, but pagination and
+   filtering must never replay entrance/transform motion on sub-elements. */
+.table-wrapper .status-badge,
+.table-wrapper .tag,
+.table-wrapper .method-badge,
+.table-wrapper .role-badge {
+    animation: none !important;
+    transform: none !important;
+    transition-property: background-color, color, border-color, box-shadow;
+    transition-duration: 0.15s;
+    transition-timing-function: ease;
+}
+
+.table-wrapper .status-badge:hover,
+.table-wrapper .tag:hover,
+.table-wrapper .method-badge:hover,
+.table-wrapper .role-badge:hover {
+    transform: none !important;
+}
+
+/* Status badge interactions outside tables */
 .status-badge {
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .status-badge:hover {
-    transform: scale(1.05);
+    transform: none;
 }
 
-/* Tag animations */
+/* Tags use state/hover color only; display:none toggles must not restart an
+   entrance keyframe when a paginated row becomes visible again. */
 .tag {
-    animation: scaleIn 0.3s ease-out;
-    transition: all 0.2s ease;
+    animation: none;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .tag:hover {
-    transform: scale(1.05);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
@@ -3999,11 +3995,16 @@ a {
     #tasksTable,
     #allTasksTable,
     #locationsTable,
-    #usersTable,
-    #reportTable {
+    #usersTable {
         width: 100%;
         min-width: 0;
         table-layout: auto;
+    }
+
+    #reportTable {
+        width: 100%;
+        min-width: 1480px;
+        table-layout: fixed;
     }
 
     #auditLogTable {

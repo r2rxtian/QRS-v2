@@ -66,7 +66,7 @@ $tlStmt = $pdo->prepare('
     SELECT id, task_id, status
     FROM ' . T_TASK_LOCATIONS . '
     WHERE id = ? AND task_id = ? AND unassigned_at IS NULL
-      AND (status <> \'pending\' OR DATEDIFF(SECOND, assigned_at, SYSDATETIME()) < 86400)
+      AND (status <> \'pending\' OR DATEDIFF(SECOND, assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
 ');
 $tlStmt->execute([$taskLocationId, $taskId]);
 $taskLocation = $tlStmt->fetch();

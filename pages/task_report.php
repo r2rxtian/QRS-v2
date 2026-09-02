@@ -38,7 +38,7 @@ $sql = '
     ) scan_start
     WHERE t.deleted_at IS NULL AND (
         tl.status = \'completed\'
-        OR (tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400)
+        OR (tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
     )
     -- Grouped by task (so a Missed Out row sits next to its Completed rows
     -- instead of scattering across the list), but the task groups themselves
@@ -97,8 +97,8 @@ $statTasksCovered = count($taskNames);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=13">
-    <link rel="stylesheet" href="../styles/task_report.css?v=7">
+    <link rel="stylesheet" href="../styles/app.css?v=14">
+    <link rel="stylesheet" href="../styles/task_report.css?v=15">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -117,7 +117,7 @@ $statTasksCovered = count($taskNames);
     </div>
 
     <!-- Stat Tiles -->
-    <div class="stat-tiles">
+    <div class="stat-tiles" data-realtime-region="report-stats">
         <div class="stat-tile">
             <div class="stat-tile-top">
                 <div class="stat-tile-icon periwinkle"><i class="fas fa-file-lines"></i></div>
@@ -226,6 +226,18 @@ $statTasksCovered = count($taskNames);
         <div class="card-body p-0">
             <div class="table-wrapper">
                 <table id="reportTable">
+                    <colgroup>
+                        <col class="report-col-task">
+                        <col class="report-col-area">
+                        <col class="report-col-schedule">
+                        <col class="report-col-biometrics">
+                        <col class="report-col-user">
+                        <col class="report-col-start">
+                        <col class="report-col-end">
+                        <col class="report-col-remarks">
+                        <col class="report-col-status">
+                        <col class="report-col-images">
+                    </colgroup>
                     <thead>
                         <tr>
                             <th>Task</th>
@@ -240,7 +252,7 @@ $statTasksCovered = count($taskNames);
                             <th>Images</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody data-realtime-region="report-table-body">
                         <?php if (empty($records)): ?>
                             <tr>
                                 <td colspan="10" style="text-align:center; padding: 40px; color: var(--gray-500);">No records yet.</td>
@@ -346,7 +358,7 @@ $statTasksCovered = count($taskNames);
                                     <?php else: ?>
                                         <ul class="attachment-list">
                                             <?php foreach ($photos['after'] as $filename): ?>
-                                                <li><img src="<?= htmlspecialchars(UPLOAD_URL_PATH . $filename) ?>" alt="Photo" onclick="zoomPhoto(this)"></li>
+                                                <li><img src="<?= htmlspecialchars(UPLOAD_URL_PATH . $filename) ?>" alt="Task completion photo" width="48" height="48" decoding="async" onerror="this.onerror=null;this.src='../assets/images/image-placeholder.svg';this.alt='Image unavailable';this.classList.add('is-fallback');" onclick="zoomPhoto(this)"></li>
                                             <?php endforeach; ?>
                                         </ul>
                                     <?php endif; ?>
@@ -363,6 +375,8 @@ $statTasksCovered = count($taskNames);
     <div style="text-align: center; margin-top: 24px;">
         <a href="<?= $isAdmin ? 'tasks.php' : 'qradmin.php' ?>" class="btn btn-secondary"><i class="fas fa-chart-column"></i> Back to <?= $isAdmin ? 'Task Manager' : 'All Tasks' ?></a>
     </div>
+
+    <?php include '../components/appshell_end.php'; ?>
 
     <!-- Remarks Modal -->
     <div id="remarksModal" class="modal-overlay">
@@ -383,15 +397,13 @@ $statTasksCovered = count($taskNames);
         </div>
     </div>
 
-    <?php include '../components/appshell_end.php'; ?>
-
     <script src="../scripts/sidebar-drawer.js"></script>
-    <script src="../scripts/pagination.js"></script>
+    <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/sort-table.js"></script>
-    <script src="../scripts/filters.js"></script>
+    <script src="../scripts/filters.js?v=2"></script>
+    <script src="../scripts/task_report.js?v=12"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    <script src="../scripts/task_report.js?v=8"></script>
 </body>
 
 </html>

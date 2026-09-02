@@ -67,7 +67,7 @@ document.addEventListener('click', function (e) {
     }
 });
 
-function applyTableFilters(tableId) {
+function applyTableFilters(tableId, options = {}) {
     const table = document.getElementById(tableId);
     if (!table) return;
 
@@ -136,7 +136,7 @@ function applyTableFilters(tableId) {
     }
 
     if (window.__pagers && window.__pagers[tableId] && typeof window.__pagers[tableId].refresh === 'function') {
-        window.__pagers[tableId].refresh();
+        window.__pagers[tableId].refresh({ preservePage: options.preservePage === true });
     }
 }
 

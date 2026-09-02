@@ -126,7 +126,7 @@ async function submitAddUser() {
         showMessage(data.message, data.type || (data.success ? 'success' : 'error'));
 
         if (data.success) {
-            setTimeout(() => window.location.reload(), 1000);
+            await window.QRSRealtime?.refresh();
         }
     } catch (err) {
         closeAddUserModal();

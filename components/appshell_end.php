@@ -6,6 +6,7 @@
  * appshell page can call openTaskDetailModal(taskId).
  */
 require_once __DIR__ . '/../auth/csrf.php';
+$realtimeCursor = (int) db()->query('SELECT COALESCE(MAX(id), 0) FROM ' . T_AUDIT_LOG)->fetchColumn();
 ?>
     </main>
 </div>
@@ -28,9 +29,13 @@ require_once __DIR__ . '/../auth/csrf.php';
     </div>
 </div>
 
-<script>const QRS_CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;</script>
-<script src="../scripts/motion.js"></script>
+<script>
+const QRS_CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;
+const QRS_REALTIME_CURSOR = <?= $realtimeCursor ?>;
+</script>
+<script src="../scripts/motion.js?v=4"></script>
 <script src="../scripts/session-guard.js"></script>
+<script src="../scripts/realtime-sync.js?v=2"></script>
 <script src="../scripts/task-countdowns.js"></script>
 <script src="../scripts/task-detail-modal.js"></script>
 <script src="../scripts/location-search.js"></script>

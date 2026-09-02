@@ -13,6 +13,12 @@ define('T_TASK_LOCATIONS', 'dbo.qrs_task_locations');
 define('T_TASK_LOCATION_PHOTOS', 'dbo.qrs_task_location_photos');
 define('T_AUDIT_LOG', 'dbo.qrs_audit_log');
 define('T_RATE_LIMIT_EVENTS', 'dbo.qrs_rate_limit_events');
+define('T_MAINTENANCE_STATE', 'dbo.qrs_maintenance_state');
+
+// Shared expiration policy used by countdown reads and both server-side
+// transition paths.
+define('TASK_LOCATION_EXPIRATION_SECONDS', 24 * 60 * 60);
+define('RESOLVED_LOCATION_SWEEP_INTERVAL_SECONDS', 30);
 
 // The company-wide HR master list this app does NOT own (lives in the same
 // LRNPH_OJT database, maintained by another system). qrs_users.employee_id

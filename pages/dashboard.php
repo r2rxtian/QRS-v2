@@ -55,10 +55,10 @@ $sql = '
     SELECT t.id, t.name,
            COUNT(tl.id) AS total_locations,
            SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-           SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400 THEN 1 ELSE 0 END) AS in_progress_locations,
-           SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 THEN 1 ELSE 0 END) AS missed_locations,
-           MAX(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400
-                     AND CAST(DATEADD(HOUR, 24, tl.assigned_at) AS DATE) = CAST(SYSDATETIME() AS DATE)
+           SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS in_progress_locations,
+           SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
+           MAX(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
+                     AND CAST(DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', tl.assigned_at) AS DATE) = CAST(SYSDATETIME() AS DATE)
                 THEN 1 ELSE 0 END) AS missed_today_flag,
            MIN(tl.start_time) AS earliest_start,
            MIN(tl.task_date) AS earliest_active_date
@@ -294,7 +294,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=13">
+    <link rel="stylesheet" href="../styles/app.css?v=14">
     <link rel="stylesheet" href="../styles/dashboard.css?v=21">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
@@ -313,7 +313,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
             </div>
 
             <!-- Stat tiles -->
-            <section class="stat-tiles">
+            <section class="stat-tiles" data-realtime-region="dashboard-stats">
                 <div class="stat-tile">
                     <div class="stat-tile-icon teal"><i class="fas fa-clipboard-list"></i></div>
                     <div>
@@ -339,7 +339,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
             </section>
 
             <!-- Insights hero (dome) -->
-            <section class="card insights-hero">
+            <section class="card insights-hero" data-realtime-region="dashboard-insights">
                 <h2>Task Completion Insights</h2>
                 <p class="insights-subtitle">All-time totals across every QR task check you've done.</p>
 
@@ -413,7 +413,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
                         <h3>Recent Task Reports</h3>
                         <a href="<?= $isAdmin ? 'tasks.php' : 'qradmin.php' ?>" class="panel-menu" style="text-decoration:none;">View All</a>
                     </div>
-                    <div class="recent-list">
+                    <div class="recent-list" data-realtime-region="dashboard-recent-tasks">
                         <?php if (empty($recentTasks)): ?>
                             <p style="color: var(--gray-500); font-size: 14px;">No tasks yet.</p>
                         <?php endif; ?>
@@ -478,7 +478,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
                 <div class="panel-header">
                     <h3>Today's Tasks</h3>
                 </div>
-                <div class="timeline">
+                <div class="timeline" data-realtime-region="dashboard-timeline">
                     <?php if (empty($todaysTasks)): ?>
                         <p style="color: var(--gray-500); font-size: 14px;">No tasks assigned today.</p>
                     <?php endif; ?>
@@ -515,7 +515,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
                 <div class="panel-header">
                     <h3>Upcoming Tasks</h3>
                 </div>
-                <div class="recent-list upcoming-list">
+                <div class="recent-list upcoming-list" data-realtime-region="dashboard-upcoming">
                     <?php if (empty($upcomingTasks)): ?>
                         <p style="color: var(--gray-500); font-size: 14px;">Nothing scheduled ahead yet.</p>
                     <?php endif; ?>

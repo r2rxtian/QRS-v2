@@ -356,20 +356,36 @@ async function exportReportToPDF() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const reportPager = paginateTable({ tableId: 'reportTable', paginationId: 'reportPagination', rowsPerPage: 10 });
-    makeSortable('reportTable', reportPager);
+function mountTaskReportTable() {
+    const table = document.getElementById('reportTable');
+    if (!table || table.dataset.paginationMounted === 'true') return;
+    table.dataset.paginationMounted = 'true';
 
-    window.onEntriesChange = function(value) {
-        reportPager.setRowsPerPage(value === 'all' ? 'all' : parseInt(value, 10));
-    };
-
-    // Arriving here via a "View in Task Report" link (e.g. from a completed
-    // task's detail modal) pre-fills the search box server-side with the
-    // task name -- apply that filter immediately instead of waiting for the
-    // user to retype it.
+    // Apply a server-prefilled search before pagination captures/animates the
+    // first visible row set. Doing it afterward would swap rows underneath an
+    // already-running entrance timeline.
     const searchInput = document.querySelector('.table-search-input[data-target="reportTable"]');
     if (searchInput && searchInput.value) {
         applyTableFilters('reportTable');
     }
-});
+
+    // Match Task Manager and Manage Locations: one paginator owns the table
+    // mount, sorting, entry-limit changes, and its single GSAP row reveal.
+    const reportPager = paginateTable({
+        tableId: 'reportTable',
+        paginationId: 'reportPagination',
+        rowsPerPage: 10,
+    });
+    makeSortable('reportTable', reportPager);
+
+    window.reportPager = reportPager;
+    window.onEntriesChange = function(value) {
+        reportPager.setRowsPerPage(value === 'all' ? 'all' : parseInt(value, 10));
+    };
+
+}
+
+// This script is placed after the report DOM and before the heavier PDF
+// libraries. Mount immediately so third-party downloads cannot postpone the
+// initial pagination/animation lifecycle.
+mountTaskReportTable();

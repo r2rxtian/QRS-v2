@@ -28,7 +28,7 @@ if ($taskId <= 0) {
                SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations
         FROM ' . T_TASKS . ' t
         LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
-            AND (tl.status = \'completed\' OR DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400)
+            AND (tl.status = \'completed\' OR DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
             AND tl.id = (
                 SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
                 WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
@@ -58,7 +58,7 @@ if ($taskId <= 0) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="../styles/app.css?v=13">
+        <link rel="stylesheet" href="../styles/app.css?v=14">
         <link rel="stylesheet" href="../styles/scan.css?v=3">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
         <script src="../scripts/theme.js?v=6"></script>
@@ -158,11 +158,11 @@ if (!$task) {
 // whichever locations haven't been auto-freed yet.
 $rowsStmt = $pdo->prepare('
     SELECT tl.id AS task_location_id, l.id AS location_id, l.name AS location_name, tl.status,
-           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, 86400, tl.assigned_at)) AS remaining_seconds
+           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', tl.assigned_at)) AS remaining_seconds
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
-      AND (tl.status = \'completed\' OR DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400)
+      AND (tl.status = \'completed\' OR DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
       AND tl.id = (
           SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
           WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
@@ -207,7 +207,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=13">
+    <link rel="stylesheet" href="../styles/app.css?v=14">
     <link rel="stylesheet" href="../styles/scan.css?v=3">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
@@ -410,7 +410,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
         </div>
 
         <!-- Locations status sidebar -->
-        <div class="scan-side-col">
+        <div class="scan-side-col" data-realtime-region="scan-location-status">
             <div class="card">
                 <div class="card-header">
                     <h2><i class="fas fa-map-signs"></i> Locations Status</h2>

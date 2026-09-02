@@ -2,7 +2,7 @@
  * QRS v2 — full deployment package (T-SQL / SQL Server)
  * ============================================================================
  * Run top to bottom (in SSMS, or however the target database is reached) to
- * stand up everything this app owns: the 8 dbo.qrs_* tables, the 2 fixed
+ * stand up everything this app owns: the 9 dbo.qrs_* tables, the 2 fixed
  * roles, the 12 real employee accounts, and the real 240-row location
  * catalog (Monitoring + Treatment). Just CREATE TABLE / INSERT commands --
  * which server or database this runs against is not this file's concern.
@@ -100,10 +100,13 @@ CREATE TABLE dbo.qrs_locations (
     created_at    DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
     updated_at    DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
     deleted_at    DATETIME2      NULL,
-    CONSTRAINT UQ_qrs_locations_name UNIQUE (name),
     CONSTRAINT UQ_qrs_locations_qr_token UNIQUE (qr_token),
     CONSTRAINT CK_qrs_locations_location_type CHECK (location_type IN ('Monitoring', 'Treatment'))
 );
+GO
+CREATE UNIQUE INDEX UX_qrs_locations_active_name
+ON dbo.qrs_locations(name)
+WHERE deleted_at IS NULL;
 GO
 -- Location status (Available / Location Assigned) is computed on read by the
 -- app: assigned iff any qrs_task_locations row exists with unassigned_at IS NULL.
@@ -232,7 +235,19 @@ GO
 CREATE INDEX IX_qrs_rle_key_time ON dbo.qrs_rate_limit_events(event_key, occurred_at);
 GO
 
-PRINT 'Section 1 done: 8 dbo.qrs_* tables created.';
+-- ============================================================
+-- dbo.qrs_maintenance_state — cross-process maintenance throttle
+-- ============================================================
+CREATE TABLE dbo.qrs_maintenance_state (
+    job_name    VARCHAR(80) NOT NULL PRIMARY KEY,
+    last_run_at DATETIME2   NULL
+);
+GO
+INSERT INTO dbo.qrs_maintenance_state (job_name, last_run_at)
+VALUES ('resolve_task_locations', NULL);
+GO
+
+PRINT 'Section 1 done: 9 dbo.qrs_* tables created.';
 GO
 
 -- ============================================================

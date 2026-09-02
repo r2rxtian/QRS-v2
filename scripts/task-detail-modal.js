@@ -52,7 +52,7 @@ function closeTaskDetailModal() {
     document.getElementById('taskDetailModal').classList.remove('active');
     if (window.__qrsTaskListNeedsRefresh) {
         window.__qrsTaskListNeedsRefresh = false;
-        window.location.reload();
+        window.QRSRealtime?.refresh();
     }
 }
 
@@ -116,8 +116,8 @@ async function submitAssignLocationsInModal() {
         await refreshTaskDetailModal();
         showTaskDetailMessage(data.message, data.type || (data.success ? 'success' : 'error'));
 
-        // Row/status badges on the underlying list may now be stale --
-        // refresh the page's own list once the modal is closed.
+        // The modal updates immediately; the underlying list reconciles when
+        // this modal closes (and other clients receive the same change by SSE).
         window.__qrsTaskListNeedsRefresh = true;
     } catch (err) {
         showTaskDetailMessage('Could not reach the server. Please try again.', 'error');

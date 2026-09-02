@@ -75,7 +75,7 @@ $tlStmt = $pdo->prepare('
            findings_observation
     FROM ' . T_TASK_LOCATIONS . '
     WHERE task_id = ? AND location_id = ? AND unassigned_at IS NULL
-      AND (status = \'completed\' OR DATEDIFF(SECOND, assigned_at, SYSDATETIME()) < 86400)
+      AND (status = \'completed\' OR DATEDIFF(SECOND, assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
       AND id = (SELECT MAX(id) FROM ' . T_TASK_LOCATIONS . ' WHERE task_id = ? AND location_id = ?)
 ');
 $tlStmt->execute([$taskId, $location['id'], $taskId, $location['id']]);

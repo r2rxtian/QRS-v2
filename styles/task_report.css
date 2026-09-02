@@ -1,12 +1,87 @@
 /* Page-specific styles for pages/task_report.php */
 
+/* Unlike the shorter management tables, the report used auto table layout.
+   Hidden pagination rows therefore stopped contributing to column sizing and
+   each newly visible page could move every column after Task/Area. A fixed
+   colgroup keeps the same geometry across initial load, paging, filtering,
+   and tbody replacements from real-time synchronization. */
+#reportTable {
+    table-layout: fixed;
+    min-width: 1480px;
+}
+
+#reportTable .report-col-task { width: 10%; }
+#reportTable .report-col-area { width: 12%; }
+#reportTable .report-col-schedule { width: 11%; }
+#reportTable .report-col-biometrics { width: 8%; }
+#reportTable .report-col-user { width: 11%; }
+#reportTable .report-col-start { width: 9%; }
+#reportTable .report-col-end { width: 9%; }
+#reportTable .report-col-remarks { width: 8%; }
+#reportTable .report-col-status { width: 8%; }
+#reportTable .report-col-images { width: 14%; }
+
+#reportTable th:nth-child(3),
+#reportTable td:nth-child(3),
+#reportTable th:nth-child(4),
+#reportTable td:nth-child(4),
+#reportTable th:nth-child(6),
+#reportTable td:nth-child(6),
+#reportTable th:nth-child(7),
+#reportTable td:nth-child(7),
+#reportTable th:nth-child(9),
+#reportTable td:nth-child(9) {
+    white-space: nowrap;
+    text-align: center;
+}
+
 .attachment-list {
     list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
     gap: 8px;
+    width: 160px;
+    min-width: 160px;
+    max-width: 160px;
+    height: 48px;
+    min-height: 48px;
+    max-height: 48px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    contain: layout size paint;
+}
+
+.attachment-list::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+.attachment-list li {
+    display: block;
+    width: 48px;
+    min-width: 48px;
+    max-width: 48px;
+    height: 48px;
+    min-height: 48px;
+    max-height: 48px;
+    flex: 0 0 48px;
+    line-height: 0;
+}
+
+/* Report pagination needs a predictable row footprint. Photos previously
+   wrapped into a second line, making some ten-row pages much taller than
+   others and causing the shared CLS reservation to leave a large blank area. */
+#reportTable tbody tr {
+    height: 92px;
+}
+
+#reportTable tbody td {
+    padding-top: 12px;
+    padding-bottom: 12px;
 }
 
 /* Tablet: preserve the complete report schema instead of hiding Biometrics
@@ -15,8 +90,8 @@
 @media (min-width: 768px) and (max-width: 1199px) {
     #reportTable {
         width: 100%;
-        min-width: 1180px;
-        table-layout: auto;
+        min-width: 1480px;
+        table-layout: fixed;
     }
 
     #reportTable th:nth-child(4),
@@ -30,8 +105,11 @@
 }
 
 .attachment-list img {
-    width: 68px;
-    height: 68px;
+    display: block;
+    box-sizing: border-box;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
     object-fit: cover;
     border-radius: 8px;
     border: 1px solid var(--gray-200);
@@ -41,7 +119,13 @@
 }
 
 .attachment-list img:hover {
-    transform: scale(1.1);
+    transform: none;
+}
+
+.attachment-list img.is-fallback {
+    object-fit: contain;
+    padding: 0;
+    background: var(--gray-50);
 }
 
 .no-attachments {

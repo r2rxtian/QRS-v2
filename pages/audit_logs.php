@@ -58,7 +58,7 @@ $activeUsersToday = (int) $pdo->query('
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=13">
+    <link rel="stylesheet" href="../styles/app.css?v=14">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -73,7 +73,7 @@ $activeUsersToday = (int) $pdo->query('
         </div>
     </div>
 
-    <div class="stat-tiles">
+    <div class="stat-tiles" data-realtime-region="audit-stats">
         <div class="stat-tile">
             <div class="stat-tile-top">
                 <div class="stat-tile-icon periwinkle"><i class="fas fa-list-check"></i></div>
@@ -169,7 +169,7 @@ $activeUsersToday = (int) $pdo->query('
                             <th>Module</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody data-realtime-region="audit-table-body">
                         <?php if (empty($auditRows)): ?>
                             <tr>
                                 <td colspan="4" style="text-align:center; padding: 40px; color: var(--gray-500);">No activity logged yet.</td>
@@ -199,9 +199,9 @@ $activeUsersToday = (int) $pdo->query('
 
     <script>const QRS_CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;</script>
     <script src="../scripts/sidebar-drawer.js"></script>
-    <script src="../scripts/pagination.js"></script>
+    <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/sort-table.js"></script>
-    <script src="../scripts/filters.js"></script>
+    <script src="../scripts/filters.js?v=2"></script>
     <script src="../scripts/audit_logs.js"></script>
 </body>
 

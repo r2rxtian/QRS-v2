@@ -42,8 +42,8 @@ $sql = '
         ' . fullNameSql('uml', 'u') . ' AS creator_name, u.employee_id AS creator_employee_id, u.avatar_initials, u.avatar_color,
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-        SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400 THEN 1 ELSE 0 END) AS in_progress_locations,
-        SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 THEN 1 ELSE 0 END) AS missed_locations,
+        SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
         (SELECT MIN(tl2.task_date) FROM ' . T_TASK_LOCATIONS . ' tl2
             WHERE tl2.task_id = t.id AND (tl2.unassigned_at IS NULL OR tl2.unassigned_by IS NULL)
               AND tl2.id = (
@@ -138,7 +138,7 @@ if (!empty($tasks)) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=13">
+    <link rel="stylesheet" href="../styles/app.css?v=14">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -153,7 +153,7 @@ if (!empty($tasks)) {
         </div>
     </div>
 
-    <div class="stat-tiles">
+    <div class="stat-tiles" data-realtime-region="all-task-stats">
         <div class="stat-tile">
             <div class="stat-tile-top">
                 <div class="stat-tile-icon periwinkle"><i class="fas fa-clipboard-list"></i></div>
@@ -271,7 +271,7 @@ if (!empty($tasks)) {
                         <th></th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody data-realtime-region="all-tasks-table-body">
                     <?php if (empty($tasks)): ?>
                         <tr>
                             <td colspan="7" style="text-align:center; padding: 40px; color: var(--gray-500);">No tasks found.</td>
@@ -336,9 +336,9 @@ if (!empty($tasks)) {
     <?php include '../components/appshell_end.php'; ?>
 
     <script src="../scripts/sidebar-drawer.js"></script>
-    <script src="../scripts/pagination.js"></script>
+    <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/sort-table.js"></script>
-    <script src="../scripts/filters.js"></script>
+    <script src="../scripts/filters.js?v=2"></script>
     <script src="../scripts/qradmin.js"></script>
 </body>
 

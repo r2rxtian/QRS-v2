@@ -3,6 +3,8 @@ require_once __DIR__ . '/../../auth/session.php';
 require_once __DIR__ . '/../../auth/csrf.php';
 require_once __DIR__ . '/../../conn/db.php';
 require_once __DIR__ . '/../../rules/constants.php';
+require_once __DIR__ . '/../../rules/status.php';
+require_once __DIR__ . '/../../authz/audit.php';
 
 header('Content-Type: application/json');
 
@@ -13,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 csrfVerify();
-requireLogin(true);
+$authUser = requireLogin(true);
 
 $ids = $_POST['task_location_ids'] ?? [];
 $ids = is_array($ids)
@@ -27,32 +29,22 @@ if (empty($ids) || count($ids) > 100) {
 }
 
 $pdo = db();
-$placeholders = implode(',', array_fill(0, count($ids), '?'));
 
-// The client cannot expire a ticket early: elapsed time is checked again
-// against the database server's clock inside the UPDATE.
-$sql = '
-    UPDATE ' . T_TASK_LOCATIONS . '
-    SET status = \'missed\',
-        unassigned_at = COALESCE(unassigned_at, SYSDATETIME()),
-        unassigned_by = NULL,
-        updated_at = SYSDATETIME()
-    OUTPUT INSERTED.id, INSERTED.task_id, INSERTED.location_id
-    WHERE id IN (' . $placeholders . ')
-      AND unassigned_at IS NULL
-      AND status IN (\'pending\', \'in_progress\')
-      AND DATEDIFF(SECOND, assigned_at, SYSDATETIME()) >= 86400
-';
+// The shared transition rechecks elapsed time against SQL Server's clock, so
+// a browser can never force an assignment to expire early.
+$expired = expireDueTaskLocations($pdo, $ids);
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($ids);
-$expired = $stmt->fetchAll();
+if ($expired) {
+    writeAuditLog($authUser['id'], 'task_location.expire', 'task_location', null, [
+        'task_location_ids' => array_column($expired, 'id'),
+    ]);
+}
 
 echo json_encode([
     'success' => true,
     'expired' => array_map(static fn($row) => [
-        'task_location_id' => (int) $row['id'],
-        'task_id' => (int) $row['task_id'],
-        'location_id' => (int) $row['location_id'],
+        'task_location_id' => $row['id'],
+        'task_id' => $row['task_id'],
+        'location_id' => $row['location_id'],
     ], $expired),
 ]);

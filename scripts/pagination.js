@@ -16,22 +16,67 @@ function paginateTable(options) {
     let rowsPerPage = options.rowsPerPage || 10;
     if (!table || !paginationEl) return;
 
-    const tbody = table.tBodies[0];
+    // Reuse an existing controller if another initializer discovers the
+    // same table. This prevents duplicate component mounts and tweens.
+    window.__pagers = window.__pagers || {};
+    if (window.__pagers[options.tableId]) {
+        return window.__pagers[options.tableId];
+    }
+
+    let tbody = table.tBodies[0];
     let rows = Array.from(tbody.querySelectorAll('tr:not(.filter-hidden)'));
     let totalRows = rows.length;
     let totalPages = 1;
     let currentPage = 1;
+    let hasMounted = false;
+    const rowHeights = new WeakMap();
+    const wrapper = table.closest('.table-wrapper');
 
     function effectiveRowsPerPage() {
         return rowsPerPage === 'all' ? Math.max(totalRows, 1) : rowsPerPage;
     }
 
-    function showPage(page) {
+    function stabilizeWrapperHeight() {
+        if (!wrapper) return;
+
+        // Newly mounted rows are still visible when this first runs. Cache
+        // their natural heights before pagination hides later pages.
+        Array.from(tbody.rows).forEach(row => {
+            const height = row.getBoundingClientRect().height;
+            if (height > 0) rowHeights.set(row, height);
+        });
+
+        const perPage = effectiveRowsPerPage();
+        let tallestBody = 0;
+        for (let start = 0; start < rows.length; start += perPage) {
+            const pageHeight = rows.slice(start, start + perPage).reduce((sum, row) => {
+                return sum + (rowHeights.get(row) || 0);
+            }, 0);
+            tallestBody = Math.max(tallestBody, pageHeight);
+        }
+
+        const headerHeight = table.tHead ? table.tHead.getBoundingClientRect().height : 0;
+        const scrollbarAllowance = wrapper.scrollWidth > wrapper.clientWidth ? 14 : 0;
+        const measuredHeight = Math.ceil(headerHeight + tallestBody + scrollbarAllowance);
+
+        // Reserve the tallest page for the CURRENT page-size selection. This
+        // prevents page-to-page shake while still allowing 25 -> 10 entries
+        // (or a filtered/deleted data set) to shrink the wrapper immediately.
+        wrapper.classList.add('table-wrapper--paginated');
+        const nextMinHeight = measuredHeight + 'px';
+        if (wrapper.style.getPropertyValue('--table-page-min-height') !== nextMinHeight) {
+            wrapper.style.setProperty('--table-page-min-height', nextMinHeight);
+        }
+    }
+
+    function showPage(page, animateMount) {
         totalPages = Math.max(1, Math.ceil(totalRows / effectiveRowsPerPage()));
         currentPage = Math.min(Math.max(1, page), totalPages);
         const perPage = effectiveRowsPerPage();
         const start = (currentPage - 1) * perPage;
         const end = start + perPage;
+
+        stabilizeWrapperHeight();
 
         const nowVisible = [];
         rows.forEach((row, index) => {
@@ -40,35 +85,21 @@ function paginateTable(options) {
             if (shouldShow) nowVisible.push(row);
         });
 
-        // Small entrance for whichever rows this call just made visible --
-        // covers the very first showPage(1) on page load and every later
-        // page click alike, since both just end up here. This used to live
-        // in scripts/motion.js instead, applied once up front to every row
-        // in the table regardless of pagination -- for a table with
-        // hundreds of rows (Manage Locations' 240+) that meant a single
-        // stagger spread across all of them, so paging forward before a
-        // row's turn in that stagger arrived landed on rows still sitting
-        // at opacity:0, i.e. blank. Doing it here instead of there means
-        // it only ever runs across whatever's actually visible right now
-        // (a page's worth, ~10-50 rows), and it's a plain synchronous call
-        // in the same function that decides visibility -- no cross-script
-        // load-order assumptions left to get wrong.
-        //
-        // stagger is given as a total { amount }, not a fixed per-row
-        // delay, specifically so this stays safe if a table's row count
-        // grows a lot -- a fixed per-row delay (the old 0.03s/row that
-        // caused the bug above) always re-introduces the same failure as
-        // soon as ANY visible group gets large enough, and "Show entries:
-        // All" makes that trivial to hit on any table, today or after
-        // future data growth, by showing every row as one single visible
-        // group with nothing paginated away to bound it. An { amount }
-        // spreads the existing 0.3s duration across however many rows are
-        // in that group instead of adding to it per row, so the whole
-        // reveal finishes in roughly the same ~0.3-0.4s whether it's 10
-        // rows or 10,000.
-        if (window.gsap && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            gsap.fromTo(nowVisible, { opacity: 0, y: 10 }, {
-                opacity: 1, y: 0, duration: 0.3, stagger: { amount: 0.3, from: 'start' }, ease: 'power2.out', overwrite: true, clearProps: 'all',
+        // Entrance motion belongs to a table component mount, not to its
+        // pagination state. Filtering, sorting, page clicks, and ordinary
+        // refreshes only update visibility and never replay this tween.
+        // A total stagger duration keeps the one mount animation bounded.
+        const shouldAnimateMount = animateMount && !hasMounted;
+        hasMounted = true;
+        if (shouldAnimateMount && window.gsap && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            const mountTimeline = gsap.timeline({ defaults: { ease: 'power2.out' } });
+            mountTimeline.fromTo(nowVisible, { opacity: 0, y: 10 }, {
+                opacity: 1,
+                y: 0,
+                duration: 0.3,
+                stagger: { amount: 0.3, from: 'start' },
+                overwrite: true,
+                clearProps: 'all',
             });
         }
 
@@ -99,7 +130,7 @@ function paginateTable(options) {
                 btn.href = '#';
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    showPage(page);
+                    showPage(page, false);
                 });
             }
             links.appendChild(btn);
@@ -140,24 +171,33 @@ function paginateTable(options) {
         paginationEl.appendChild(links);
     }
 
-    showPage(1);
+    showPage(1, options.animateOnMount !== false);
 
     const controller = {
         setRowsPerPage(n) {
             rowsPerPage = n;
-            showPage(1);
+            showPage(1, false);
         },
-        /** Re-reads row order/count from the live DOM (call after sorting, filtering, or adding/removing rows) and jumps back to page 1. */
-        refresh() {
+        /**
+         * Re-read row order/count from the live DOM. User-driven filtering
+         * and sorting reset to page 1 by default; silent server sync can keep
+         * the page the user is currently reading.
+         */
+        refresh(refreshOptions = {}) {
+            const requestedPage = refreshOptions.preservePage ? currentPage : 1;
+            const nextTbody = table.tBodies[0];
+            delete nextTbody.dataset.skipMountAnimation;
+            tbody = nextTbody;
             rows = Array.from(tbody.querySelectorAll('tr:not(.filter-hidden)'));
             totalRows = rows.length;
-            showPage(1);
+            // showPage clamps the requested page when the refreshed result set
+            // has fewer pages than before.
+            showPage(requestedPage, false);
         }
     };
 
     // Global registry so other scripts (e.g. filters.js) can refresh this table's
     // pagination without the page needing to expose its own pager variable.
-    window.__pagers = window.__pagers || {};
     window.__pagers[options.tableId] = controller;
 
     return controller;

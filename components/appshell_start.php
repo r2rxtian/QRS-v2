@@ -17,9 +17,9 @@ require_once __DIR__ . '/../rules/constants.php';
 require_once __DIR__ . '/../rules/status.php';
 
 // Lazily auto-unassigns any location whose ticket resolved (Completed or
-// Missed Out) since the last page load -- see sweepResolvedLocations()'s
-// own docblock. Runs once per page load, on every appshell page, so the
-// first person to load anything after a ticket resolves is what triggers it.
+// Missed Out) since the last sweep -- see sweepResolvedLocations(). Every
+// appshell load attempts it, while a database-backed claim limits actual
+// execution to once per 30 seconds across all PHP processes.
 sweepResolvedLocations(db());
 
 $shellUser = currentUser();

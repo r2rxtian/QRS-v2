@@ -45,8 +45,22 @@ if ($dupeCheck->fetchColumn()) {
 
 $qrToken = bin2hex(random_bytes(8));
 $stmt = $pdo->prepare('INSERT INTO ' . T_LOCATIONS . ' (name, qr_token, created_by, location_type) OUTPUT INSERTED.id VALUES (?, ?, ?, ?)');
-$stmt->execute([$name, $qrToken, $authUser['id'], $locationType]);
-$locationId = (int) $stmt->fetchColumn();
+try {
+    $stmt->execute([$name, $qrToken, $authUser['id'], $locationType]);
+    $locationId = (int) $stmt->fetchColumn();
+} catch (PDOException $e) {
+    // The filtered unique index is the final protection against two requests
+    // creating the same active name between the SELECT check and INSERT.
+    if ($e->getCode() === '23000') {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'message' => 'An active location with that name already exists.', 'type' => 'error']);
+        exit;
+    }
+
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Failed to add the location. Please try again.', 'type' => 'error']);
+    exit;
+}
 
 writeAuditLog($authUser['id'], 'location.create', 'location', $locationId, ['name' => $name, 'location_type' => $locationType]);
 

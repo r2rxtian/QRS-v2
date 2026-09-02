@@ -67,6 +67,71 @@ function locationStatusBadge(bool $isAssigned): array
 }
 
 /**
+ * Atomically expire due task-location assignments using SQL Server time.
+ * Passing IDs scopes the transition for the countdown AJAX endpoint; NULL
+ * processes every due assignment for the page-load safety sweep.
+ *
+ * @return array<int, array{id:int, task_id:int, location_id:int}>
+ */
+function expireDueTaskLocations(PDO $pdo, ?array $taskLocationIds = null): array
+{
+    $params = [];
+    $idPredicate = '';
+
+    if ($taskLocationIds !== null) {
+        $taskLocationIds = array_values(array_unique(array_filter(
+            array_map('intval', $taskLocationIds),
+            static fn(int $id): bool => $id > 0
+        )));
+        if (!$taskLocationIds) {
+            return [];
+        }
+
+        $idPredicate = ' AND id IN (' . implode(',', array_fill(0, count($taskLocationIds), '?')) . ')';
+        $params = $taskLocationIds;
+    }
+
+    $stmt = $pdo->prepare('
+        UPDATE ' . T_TASK_LOCATIONS . '
+        SET status = \'missed\',
+            unassigned_at = COALESCE(unassigned_at, SYSDATETIME()),
+            unassigned_by = NULL,
+            updated_at = SYSDATETIME()
+        OUTPUT INSERTED.id, INSERTED.task_id, INSERTED.location_id
+        WHERE unassigned_at IS NULL
+          AND status IN (\'pending\', \'in_progress\')
+          AND DATEDIFF(SECOND, assigned_at, SYSDATETIME()) >= ' . TASK_LOCATION_EXPIRATION_SECONDS .
+          $idPredicate . '
+    ');
+    $stmt->execute($params);
+
+    return array_map(static fn(array $row): array => [
+        'id' => (int) $row['id'],
+        'task_id' => (int) $row['task_id'],
+        'location_id' => (int) $row['location_id'],
+    ], $stmt->fetchAll());
+}
+
+/**
+ * Claim one global sweep interval. The conditional UPDATE is atomic, so
+ * simultaneous PHP requests cannot both claim the same 30-second window.
+ */
+function claimResolvedLocationSweep(PDO $pdo): bool
+{
+    $stmt = $pdo->prepare('
+        UPDATE ' . T_MAINTENANCE_STATE . '
+        SET last_run_at = SYSDATETIME()
+        OUTPUT INSERTED.job_name
+        WHERE job_name = ?
+          AND (last_run_at IS NULL
+               OR DATEDIFF(SECOND, last_run_at, SYSDATETIME()) >= ?)
+    ');
+    $stmt->execute(['resolve_task_locations', RESOLVED_LOCATION_SWEEP_INTERVAL_SECONDS]);
+
+    return $stmt->fetchColumn() !== false;
+}
+
+/**
  * Role-based action routing: completed tasks always link to the report.
  * Field Workers on a not-started/unassigned task go to the scan flow
  * (their job is fieldwork) -- unless the task has a missed-out location,
@@ -113,8 +178,8 @@ function resolveTaskAction(array $status, int $taskId, string $roleName, bool $h
  * clicking Unassign. Lazily triggered: called once from
  * components/appshell_start.php on every authenticated page load, so the
  * next person to load any page after a ticket resolves is what fires the
- * cleanup. No cron, matching this project's "nothing runs on a schedule"
- * design (see the plan's Amendment 6).
+ * cleanup. Calls are globally throttled through qrs_maintenance_state; no
+ * cron is required, matching this project's on-demand design.
  *
  * unassigned_by is deliberately left NULL -- every real manual Unassign
  * click (api/task_locations/unassign.php) always records a real user id
@@ -127,16 +192,21 @@ function resolveTaskAction(array $status, int $taskId, string $roleName, bool $h
  */
 function sweepResolvedLocations(PDO $pdo): void
 {
-    // Persist expiration as a first-class state. The UI countdown calls the
-    // same transition immediately at zero; this sweep remains the server-side
-    // safety net for periods when nobody has the application open.
-    $pdo->exec('
-        UPDATE ' . T_TASK_LOCATIONS . '
-        SET status = \'missed\', updated_at = SYSDATETIME()
-        WHERE unassigned_at IS NULL
-          AND status IN (\'pending\', \'in_progress\')
-          AND DATEDIFF(SECOND, assigned_at, SYSDATETIME()) >= 86400
-    ');
+    if (!claimResolvedLocationSweep($pdo)) {
+        return;
+    }
+
+    // The countdown endpoint and this fallback now share one transition and
+    // one expiration constant.
+    $expired = expireDueTaskLocations($pdo);
+
+    if ($expired) {
+        require_once __DIR__ . '/../authz/audit.php';
+        writeAuditLog(null, 'task_location.expire_sweep', 'task_location', null, [
+            'count' => count($expired),
+            'task_location_ids' => array_column($expired, 'id'),
+        ]);
+    }
 
     $pdo->exec('
         UPDATE ' . T_TASK_LOCATIONS . '
@@ -180,7 +250,7 @@ function countMissedTaskLocations(PDO $pdo, ?string $taskType = null): array
             COUNT(DISTINCT x.task_id) AS total
         FROM (
             SELECT tl.task_id,
-                   CASE WHEN DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 AND tl.status <> \'completed\' THEN 1 ELSE 0 END AS missed_flag
+                   CASE WHEN DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' AND tl.status <> \'completed\' THEN 1 ELSE 0 END AS missed_flag
             FROM ' . T_TASK_LOCATIONS . ' tl
             JOIN ' . T_TASKS . ' t ON t.id = tl.task_id
             WHERE (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL) AND t.deleted_at IS NULL

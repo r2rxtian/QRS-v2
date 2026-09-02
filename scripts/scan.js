@@ -180,6 +180,34 @@ function checklistIsComplete() {
     });
 }
 
+function updateScanLocationState(taskLocationId, status) {
+    const row = document.querySelector('.scan-location-list-item[data-task-location-id="' + taskLocationId + '"]');
+    if (!row) return;
+
+    row.classList.remove('pending', 'current', 'completed', 'active');
+    const statusEl = row.querySelector('.scan-location-list-status');
+    const icon = row.querySelector('.scan-location-list-icon i');
+    if (status === 'completed') {
+        row.classList.add('completed');
+        row.disabled = true;
+        row.removeAttribute('onclick');
+        if (statusEl) {
+            statusEl.textContent = 'Completed';
+            statusEl.className = 'scan-location-list-status completed';
+        }
+        if (icon) icon.className = 'fas fa-check';
+        row.querySelector('.expiration-countdown')?.remove();
+        row.querySelector('.scan-location-list-chevron')?.remove();
+    } else {
+        row.classList.add('current', 'active');
+        if (statusEl) {
+            statusEl.textContent = 'In Progress';
+            statusEl.className = 'scan-location-list-status current';
+        }
+        if (icon) icon.className = 'fas fa-hourglass-half';
+    }
+}
+
 function updateStartButtonState() {
     const btn = document.getElementById('startCheckBtn');
     if (!btn) return;
@@ -336,7 +364,15 @@ async function submitStartCheck() {
 
         showMessage(data.message, data.type || (data.success ? 'success' : 'error'));
         if (data.success) {
-            setTimeout(() => window.location.reload(), 1000);
+            const taskLocationId = document.getElementById('method_task_location_id').value;
+            const locationName = document.getElementById('methodLocationName').textContent;
+            const startedWith = {
+                checklist: JSON.parse(JSON.stringify(checklistState)),
+                findings_observation: document.getElementById('findings_observation').value.trim(),
+            };
+            updateScanLocationState(taskLocationId, 'in_progress');
+            showCompletionState(locationName, taskLocationId, startedWith);
+            window.QRSRealtime?.refresh();
         } else {
             updateStartButtonState();
         }
@@ -384,7 +420,11 @@ async function submitCompleteCheck() {
 
         showMessage(data.message, data.type || (data.success ? 'success' : 'error'));
         if (data.success) {
-            setTimeout(() => window.location.reload(), 1000);
+            const taskLocationId = document.getElementById('completion_task_location_id').value;
+            updateScanLocationState(taskLocationId, 'completed');
+            returnToLanding();
+            completionPhotosData = [];
+            window.QRSRealtime?.refresh();
         } else {
             updateCompleteButtonState();
         }

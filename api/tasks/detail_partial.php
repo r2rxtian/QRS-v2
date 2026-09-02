@@ -47,8 +47,8 @@ $statusStmt = $pdo->prepare('
     SELECT
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-        SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < 86400 THEN 1 ELSE 0 END) AS in_progress_locations,
-        SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400 THEN 1 ELSE 0 END) AS missed_locations
+        SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations
     FROM ' . T_TASK_LOCATIONS . ' tl
     WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
       AND tl.id = (
@@ -90,8 +90,8 @@ $rowsStmt = $pdo->prepare('
            tl.monitoring_answer, tl.monitoring_remark,
            tl.findings_observation,
            tl.start_time, tl.end_time, tl.status,
-           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, 86400, tl.assigned_at)) AS remaining_seconds,
-           CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) >= 86400 THEN 1 ELSE 0 END AS is_missed
+           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', tl.assigned_at)) AS remaining_seconds,
+           CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END AS is_missed
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     WHERE tl.task_id = ? AND tl.unassigned_at IS NULL
@@ -139,7 +139,7 @@ $missedRowsStmt = $pdo->prepare('
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
       AND tl.status <> \'completed\'
-      AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400
+      AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
       AND tl.id = (
           SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
           WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
