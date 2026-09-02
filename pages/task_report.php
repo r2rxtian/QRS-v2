@@ -10,7 +10,9 @@ $pdo = db();
 $isAdmin = $currentUser['role_name'] === ROLE_ADMIN;
 
 $sql = '
-    SELECT tl.id, t.name AS task_name, l.name AS location_name, tl.task_date, tl.start_time, tl.end_time, tl.status,
+    SELECT tl.id, t.name AS task_name, l.name AS location_name, tl.task_date,
+           COALESCE(scan_start.actual_start_time, tl.start_time) AS start_time,
+           tl.end_time, tl.status,
            tl.spot_spray_answer, tl.spot_spray_remark,
            tl.misting_answer, tl.misting_remark,
            tl.mist_blower_answer, tl.mist_blower_remark,
@@ -22,6 +24,18 @@ $sql = '
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     LEFT JOIN ' . T_USERS . ' cu ON cu.id = tl.completed_by
     LEFT JOIN ' . T_MASTER_LIST . ' cuml ON cuml.EmployeeID = cu.employee_id
+    -- The scan.start audit event is the authoritative user action that began
+    -- the check. Prefer it over any legacy/migrated start_time value that may
+    -- have inherited the assignment creation timestamp. The column remains a
+    -- fallback for older records created before scan-start auditing existed.
+    OUTER APPLY (
+        SELECT TOP 1 al.created_at AS actual_start_time
+        FROM ' . T_AUDIT_LOG . ' al
+        WHERE al.action = \'scan.start\'
+          AND al.entity_type = \'task_location\'
+          AND al.entity_id = tl.id
+        ORDER BY al.created_at ASC
+    ) scan_start
     WHERE t.deleted_at IS NULL AND (
         tl.status = \'completed\'
         OR (tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= 86400)
