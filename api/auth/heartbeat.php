@@ -1,7 +1,7 @@
 <?php
 /**
  * Client-requested active-session refresh (scripts/session-guard.js pings
- * this every 15 minutes, only while the tab is actually active). All the
+ * this every 12 minutes, only while the tab is actually active). All the
  * real work -- checking idle timeout, touching last_activity_at, rotating
  * the session id if it's due -- already happens inside requireLogin() ->
  * currentUser() on every authenticated request; this endpoint's only job

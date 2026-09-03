@@ -3127,7 +3127,9 @@ tbody tr:hover {
 }
 
 .checklist-toolbar .search-input-wrap i,
-.input-icon-wrap i {
+.checklist-toolbar .search-input-wrap svg,
+.input-icon-wrap i,
+.input-icon-wrap svg {
     position: absolute;
     left: 14px;
     top: 50%;
@@ -3137,6 +3139,7 @@ tbody tr:hover {
     width: 14px;
     text-align: center;
     pointer-events: none;
+    z-index: 2;
 }
 
 .checklist-toolbar .search-input-wrap input.form-input,

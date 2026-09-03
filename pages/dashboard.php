@@ -294,7 +294,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=14">
+    <link rel="stylesheet" href="../styles/app.css?v=15">
     <link rel="stylesheet" href="../styles/dashboard.css?v=21">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
@@ -538,7 +538,14 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
         </aside>
     </div>
 
-    <script>const QRS_CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;</script>
+    <script>
+    const QRS_CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;
+    window.QRS_SESSION_CONFIG = <?= json_encode([
+        'idleTimeoutMs' => SESSION_IDLE_TIMEOUT_MINUTES * 60 * 1000,
+        'heartbeatIntervalMs' => SESSION_TOKEN_REFRESH_MINUTES * 60 * 1000,
+        'warningBeforeMs' => 60 * 1000,
+    ]) ?>;
+    </script>
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/select-dropdown.js"></script>
     <script src="../scripts/motion.js"></script>

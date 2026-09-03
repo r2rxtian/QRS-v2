@@ -88,6 +88,7 @@ $upd = $pdo->prepare('UPDATE ' . T_USERS . ' SET failed_login_attempts = 0, lock
 $upd->execute([$user['id']]);
 
 session_regenerate_id(true);
+$sessionNow = time();
 $_SESSION['user_id'] = (int) $user['id'];
 $_SESSION['employee_id'] = $user['employee_id'];
 $_SESSION['full_name'] = $user['full_name'];
@@ -96,6 +97,8 @@ $_SESSION['role_name'] = $user['role_name'];
 $_SESSION['avatar_initials'] = $user['avatar_initials'];
 $_SESSION['avatar_color'] = $user['avatar_color'];
 $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // rotate on login
+$_SESSION['last_activity_at'] = $sessionNow;
+$_SESSION['token_issued_at'] = $sessionNow;
 
 writeAuditLog((int) $user['id'], 'login.success', 'user', (int) $user['id']);
 

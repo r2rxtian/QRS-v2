@@ -32,6 +32,11 @@ $realtimeCursor = (int) db()->query('SELECT COALESCE(MAX(id), 0) FROM ' . T_AUDI
 <script>
 const QRS_CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;
 const QRS_REALTIME_CURSOR = <?= $realtimeCursor ?>;
+window.QRS_SESSION_CONFIG = <?= json_encode([
+    'idleTimeoutMs' => SESSION_IDLE_TIMEOUT_MINUTES * 60 * 1000,
+    'heartbeatIntervalMs' => SESSION_TOKEN_REFRESH_MINUTES * 60 * 1000,
+    'warningBeforeMs' => 60 * 1000,
+]) ?>;
 </script>
 <script src="../scripts/motion.js?v=4"></script>
 <script src="../scripts/session-guard.js"></script>

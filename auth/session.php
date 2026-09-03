@@ -49,7 +49,7 @@ function isLoggedIn(): bool
  * the one place both apply everywhere automatically, no per-page wiring.
  * scripts/session-guard.js is the client-side half: it proactively
  * redirects to logout after 15 idle minutes and pings a heartbeat endpoint
- * every 15 active minutes, but even without it (JS disabled, script
+ * every 12 active minutes, but even without it (JS disabled, script
  * blocked) the *next* real request still gets caught here regardless --
  * this is the actual security boundary, the client-side timer is just
  * what makes it feel immediate instead of "logged out on your next click".
@@ -93,7 +93,7 @@ function currentUser(): ?array
     // survives the rotation untouched; only the id/cookie value changes.
     if (!isset($_SESSION['token_issued_at'])) {
         $_SESSION['token_issued_at'] = time();
-    } elseif ((time() - $_SESSION['token_issued_at']) > SESSION_TOKEN_REFRESH_MINUTES * 60) {
+    } elseif ((time() - $_SESSION['token_issued_at']) >= SESSION_TOKEN_REFRESH_MINUTES * 60) {
         session_regenerate_id(true);
         $_SESSION['token_issued_at'] = time();
     }

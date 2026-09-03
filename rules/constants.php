@@ -131,11 +131,9 @@ define('LOGIN_MAX_ATTEMPTS', 5);
 define('LOGIN_LOCKOUT_MINUTES', 15);
 
 // Idle-timeout auto-logout, and how often an active session's underlying
-// id gets rotated -- both client-requested (see auth/session.php's
-// currentUser(), the actual enforcement point for both; scripts/
-// session-guard.js is only the client-side half that acts on them sooner
-// than "wait for the user's next request" would). Same interval for both
-// per the client's spec, but they're separate knobs on purpose --
-// changing one shouldn't silently change the other.
+// id gets rotated. The server enforces both in auth/session.php's
+// currentUser(); scripts/session-guard.js receives these values through the
+// authenticated page shell so the browser does not maintain a second copy
+// of either policy.
 define('SESSION_IDLE_TIMEOUT_MINUTES', 15);
-define('SESSION_TOKEN_REFRESH_MINUTES', 15);
+define('SESSION_TOKEN_REFRESH_MINUTES', 12);
