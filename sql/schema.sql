@@ -42,7 +42,7 @@ USE LRNPH_OJT;
 GO
 
 -- ============================================================
--- dbo.qrs_roles — fixed set of 5 rows, seeded by seed.sql
+-- dbo.qrs_roles — fixed set of 2 rows (Admin, User), seeded by seed.sql
 -- ============================================================
 CREATE TABLE dbo.qrs_roles (
     id            TINYINT IDENTITY(1,1) PRIMARY KEY,
