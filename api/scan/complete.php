@@ -105,7 +105,7 @@ if (!$codeMatches) {
 $tlStmt = $pdo->prepare('
     SELECT id, status, task_date
     FROM ' . T_TASK_LOCATIONS . '
-    WHERE id = ? AND task_id = ? AND unassigned_at IS NULL
+    WHERE id = ? AND task_id = ? AND (unassigned_at IS NULL OR unassigned_by IS NULL)
       AND status <> \'missed\'
       AND (status <> \'in_progress\' OR DATEDIFF(SECOND, CASE WHEN task_date > CAST(assigned_at AS DATE) THEN CAST(task_date AS DATETIME2) ELSE assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
 ');

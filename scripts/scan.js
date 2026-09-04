@@ -68,7 +68,20 @@ function markCurrentLocationInSidebar(taskLocationId) {
 
 function returnToLanding() {
     hideAllStates();
-    document.getElementById('landingState').style.display = '';
+    const progressFraction = document.querySelector('.scan-progress-fraction');
+    let allDone = false;
+    if (progressFraction) {
+        const match = progressFraction.textContent.trim().match(/(\d+)\s+of\s+(\d+)\s+completed/i);
+        if (match && match[1] === match[2] && parseInt(match[2], 10) > 0) {
+            allDone = true;
+        }
+    }
+    const completedPanel = document.getElementById('completedPanel');
+    if (allDone && completedPanel) {
+        completedPanel.style.display = '';
+    } else {
+        document.getElementById('landingState').style.display = '';
+    }
     markCurrentLocationInSidebar(null);
 }
 
@@ -157,6 +170,9 @@ async function resolveLocation(payload) {
 
         if (!data.success) {
             showMessage(data.message, data.type || 'error');
+            if (window.QRSRealtime && window.QRSRealtime.refresh) {
+                window.QRSRealtime.refresh();
+            }
             return;
         }
 
@@ -168,13 +184,16 @@ async function resolveLocation(payload) {
         } else if (stage === 'completion') {
             showCompletionState(location_name, task_location_id, { checklist, findings_observation });
         } else {
-            showMessage(data.message, 'info');
+            // Location is already completed: silently return to landing and refresh real-time status (no popup)
+            returnToLanding();
+            if (window.QRSRealtime && window.QRSRealtime.refresh) {
+                window.QRSRealtime.refresh();
+            }
         }
     } catch (err) {
         showMessage('Could not reach the server. Please try again.', 'error');
     }
 }
-
 
 // ---------------------------------------------------------------------
 // Observation/Recommendation checklist
@@ -427,15 +446,22 @@ async function submitCompleteCheck() {
         const response = await fetch('../api/scan/complete.php', { method: 'POST', body: formData });
         const data = await response.json();
 
-        showMessage(data.message, data.type || (data.success ? 'success' : 'error'));
         if (data.success) {
+            showMessage(data.message, data.type || 'success');
             const taskLocationId = document.getElementById('completion_task_location_id').value;
             updateScanLocationState(taskLocationId, 'completed');
             returnToLanding();
             completionPhotosData = [];
             window.QRSRealtime?.refresh();
         } else {
-            updateCompleteButtonState();
+            if (data.message && data.message.toLowerCase().includes('already completed')) {
+                returnToLanding();
+                completionPhotosData = [];
+                window.QRSRealtime?.refresh();
+            } else {
+                showMessage(data.message, data.type || 'error');
+                updateCompleteButtonState();
+            }
         }
     } catch (err) {
         showMessage('Could not reach the server. Please try again.', 'error');
@@ -629,3 +655,45 @@ function closeQRScanner() {
         }).catch(() => { html5QrCode = null; });
     }
 }
+
+// ---------------------------------------------------------------------
+// Multi-user real-time sync & focus handling
+// ---------------------------------------------------------------------
+
+document.addEventListener('qrs:realtime-synced', function () {
+    // If the user is currently viewing a checklist or completion form for a location
+    // that another user just completed, return to landing and inform them cleanly.
+    const activeTaskLocationId = document.getElementById('method_task_location_id')?.value
+        || document.getElementById('completion_task_location_id')?.value;
+
+    if (activeTaskLocationId) {
+        const row = document.querySelector('.scan-location-list-item[data-task-location-id="' + activeTaskLocationId + '"]');
+        if (row && row.classList.contains('completed')) {
+            returnToLanding();
+        }
+    }
+
+    // Check if all locations are now completed
+    const progressFraction = document.querySelector('.scan-progress-fraction');
+    if (progressFraction) {
+        const match = progressFraction.textContent.trim().match(/(\d+)\s+of\s+(\d+)\s+completed/i);
+        if (match && match[1] === match[2] && parseInt(match[2], 10) > 0) {
+            const landing = document.getElementById('landingState');
+            const completedPanel = document.getElementById('completedPanel');
+            if (landing) landing.style.display = 'none';
+            if (completedPanel) completedPanel.style.display = '';
+        }
+    }
+});
+
+// Smart Focus Sync: Catch up immediately when returning to this browser tab (e.g. from camera)
+document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && window.QRSRealtime && window.QRSRealtime.refresh) {
+        window.QRSRealtime.refresh();
+    }
+});
+window.addEventListener('focus', function () {
+    if (window.QRSRealtime && window.QRSRealtime.refresh) {
+        window.QRSRealtime.refresh();
+    }
+});

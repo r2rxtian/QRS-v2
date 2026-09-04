@@ -273,7 +273,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
 
                         <div class="scan-or-divider"><span>OR</span></div>
 
-                        <div class="manual-section">
+                        <div class="manual-section" data-realtime-region="scan-manual-section">
                             <div class="manual-section-visual"><i class="fas fa-list-check"></i></div>
                             <div class="manual-section-content">
                                 <h4>Choose Location Manually</h4>
@@ -611,7 +611,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/select-dropdown.js"></script>
-    <script src="../scripts/scan.js?v=2"></script>
+    <script src="../scripts/scan.js?v=4"></script>
 </body>
 
 </html>

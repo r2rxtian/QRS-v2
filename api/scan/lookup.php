@@ -74,7 +74,7 @@ $tlStmt = $pdo->prepare('
            monitoring_answer, monitoring_remark,
            findings_observation
     FROM ' . T_TASK_LOCATIONS . '
-    WHERE task_id = ? AND location_id = ? AND unassigned_at IS NULL
+    WHERE task_id = ? AND location_id = ? AND (unassigned_at IS NULL OR unassigned_by IS NULL)
       AND (status = \'completed\' OR DATEDIFF(SECOND, CASE WHEN task_date > CAST(assigned_at AS DATE) THEN CAST(task_date AS DATETIME2) ELSE assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
       AND id = (SELECT MAX(id) FROM ' . T_TASK_LOCATIONS . ' WHERE task_id = ? AND location_id = ?)
 ');
@@ -108,6 +108,7 @@ echo json_encode([
     'type' => $stage === 'completed' ? 'info' : 'success',
     'data' => [
         'stage' => $stage,
+        'is_completed' => ($stage === 'completed'),
         'task_location_id' => (int) $taskLocation['id'],
         'location_name' => $location['name'],
         'checklist' => [

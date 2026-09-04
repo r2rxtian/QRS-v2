@@ -13,17 +13,25 @@ if ($previousActivity !== null) {
 }
 session_write_close();
 
-header('Content-Type: text/event-stream');
-header('Cache-Control: no-cache, no-transform');
-header('X-Accel-Buffering: no');
-header('Connection: keep-alive');
-
-set_time_limit(35);
-ignore_user_abort(true);
+if (function_exists('apache_setenv')) {
+    @apache_setenv('no-gzip', '1');
+}
+@ini_set('zlib.output_compression', '0');
+@ini_set('implicit_flush', '1');
+ob_implicit_flush(true);
 
 while (ob_get_level() > 0) {
     ob_end_flush();
 }
+
+header('Content-Type: text/event-stream');
+header('Cache-Control: no-cache, no-transform');
+header('X-Accel-Buffering: no');
+header('Content-Encoding: none');
+header('Connection: keep-alive');
+
+set_time_limit(35);
+ignore_user_abort(true);
 
 $cursor = max(
     0,
@@ -44,6 +52,8 @@ $eventsStmt = $pdo->prepare('
     ORDER BY id ASC
 ');
 
+// 2KB padding to push past proxy / web server buffer thresholds immediately
+echo ':' . str_repeat(' ', 2048) . "\n\n";
 echo "retry: 2000\n\n";
 flush();
 
