@@ -169,6 +169,7 @@ CREATE TABLE dbo.qrs_task_locations (
 );
 GO
 CREATE INDEX IX_qrs_tl_task_date ON dbo.qrs_task_locations(task_id, task_date);
+CREATE INDEX IX_qrs_tl_task_location ON dbo.qrs_task_locations(task_id, location_id);
 CREATE INDEX IX_qrs_tl_location ON dbo.qrs_task_locations(location_id);
 CREATE INDEX IX_qrs_tl_scanned_by ON dbo.qrs_task_locations(scanned_by);
 CREATE INDEX IX_qrs_tl_completed_by ON dbo.qrs_task_locations(completed_by);
@@ -304,7 +305,11 @@ GO
 -- Attributed to whichever real (non-test) Admin account is inserted first
 -- in Section 2 above (David, Ana Victoria Mendoza / 2024-40484).
 
-DECLARE @adminId INT = (SELECT TOP 1 id FROM dbo.qrs_users WHERE employee_id = '2024-40484');
+DECLARE @adminId INT = COALESCE(
+    (SELECT TOP 1 id FROM dbo.qrs_users WHERE employee_id = '2024-40484'),
+    (SELECT TOP 1 id FROM dbo.qrs_users WHERE role_id = (SELECT id FROM dbo.qrs_roles WHERE name = 'Admin')),
+    1
+);
 
 INSERT INTO dbo.qrs_locations (name, qr_token, created_by, location_type) VALUES
     ('PEST CONTROL MONITORING- ILT #1- G.O. Changing Area', '5ca62025ee499869', @adminId, 'Monitoring'),
@@ -553,7 +558,7 @@ PRINT 'Section 3 done: 240 real locations inserted (148 Monitoring, 92 Treatment
 GO
 
 PRINT '============================================================';
-PRINT 'QRS v2 deployment complete: 8 tables, 2 roles, 12 users, 240 locations.';
+PRINT 'QRS v2 deployment complete: 9 tables, 2 roles, 12 users, 240 locations.';
 PRINT 'Remember: see the OPEN ITEM at the top of this file before anyone';
 PRINT 'tries to log in -- login depends on lrn_master_list/lrnph_users';
 PRINT 'being reachable from this database too.';

@@ -165,6 +165,7 @@ CREATE TABLE dbo.qrs_task_locations (
 );
 GO
 CREATE INDEX IX_qrs_tl_task_date ON dbo.qrs_task_locations(task_id, task_date);
+CREATE INDEX IX_qrs_tl_task_location ON dbo.qrs_task_locations(task_id, location_id);
 CREATE INDEX IX_qrs_tl_location ON dbo.qrs_task_locations(location_id);
 CREATE INDEX IX_qrs_tl_scanned_by ON dbo.qrs_task_locations(scanned_by);
 CREATE INDEX IX_qrs_tl_completed_by ON dbo.qrs_task_locations(completed_by);
