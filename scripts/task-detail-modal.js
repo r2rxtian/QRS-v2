@@ -84,16 +84,25 @@ async function unassignLocationInModal(button) {
 
     try {
         const response = await fetch('../api/task_locations/unassign.php', { method: 'POST', body: formData });
-        const data = await response.json();
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (_) {}
+
+        if (!response.ok || !data) {
+            throw new Error(data?.message || 'Server error (' + response.status + '). Please try again.');
+        }
+
         await refreshTaskDetailModal();
         showTaskDetailMessage(data.message, data.type || (data.success ? 'success' : 'error'));
         window.__qrsTaskListNeedsRefresh = true;
     } catch (err) {
-        showTaskDetailMessage('Could not reach the server. Please try again.', 'error');
+        button.disabled = false;
+        showTaskDetailMessage(err.message || 'Could not reach the server. Please try again.', 'error');
     }
 }
 
-async function submitAssignLocationsInModal() {
+async function submitAssignLocationsInModal(submitButton) {
     const modal = document.getElementById('taskDetailModal');
     const taskId = modal.dataset.taskId;
     const list = document.getElementById('modalLocationSelect');
@@ -105,6 +114,9 @@ async function submitAssignLocationsInModal() {
         return;
     }
 
+    const btn = submitButton || modal.querySelector('.checklist-footer button');
+    if (btn) btn.disabled = true;
+
     const formData = new FormData();
     formData.set('csrf_token', QRS_CSRF_TOKEN);
     formData.set('task_id', taskId);
@@ -112,7 +124,15 @@ async function submitAssignLocationsInModal() {
 
     try {
         const response = await fetch('../api/task_locations/assign.php', { method: 'POST', body: formData });
-        const data = await response.json();
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (_) {}
+
+        if (!response.ok || !data) {
+            throw new Error(data?.message || 'Server error (' + response.status + '). Please try again.');
+        }
+
         await refreshTaskDetailModal();
         showTaskDetailMessage(data.message, data.type || (data.success ? 'success' : 'error'));
 
@@ -120,7 +140,8 @@ async function submitAssignLocationsInModal() {
         // this modal closes (and other clients receive the same change by SSE).
         window.__qrsTaskListNeedsRefresh = true;
     } catch (err) {
-        showTaskDetailMessage('Could not reach the server. Please try again.', 'error');
+        if (btn) btn.disabled = false;
+        showTaskDetailMessage(err.message || 'Could not reach the server. Please try again.', 'error');
     }
 }
 

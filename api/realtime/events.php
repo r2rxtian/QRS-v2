@@ -31,6 +31,12 @@ $cursor = max(
     (int) ($_SERVER['HTTP_LAST_EVENT_ID'] ?? 0)
 );
 $pdo = db();
+
+// If no cursor or 0 was passed, start from the latest audit log entry
+// so fresh connections do NOT replay historical audit records on page load.
+if ($cursor <= 0) {
+    $cursor = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) FROM ' . T_AUDIT_LOG)->fetchColumn();
+}
 $eventsStmt = $pdo->prepare('
     SELECT TOP 200 id, action, entity_type, entity_id
     FROM ' . T_AUDIT_LOG . '

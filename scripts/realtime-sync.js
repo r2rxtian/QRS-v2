@@ -53,18 +53,58 @@
             if (!response.ok) throw new Error('Real-time refresh failed.');
 
             const incoming = new DOMParser().parseFromString(await response.text(), 'text/html');
+            let anyRegionChanged = false;
+            let tableChanged = false;
+
             document.querySelectorAll('[data-realtime-region]').forEach(current => {
                 const key = current.dataset.realtimeRegion;
                 const next = incoming.querySelector(`[data-realtime-region="${CSS.escape(key)}"]`);
-                if (next) {
-                    // Background synchronization is not a user navigation or
-                    // component entrance; do not replay table mount motion.
-                    if (next.tagName === 'TBODY') next.dataset.skipMountAnimation = 'true';
-                    current.replaceWith(next);
+                if (!next) return;
+
+                // Deduplicate: if the content has not changed, do not mutate the DOM
+                if (current.innerHTML.trim() === next.innerHTML.trim()) {
+                    return;
                 }
+
+                anyRegionChanged = true;
+
+                if (next.tagName === 'TBODY') {
+                    tableChanged = true;
+                    next.dataset.skipMountAnimation = 'true';
+
+                    // Pre-sync visibility/filter states onto incoming rows by ID before mounting
+                    // to prevent layout thrashing and the flash of unpaginated rows
+                    const table = current.closest('table');
+                    const pager = table ? window.__pagers?.[table.id] : null;
+                    if (pager && current.rows.length > 0) {
+                        const currentStates = new Map();
+                        Array.from(current.rows).forEach(r => {
+                            const rowId = r.dataset.taskId || r.dataset.id || r.dataset.locationId || r.dataset.userId;
+                            if (rowId) {
+                                currentStates.set(rowId, {
+                                    display: r.style.display,
+                                    filterHidden: r.classList.contains('filter-hidden')
+                                });
+                            }
+                        });
+
+                        Array.from(next.rows).forEach(r => {
+                            const rowId = r.dataset.taskId || r.dataset.id || r.dataset.locationId || r.dataset.userId;
+                            const prev = rowId ? currentStates.get(rowId) : null;
+                            if (prev) {
+                                r.style.display = prev.display;
+                                if (prev.filterHidden) r.classList.add('filter-hidden');
+                            }
+                        });
+                    }
+                }
+
+                current.replaceWith(next);
             });
 
-            restoreTableState();
+            if (tableChanged) {
+                restoreTableState();
+            }
 
             const detailModal = document.getElementById('taskDetailModal');
             if (detailModal?.classList.contains('active') && typeof refreshTaskDetailModal === 'function') {
@@ -74,7 +114,9 @@
             const range = document.getElementById('barRangeSelect');
             if (range && typeof loadBarChart === 'function') loadBarChart(range.value);
 
-            document.dispatchEvent(new CustomEvent('qrs:realtime-synced'));
+            if (anyRegionChanged) {
+                document.dispatchEvent(new CustomEvent('qrs:realtime-synced'));
+            }
         })().catch(error => {
             console.error(error);
         }).finally(() => {
@@ -91,7 +133,7 @@
     function scheduleRefresh(scopes) {
         if (!shouldHandle(scopes)) return;
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(refreshLiveRegions, 200);
+        debounceTimer = setTimeout(refreshLiveRegions, 300);
     }
 
     window.QRSRealtime = {
@@ -100,11 +142,17 @@
     };
 
     if (!window.EventSource) return;
-    const cursor = Number(window.QRS_REALTIME_CURSOR || 0);
-    const source = new EventSource('../api/realtime/events.php?cursor=' + encodeURIComponent(cursor));
+    let cursor = Number(window.QRS_REALTIME_CURSOR || 0);
+    const url = '../api/realtime/events.php' + (cursor > 0 ? '?cursor=' + encodeURIComponent(cursor) : '');
+    const source = new EventSource(url);
     source.addEventListener('sync', event => {
         try {
-            scheduleRefresh(JSON.parse(event.data).scopes);
+            const data = JSON.parse(event.data);
+            if (data.cursor && Number(data.cursor) > cursor) {
+                cursor = Number(data.cursor);
+                window.QRS_REALTIME_CURSOR = cursor;
+            }
+            scheduleRefresh(data.scopes);
         } catch (error) {
             scheduleRefresh();
         }

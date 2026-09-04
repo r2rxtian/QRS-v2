@@ -138,7 +138,7 @@ if (!empty($tasks)) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=15">
+    <link rel="stylesheet" href="../styles/app.css?v=16">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -288,7 +288,7 @@ if (!empty($tasks)) {
                         $locNames = $locationNamesByTask[$task['id']] ?? [];
                         $locationsCountLabel = $total === 0 ? 'No locations' : ($total === 1 ? '1 Location' : "$total Locations");
                         ?>
-                        <tr data-status="<?= htmlspecialchars(taskStatusFilterLabel($task['status'])) ?>" data-missed="<?= $task['has_missed'] ? 'Yes' : 'No' ?>">
+                        <tr data-task-id="<?= (int) $task['id'] ?>" data-status="<?= htmlspecialchars(taskStatusFilterLabel($task['status'])) ?>" data-missed="<?= $task['has_missed'] ? 'Yes' : 'No' ?>">
                             <td>
                                 <div class="row-icon-name">
                                     <div class="row-icon"><i class="fas fa-clipboard-check"></i></div>

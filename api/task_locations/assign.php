@@ -89,6 +89,7 @@ $checkAssignedElsewhere = $pdo->prepare('
           WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
       )
 ');
+$checkLocationType = $pdo->prepare('SELECT location_type FROM ' . T_LOCATIONS . ' WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
 $targetDateStmt = $pdo->prepare('
     SELECT COALESCE(
         (SELECT MIN(task_date) FROM ' . T_TASK_LOCATIONS . ' WHERE task_id = ? AND (unassigned_at IS NULL OR unassigned_by IS NULL)),

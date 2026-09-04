@@ -171,56 +171,6 @@ if ($canModifyLocations) {
     $availableLocations = $availableLocationsStmt->fetchAll();
 }
 ?>
-<!-- Task Meta & KPI Strip -->
-<div class="task-detail-meta-bar">
-    <div class="task-detail-meta-left">
-        <span class="task-type-chip"><i class="fas fa-tag"></i> <?= htmlspecialchars($task['task_type']) ?></span>
-        <?php if ($hasMissed): ?>
-            <span class="status-badge status-missed"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
-        <?php elseif ($isTaskCompleted): ?>
-            <span class="status-badge status-completed"><i class="fas fa-circle-check"></i> Completed</span>
-        <?php elseif ($inProgressForStatus > 0): ?>
-            <span class="status-badge status-ongoing"><i class="fas fa-spinner fa-spin"></i> On-going</span>
-        <?php else: ?>
-            <span class="status-badge status-not-started"><i class="fas fa-clock"></i> Not Started</span>
-        <?php endif; ?>
-    </div>
-</div>
-
-<div class="task-detail-kpi-bar">
-    <div class="kpi-card kpi-card-primary">
-        <div class="kpi-icon-wrap"><i class="fas fa-location-dot"></i></div>
-        <div class="kpi-data">
-            <span class="kpi-value"><?= count($assignedRows) ?></span>
-            <span class="kpi-label">Active Assigned</span>
-        </div>
-    </div>
-    <div class="kpi-card kpi-card-success">
-        <div class="kpi-icon-wrap"><i class="fas fa-circle-check"></i></div>
-        <div class="kpi-data">
-            <span class="kpi-value"><?= count($completedRows) ?></span>
-            <span class="kpi-label">Completed</span>
-        </div>
-    </div>
-    <?php if ($hasMissed): ?>
-        <div class="kpi-card kpi-card-danger">
-            <div class="kpi-icon-wrap"><i class="fas fa-triangle-exclamation"></i></div>
-            <div class="kpi-data">
-                <span class="kpi-value"><?= count($missedRows) ?></span>
-                <span class="kpi-label">Missed (24h+)</span>
-            </div>
-        </div>
-    <?php else: ?>
-        <div class="kpi-card kpi-card-neutral">
-            <div class="kpi-icon-wrap"><i class="fas fa-layer-group"></i></div>
-            <div class="kpi-data">
-                <span class="kpi-value"><?= $totalForStatus ?></span>
-                <span class="kpi-label">Total Locations</span>
-            </div>
-        </div>
-    <?php endif; ?>
-</div>
-
 <?php if ($isTaskCompleted): ?>
     <div class="completed-task-notice">
         <div class="completed-task-notice-icon"><i class="fas fa-circle-check"></i></div>
@@ -237,41 +187,36 @@ if ($canModifyLocations) {
 <?php if (!empty($completedRows)): ?>
     <div class="completed-locations-box">
         <div class="completed-locations-header">
-            <div class="completed-locations-title"><i class="fas fa-circle-check"></i> Completed Locations</div>
+            <div class="completed-locations-title"><i class="fas fa-circle-info"></i> Completed Locations</div>
             <span class="completed-locations-count"><i class="fas fa-check"></i> <?= count($completedRows) ?> Location<?= count($completedRows) === 1 ? '' : 's' ?> Completed</span>
         </div>
         <div class="location-tags">
             <?php foreach ($completedRows as $row): ?>
-                <div class="location-tag completed-tag">
-                    <i class="fas fa-location-dot tag-pin"></i>
-                    <span class="location-tag-name"><?= htmlspecialchars($row['location_name']) ?></span>
+                <div class="location-tag">
+                    <span><?= htmlspecialchars($row['location_name']) ?></span>
                     <span class="location-tag-completed-mark"><i class="fas fa-check"></i> Completed</span>
-                    <?php if (!empty($row['completed_by_name'])): ?>
-                        <span class="location-tag-agent" title="Completed by <?= htmlspecialchars($row['completed_by_name']) ?>"><i class="fas fa-user-check"></i> <?= htmlspecialchars($row['completed_by_name']) ?></span>
-                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>
-        <div class="note-text"><i class="fas fa-circle-info"></i> These are the locations completed for this task.</div>
+        <div class="note-text">These are the locations completed for this task.</div>
     </div>
 <?php endif; ?>
 
 <?php if (!empty($missedRows)): ?>
-    <div class="completed-locations-box missed-locations-box">
+    <div class="completed-locations-box">
         <div class="completed-locations-header">
-            <div class="completed-locations-title"><i class="fas fa-triangle-exclamation"></i> Missed Locations</div>
+            <div class="completed-locations-title"><i class="fas fa-circle-info"></i> Missed Locations</div>
             <span class="completed-locations-count status-missed"><i class="fas fa-triangle-exclamation"></i> <?= count($missedRows) ?> Location<?= count($missedRows) === 1 ? '' : 's' ?> Missed</span>
         </div>
         <div class="location-tags">
             <?php foreach ($missedRows as $row): ?>
-                <div class="location-tag missed-tag">
-                    <i class="fas fa-location-dot tag-pin"></i>
-                    <span class="location-tag-name"><?= htmlspecialchars($row['location_name']) ?></span>
+                <div class="location-tag">
+                    <span><?= htmlspecialchars($row['location_name']) ?></span>
                     <span class="location-tag-completed-mark status-missed"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
                 </div>
             <?php endforeach; ?>
         </div>
-        <div class="note-text"><i class="fas fa-circle-info"></i> These are the locations that were never finished within 24 hours for this task.</div>
+        <div class="note-text">These are the locations that were never finished within 24 hours for this task.</div>
     </div>
 <?php endif; ?>
 
@@ -279,31 +224,27 @@ if ($canModifyLocations) {
     <?php if (!empty($assignedRows)): ?>
         <div class="assign-summary">
             <div class="info-box">
-                <div class="info-box-header">
-                    <div class="info-box-title"><i class="fas fa-location-crosshairs"></i> Active Assigned Locations</div>
-                    <span class="info-box-badge"><i class="fas fa-circle-dot"></i> <?= count($assignedRows) ?> active</span>
-                </div>
+                <div class="info-box-title"><i class="fas fa-circle-info"></i> Assigned Locations</div>
                 <div class="location-tags">
                     <?php foreach ($assignedRows as $row):
                         $rowDate = !empty($row['task_date']) ? new DateTime($row['task_date']) : null;
                         $isRowFutureScheduled = $rowDate !== null && $rowDate > $dbToday;
                     ?>
                         <div class="location-tag" data-location-id="<?= (int) $row['location_id'] ?>">
-                            <i class="fas fa-location-dot tag-pin"></i>
-                            <span class="location-tag-name"><?= htmlspecialchars($row['location_name']) ?></span>
+                            <span><?= htmlspecialchars($row['location_name']) ?></span>
                             <?php if ($isRowFutureScheduled): ?>
                                 <span class="location-tag-scheduled-mark"><i class="fas fa-calendar-days"></i> Scheduled: <?= $rowDate->format('M j, Y') ?></span>
                             <?php else: ?>
                                 <span class="expiration-countdown" data-expiration-countdown data-task-location-id="<?= (int) $row['id'] ?>" data-remaining-seconds="<?= max(0, (int) $row['remaining_seconds']) ?>"><i class="fas fa-hourglass-half"></i> --:--:--</span>
                             <?php endif; ?>
                             <?php if ($canModifyLocations): ?>
-                                <button type="button" class="btn-tag-unassign" onclick="unassignLocationInModal(this)" title="Unassign this location">✕ Unassign</button>
+                                <button type="button" onclick="unassignLocationInModal(this)">✕ Unassign</button>
                             <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 </div>
                 <?php if ($canModifyLocations): ?>
-                    <div class="note-text"><i class="fas fa-circle-info"></i> Note: Unassigning a location will make it available for assignment to other tasks.</div>
+                    <div class="note-text">Note: Unassigning a location will make it available for assignment to other tasks.</div>
                 <?php endif; ?>
             </div>
             <div class="stat-box">
@@ -315,122 +256,103 @@ if ($canModifyLocations) {
     <?php endif; ?>
 
     <?php if ($hasStartedProgress): ?>
-    <div class="table-section-card">
-        <div class="table-section-header">
-            <div>
-                <h4 class="table-section-title"><i class="fas fa-table-list"></i> Assigned Locations Overview</h4>
-                <p class="table-section-sub">Live inspection checklist items and recorded observations</p>
-            </div>
-        </div>
-        <div class="table-wrapper task-detail-table-wrap">
-            <table id="taskDetailTable">
-                <thead>
+    <h4 style="margin: 20px 0 12px; font-size: 15px;">Assigned Locations Overview</h4>
+    <div class="table-wrapper">
+        <table id="taskDetailTable">
+            <thead>
+                <tr>
+                    <th>Location Name</th>
+                    <th>Task Started</th>
+                    <th>Checklist</th>
+                    <th>Findings / Observations</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($assignedRows)): ?>
                     <tr>
-                        <th>Location Name</th>
-                        <th>Task Started</th>
-                        <th>Checklist</th>
-                        <th>Findings / Observations</th>
+                        <td colspan="4" style="text-align:center; padding: 32px; color: var(--gray-500);">No locations assigned for today yet.</td>
                     </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($assignedRows)): ?>
-                        <tr>
-                            <td colspan="4" style="text-align:center; padding: 32px; color: var(--gray-500);">No locations assigned for today yet.</td>
-                        </tr>
-                    <?php endif; ?>
-                    <?php foreach ($assignedRows as $row): ?>
-                        <?php
-                        $checklistBadges = [];
-                        foreach (CHECKLIST_ITEMS as $key => $label) {
-                            if ($row[$key . '_answer']) {
-                                $checklistBadges[] = ['label' => $label, 'answer' => $row[$key . '_answer'], 'remark' => $row[$key . '_remark']];
-                            }
+                <?php endif; ?>
+                <?php foreach ($assignedRows as $row): ?>
+                    <?php
+                    $checklistBadges = [];
+                    foreach (CHECKLIST_ITEMS as $key => $label) {
+                        if ($row[$key . '_answer']) {
+                            $checklistBadges[] = ['label' => $label, 'answer' => $row[$key . '_answer'], 'remark' => $row[$key . '_remark']];
                         }
-                        ?>
-                        <tr>
-                            <td class="location-name">
-                                <div class="table-loc-item">
-                                    <i class="fas fa-location-dot"></i>
-                                    <span><?= htmlspecialchars($row['location_name']) ?></span>
-                                </div>
-                            </td>
-                            <td>
-                                <?php if ((int) $row['is_missed'] === 1): ?>
-                                    <span class="status-badge status-missed"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
-                                <?php elseif ($row['start_time']): ?>
-                                    <span class="timestamp-pill"><i class="fas fa-clock"></i> <?= htmlspecialchars((new DateTime($row['start_time']))->format('Y-m-d H:i:s')) ?></span>
-                                <?php elseif (!empty($row['task_date']) && new DateTime($row['task_date']) > $dbToday): ?>
-                                    <span class="status-pill status-scheduled"><i class="fas fa-calendar-days"></i> Scheduled: <?= (new DateTime($row['task_date']))->format('M j, Y') ?></span>
-                                <?php else: ?>
-                                    <span class="status-pill"><i class="fas fa-pause"></i> Not Started</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php if (empty($checklistBadges)): ?>
-                                    <span style="color: var(--gray-400);">—</span>
-                                <?php else: ?>
-                                    <div class="checklist-answer-list">
-                                        <?php foreach ($checklistBadges as $b): ?>
-                                            <?php
-                                            $answerClass = $b['answer'] === 'Yes' ? 'yes' : ($b['answer'] === 'No' ? 'no' : 'na');
-                                            $answerIcon = $answerClass === 'yes' ? 'fa-check' : ($answerClass === 'no' ? 'fa-xmark' : 'fa-minus');
-                                            ?>
-                                            <div class="checklist-answer-group">
-                                                <div class="checklist-answer-item">
-                                                    <span class="checklist-answer-icon <?= $answerClass ?>"><i class="fas <?= $answerIcon ?>"></i></span>
-                                                    <span class="checklist-answer-label"><?= htmlspecialchars($b['label']) ?></span>
-                                                    <span class="checklist-answer-pill <?= $answerClass ?>"><?= htmlspecialchars($b['answer']) ?></span>
-                                                </div>
-                                                <?php if (!empty($b['remark'])): ?>
-                                                    <div class="checklist-answer-remark"><i class="fas fa-comment-dots"></i> <?= htmlspecialchars($b['remark']) ?></div>
-                                                <?php endif; ?>
+                    }
+                    // Completion Remarks isn't shown here on purpose -- a location
+                    // only ever gets one once it's completed, and a completed
+                    // location auto-unassigns out of $assignedRows (see the box
+                    // above) around the same time, so it belongs to Task Report's
+                    // permanent record instead, not this ongoing-progress view.
+                    ?>
+                    <tr>
+                        <td class="location-name"><i class="fas fa-location-dot" style="color: var(--primary-hover); margin-right: 6px;"></i><?= htmlspecialchars($row['location_name']) ?></td>
+                        <td>
+                            <?php if ((int) $row['is_missed'] === 1): ?>
+                                <span class="status-badge status-missed"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
+                            <?php elseif ($row['start_time']): ?>
+                                <?= htmlspecialchars((new DateTime($row['start_time']))->format('Y-m-d H:i:s')) ?>
+                            <?php elseif (!empty($row['task_date']) && new DateTime($row['task_date']) > $dbToday): ?>
+                                <span class="status-pill status-scheduled">Scheduled: <?= (new DateTime($row['task_date']))->format('M j, Y') ?></span>
+                            <?php else: ?>
+                                <span class="status-pill">Not Started</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if (empty($checklistBadges)): ?>
+                                <span style="color: var(--gray-400);">—</span>
+                            <?php else: ?>
+                                <div class="checklist-answer-list">
+                                    <?php foreach ($checklistBadges as $b): ?>
+                                        <?php
+                                        $answerClass = $b['answer'] === 'Yes' ? 'yes' : ($b['answer'] === 'No' ? 'no' : 'na');
+                                        $answerIcon = $answerClass === 'yes' ? 'fa-check' : ($answerClass === 'no' ? 'fa-xmark' : 'fa-minus');
+                                        ?>
+                                        <div class="checklist-answer-group">
+                                            <div class="checklist-answer-item">
+                                                <span class="checklist-answer-icon <?= $answerClass ?>"><i class="fas <?= $answerIcon ?>"></i></span>
+                                                <span class="checklist-answer-label"><?= htmlspecialchars($b['label']) ?></span>
+                                                <span class="checklist-answer-pill <?= $answerClass ?>"><?= htmlspecialchars($b['answer']) ?></span>
                                             </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-                            <td class="remarks-cell">
-                                <?php if ($row['findings_observation']): ?>
-                                    <div class="findings-card">
-                                        <i class="fas fa-quote-left findings-quote-icon"></i>
-                                        <div class="findings-text"><?= htmlspecialchars($row['findings_observation']) ?></div>
-                                    </div>
-                                <?php else: ?>
-                                    <span class="cell-icon-text"><i class="fas fa-comment-slash"></i> No findings yet</span>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+                                            <?php if (!empty($b['remark'])): ?>
+                                                <div class="checklist-answer-remark"><i class="fas fa-comment-dots"></i> <?= htmlspecialchars($b['remark']) ?></div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                        <td class="remarks-cell">
+                            <?php if ($row['findings_observation']): ?>
+                                <?= htmlspecialchars($row['findings_observation']) ?>
+                            <?php else: ?>
+                                <span class="cell-icon-text"><i class="fas fa-comment"></i> No findings yet</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
     <?php endif; ?>
 <?php endif; ?>
 
 <?php if ($canModifyLocations): ?>
-    <div class="task-detail-assign-section">
-        <div class="assign-more-header">
-            <div>
-                <h4 class="assign-more-title"><i class="fas fa-layer-group"></i> Assign More Locations</h4>
-                <p class="assign-more-sub">Select unassigned <?= htmlspecialchars($task['task_type']) ?> locations to add to this task</p>
-            </div>
-            <span class="available-count-badge"><i class="fas fa-location-dot"></i> <?= count($availableLocations) ?> Available</span>
-        </div>
+    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--gray-200);">
+        <h4 style="margin: 0 0 12px; font-size: 15px;">Assign More Locations</h4>
         <?php if (empty($availableLocations)): ?>
-            <div class="all-assigned-empty">
-                <i class="fas fa-check-double"></i>
-                <p>All <?= htmlspecialchars($task['task_type']) ?> locations are currently assigned to a task.</p>
-            </div>
+            <p style="color: var(--gray-500); font-size: 14px;">All locations are currently assigned to a task.</p>
         <?php else: ?>
             <div class="checklist-toolbar">
                 <div class="search-input-wrap">
                     <i class="fas fa-magnifying-glass"></i>
-                    <input type="text" class="form-input location-search-input" data-target="modalLocationSelect" placeholder="Search available locations…">
+                    <input type="text" class="form-input location-search-input" data-target="modalLocationSelect" placeholder="Search locations…">
                 </div>
                 <label class="checklist-select-all">
                     <input type="checkbox" class="checklist-select-all-input" data-target="modalLocationSelect">
-                    <span>Select All</span>
+                    Select All
                 </label>
             </div>
             <div class="checklist-box">
@@ -445,10 +367,9 @@ if ($canModifyLocations) {
                 </div>
                 <div class="checklist-footer">
                     <span class="checklist-selected-count"><i class="fas fa-circle-check"></i> <span data-count-for="modalLocationSelect">0</span> location(s) selected</span>
-                    <button type="button" class="btn btn-primary" onclick="submitAssignLocationsInModal(this)"><i class="fas fa-circle-plus"></i> Assign Selected Locations</button>
+                    <button type="button" class="btn btn-primary" onclick="submitAssignLocationsInModal()"><i class="fas fa-circle-plus"></i> Assign Selected Locations</button>
                 </div>
             </div>
         <?php endif; ?>
     </div>
 <?php endif; ?>
-

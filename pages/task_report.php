@@ -288,7 +288,7 @@ $statTasksCovered = count($taskNames);
                             $biometricsLast3 = $r['completed_by_code'] ? substr($r['completed_by_code'], -3) : '—';
                             $taskDateObj = new DateTime($r['task_date']);
                             ?>
-                            <tr data-task="<?= htmlspecialchars($r['task_name']) ?>" data-attachments="<?= $hasAttachments ?>" data-status="<?= htmlspecialchars($statusMeta['label']) ?>">
+                            <tr data-id="<?= (int) $r['id'] ?>" data-task="<?= htmlspecialchars($r['task_name']) ?>" data-attachments="<?= $hasAttachments ?>" data-status="<?= htmlspecialchars($statusMeta['label']) ?>">
                                 <td>
                                     <div class="row-icon-name">
                                         <div class="row-icon"><i class="fas fa-location-dot"></i></div>

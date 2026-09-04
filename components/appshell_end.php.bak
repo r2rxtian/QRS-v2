@@ -13,18 +13,13 @@ $realtimeCursor = (int) db()->query('SELECT COALESCE(MAX(id), 0) FROM ' . T_AUDI
 
 <!-- Shared Task Detail Modal -->
 <div id="taskDetailModal" class="modal-overlay">
-    <div class="modal modal-lg task-detail-dialog">
+    <div class="modal modal-lg">
         <div class="modal-header">
-            <div class="modal-header-row">
-                <div class="modal-header-icon task-detail-modal-icon">
-                    <i class="fas fa-map-location-dot"></i>
-                </div>
-                <div>
-                    <h3 class="modal-title" id="taskDetailTitle">Task Overview & Management</h3>
-                    <p class="modal-subtitle">Task: <strong id="taskDetailTaskName"></strong></p>
-                </div>
+            <div>
+                <h3 class="modal-title" id="taskDetailTitle">Task Details</h3>
+                <p class="modal-subtitle">Task: <strong id="taskDetailTaskName"></strong></p>
             </div>
-            <button type="button" class="modal-close" onclick="closeTaskDetailModal()" aria-label="Close modal">
+            <button type="button" class="modal-close" onclick="closeTaskDetailModal()">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
