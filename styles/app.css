@@ -2957,6 +2957,22 @@ tbody tr:hover {
     background: var(--danger-bg);
 }
 
+.location-tag-scheduled-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--primary-dark, #3b5a48);
+    background: var(--primary-light, #eaf2ed);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.location-tag-scheduled-mark i {
+    font-size: 9px;
+}
+
 /* Task Detail popup -- "Task: {name}" line under the modal's generic title */
 .modal-subtitle {
     margin: 2px 0 0;

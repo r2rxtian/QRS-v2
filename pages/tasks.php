@@ -69,8 +69,8 @@ $sql = '
         ' . fullNameSql('uml', 'u') . ' AS creator_name, u.employee_id AS creator_employee_id, u.avatar_initials, u.avatar_color,
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-        SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS in_progress_locations,
-        SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
+        SUM(CASE WHEN tl.status = \'in_progress\' AND (CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ') THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status <> \'completed\' AND CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
         (SELECT MIN(tl2.task_date) FROM ' . T_TASK_LOCATIONS . ' tl2
             WHERE tl2.task_id = t.id AND (tl2.unassigned_at IS NULL OR tl2.unassigned_by IS NULL)
               AND tl2.id = (

@@ -55,10 +55,10 @@ $sql = '
     SELECT t.id, t.name,
            COUNT(tl.id) AS total_locations,
            SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-           SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS in_progress_locations,
-           SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
-           MAX(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
-                     AND CAST(DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', tl.assigned_at) AS DATE) = CAST(SYSDATETIME() AS DATE)
+           SUM(CASE WHEN tl.status = \'in_progress\' AND (CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ') THEN 1 ELSE 0 END) AS in_progress_locations,
+           SUM(CASE WHEN tl.status <> \'completed\' AND CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
+           MAX(CASE WHEN tl.status <> \'completed\' AND CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
+                     AND CAST(DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END) AS DATE) = CAST(SYSDATETIME() AS DATE)
                 THEN 1 ELSE 0 END) AS missed_today_flag,
            MIN(tl.start_time) AS earliest_start,
            MIN(tl.task_date) AS earliest_active_date
@@ -79,10 +79,9 @@ foreach ($stmt->fetchAll() as $row) {
     $earliestActiveDate = $row['earliest_active_date'] ? new DateTime($row['earliest_active_date']) : null;
     $isFutureScheduled = $earliestActiveDate !== null && $earliestActiveDate > $dbToday;
 
-    // A task with nothing currently active, because its only activity is
-    // scheduled for a future date, isn't part of "today" at all -- skip it
-    // entirely rather than let it show up as a bogus 0/0 "Assign Locations" row.
-    if ((int) $row['total_locations'] === 0 && $isFutureScheduled) {
+    // A task scheduled for a future date isn't part of "today" at all -- it
+    // appears under Upcoming Scheduled Tasks instead.
+    if ($isFutureScheduled) {
         continue;
     }
 

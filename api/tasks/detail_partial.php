@@ -83,15 +83,15 @@ $canModifyLocations = $canAssign && !$isTaskCompleted && !$hasMissed;
 // is_missed still guards the brief window between a ticket crossing 24
 // hours and the next page load's sweep picking it up.
 $rowsStmt = $pdo->prepare('
-    SELECT tl.id, l.id AS location_id, l.name AS location_name,
+    SELECT tl.id, l.id AS location_id, l.name AS location_name, tl.task_date,
            tl.spot_spray_answer, tl.spot_spray_remark,
            tl.misting_answer, tl.misting_remark,
            tl.mist_blower_answer, tl.mist_blower_remark,
            tl.monitoring_answer, tl.monitoring_remark,
            tl.findings_observation,
            tl.start_time, tl.end_time, tl.status,
-           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', tl.assigned_at)) AS remaining_seconds,
-           CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END AS is_missed
+           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END)) AS remaining_seconds,
+           CASE WHEN tl.status <> \'completed\' AND CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END AS is_missed
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     WHERE tl.task_id = ? AND tl.unassigned_at IS NULL
@@ -103,6 +103,7 @@ $rowsStmt = $pdo->prepare('
 ');
 $rowsStmt->execute([$taskId]);
 $assignedRows = $rowsStmt->fetchAll();
+$dbToday = new DateTime($pdo->query('SELECT CONVERT(varchar, CAST(SYSDATETIME() AS DATE), 23)')->fetchColumn());
 
 // Nothing to show in the per-location table until at least one location has
 // actually been started -- a table full of "Not Started" / empty
@@ -224,10 +225,17 @@ if ($canModifyLocations) {
             <div class="info-box">
                 <div class="info-box-title"><i class="fas fa-circle-info"></i> Assigned Locations</div>
                 <div class="location-tags">
-                    <?php foreach ($assignedRows as $row): ?>
+                    <?php foreach ($assignedRows as $row):
+                        $rowDate = !empty($row['task_date']) ? new DateTime($row['task_date']) : null;
+                        $isRowFutureScheduled = $rowDate !== null && $rowDate > $dbToday;
+                    ?>
                         <div class="location-tag" data-location-id="<?= (int) $row['location_id'] ?>">
                             <span><?= htmlspecialchars($row['location_name']) ?></span>
-                            <span class="expiration-countdown" data-expiration-countdown data-task-location-id="<?= (int) $row['id'] ?>" data-remaining-seconds="<?= max(0, (int) $row['remaining_seconds']) ?>"><i class="fas fa-hourglass-half"></i> --:--:--</span>
+                            <?php if ($isRowFutureScheduled): ?>
+                                <span class="location-tag-scheduled-mark"><i class="fas fa-calendar-days"></i> Scheduled: <?= $rowDate->format('M j, Y') ?></span>
+                            <?php else: ?>
+                                <span class="expiration-countdown" data-expiration-countdown data-task-location-id="<?= (int) $row['id'] ?>" data-remaining-seconds="<?= max(0, (int) $row['remaining_seconds']) ?>"><i class="fas fa-hourglass-half"></i> --:--:--</span>
+                            <?php endif; ?>
                             <?php if ($canModifyLocations): ?>
                                 <button type="button" onclick="unassignLocationInModal(this)">✕ Unassign</button>
                             <?php endif; ?>
@@ -285,6 +293,8 @@ if ($canModifyLocations) {
                                 <span class="status-badge status-missed"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
                             <?php elseif ($row['start_time']): ?>
                                 <?= htmlspecialchars((new DateTime($row['start_time']))->format('Y-m-d H:i:s')) ?>
+                            <?php elseif (!empty($row['task_date']) && new DateTime($row['task_date']) > $dbToday): ?>
+                                <span class="status-pill status-scheduled">Scheduled: <?= (new DateTime($row['task_date']))->format('M j, Y') ?></span>
                             <?php else: ?>
                                 <span class="status-pill">Not Started</span>
                             <?php endif; ?>

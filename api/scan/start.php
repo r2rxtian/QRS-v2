@@ -63,10 +63,10 @@ $pdo = db();
 // reasoning. An expired ticket simply stops matching here, falling into
 // the same generic "not found" as any other invalid task_location_id.
 $tlStmt = $pdo->prepare('
-    SELECT id, task_id, status
+    SELECT id, task_id, status, task_date
     FROM ' . T_TASK_LOCATIONS . '
     WHERE id = ? AND task_id = ? AND unassigned_at IS NULL
-      AND (status <> \'pending\' OR DATEDIFF(SECOND, assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
+      AND (status <> \'pending\' OR DATEDIFF(SECOND, CASE WHEN task_date > CAST(assigned_at AS DATE) THEN CAST(task_date AS DATETIME2) ELSE assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
 ');
 $tlStmt->execute([$taskLocationId, $taskId]);
 $taskLocation = $tlStmt->fetch();
@@ -74,6 +74,13 @@ $taskLocation = $tlStmt->fetch();
 if (!$taskLocation) {
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => 'This location assignment was not found.', 'type' => 'error']);
+    exit;
+}
+
+$dbTodayStr = $pdo->query('SELECT CONVERT(varchar, CAST(SYSDATETIME() AS DATE), 23)')->fetchColumn();
+if (!empty($taskLocation['task_date']) && $taskLocation['task_date'] > $dbTodayStr) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'This location is scheduled for ' . (new DateTime($taskLocation['task_date']))->format('M j, Y') . ' and cannot be started yet.', 'type' => 'error']);
     exit;
 }
 

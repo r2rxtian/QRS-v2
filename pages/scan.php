@@ -28,7 +28,8 @@ if ($taskId <= 0) {
                SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations
         FROM ' . T_TASKS . ' t
         LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
-            AND (tl.status = \'completed\' OR DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
+            AND tl.task_date <= CAST(SYSDATETIME() AS DATE)
+            AND (tl.status = \'completed\' OR DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
             AND tl.id = (
                 SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
                 WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
@@ -140,6 +141,21 @@ if (!$task) {
     exit;
 }
 
+$dbTodayStr = $pdo->query('SELECT CONVERT(varchar, CAST(SYSDATETIME() AS DATE), 23)')->fetchColumn();
+
+// Scheduled tasks stay inactive until their actual scheduled date arrives
+$scheduleCheckStmt = $pdo->prepare('
+    SELECT MIN(tl.task_date) AS earliest_date
+    FROM ' . T_TASK_LOCATIONS . ' tl
+    WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
+');
+$scheduleCheckStmt->execute([$taskId]);
+$earliestDate = $scheduleCheckStmt->fetchColumn();
+if ($earliestDate && $earliestDate > $dbTodayStr) {
+    header('Location: ' . $myTasksPage);
+    exit;
+}
+
 // Missed Out locations are excluded entirely -- see api/scan/lookup.php's
 // reasoning. They simply don't appear in this task's scannable list once
 // 24 hours pass, rather than showing up as a tappable row that then fails.
@@ -157,12 +173,12 @@ if (!$task) {
 // status (including ones a different worker just finished), not just
 // whichever locations haven't been auto-freed yet.
 $rowsStmt = $pdo->prepare('
-    SELECT tl.id AS task_location_id, l.id AS location_id, l.name AS location_name, tl.status,
-           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', tl.assigned_at)) AS remaining_seconds
+    SELECT tl.id AS task_location_id, l.id AS location_id, l.name AS location_name, tl.status, tl.task_date,
+           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END)) AS remaining_seconds
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
-      AND (tl.status = \'completed\' OR DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
+      AND (tl.status = \'completed\' OR DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
       AND tl.id = (
           SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
           WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
@@ -475,7 +491,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
                                     <i class="fas fa-hand-point-right scan-location-list-here-icon" aria-hidden="true"></i>
                                     <span class="scan-location-list-icon"><i class="fas fa-<?= $rowIsDone ? 'check' : ($row['status'] === 'in_progress' ? 'hourglass-half' : 'clock') ?>"></i></span>
                                     <span class="scan-location-list-name"><?= htmlspecialchars($row['location_name']) ?></span>
-                                    <?php if (!$rowIsDone): ?>
+                                    <?php if (!$rowIsDone && $row['task_date'] <= $dbTodayStr): ?>
                                         <span class="expiration-countdown" data-expiration-countdown data-task-location-id="<?= (int) $row['task_location_id'] ?>" data-remaining-seconds="<?= max(0, (int) $row['remaining_seconds']) ?>">--:--:--</span>
                                     <?php endif; ?>
                                     <span class="scan-location-list-status <?= $rowStatusClass ?>"><?= $rowStatusLabel ?></span>

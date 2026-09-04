@@ -100,7 +100,8 @@ function expireDueTaskLocations(PDO $pdo, ?array $taskLocationIds = null): array
         OUTPUT INSERTED.id, INSERTED.task_id, INSERTED.location_id
         WHERE unassigned_at IS NULL
           AND status IN (\'pending\', \'in_progress\')
-          AND DATEDIFF(SECOND, assigned_at, SYSDATETIME()) >= ' . TASK_LOCATION_EXPIRATION_SECONDS .
+          AND CAST(SYSDATETIME() AS DATE) >= task_date
+          AND DATEDIFF(SECOND, CASE WHEN task_date > CAST(assigned_at AS DATE) THEN CAST(task_date AS DATETIME2) ELSE assigned_at END, SYSDATETIME()) >= ' . TASK_LOCATION_EXPIRATION_SECONDS .
           $idPredicate . '
     ');
     $stmt->execute($params);
@@ -157,7 +158,7 @@ function claimResolvedLocationSweep(PDO $pdo): bool
  */
 function resolveTaskAction(array $status, int $taskId, string $roleName, bool $hasMissed = false): array
 {
-    if ($status['code'] === 'completed' || $hasMissed) {
+    if ($status['code'] === 'completed' || $hasMissed || $status['code'] === 'scheduled') {
         return ['type' => 'popup', 'label' => 'View'];
     }
 
@@ -225,22 +226,7 @@ function sweepResolvedLocations(PDO $pdo): void
  * based -- a ticket created at 5pm is only "missed" at 5pm the next day,
  * not at the next midnight.
  *
- * "CURRENT ticket" here means: still on the roster (unassigned_at IS NULL)
- * OR auto-unassigned by the system once it resolved (unassigned_by IS
- * NULL -- see sweepResolvedLocations()) -- so a location that went missed
- * and then got auto-freed for a new task still counts here permanently,
- * while a location an Admin manually unassigned for an unrelated reason
- * correctly does not. The DATEDIFF compares against unassigned_at once
- * that's set (frozen at the moment it resolved) instead of the live clock,
- * so "was this missed" stays true forever after auto-unassign rather than
- * silently flipping back to false. Latest-ticket pinning (MAX(id) per
- * task_id+location_id pair) still guards against an Admin unassigning and
- * re-assigning the same location to the same task (e.g. correcting a
- * mistake), which would otherwise double-count an old, already-resolved
- * ticket alongside the current one.
- * Returns ['missed' => int, 'total' => int], where total is the number of
- * distinct tasks with at least one still-relevant location assignment,
- * e.g. 2 tasks with 2 locations each -> total 2, not 4.
+ * Future-scheduled tasks (task_date > today) are inactive and cannot be missed.
  */
 function countMissedTaskLocations(PDO $pdo, ?string $taskType = null): array
 {
@@ -250,7 +236,9 @@ function countMissedTaskLocations(PDO $pdo, ?string $taskType = null): array
             COUNT(DISTINCT x.task_id) AS total
         FROM (
             SELECT tl.task_id,
-                   CASE WHEN DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' AND tl.status <> \'completed\' THEN 1 ELSE 0 END AS missed_flag
+                   CASE WHEN CAST(SYSDATETIME() AS DATE) >= tl.task_date
+                             AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
+                             AND tl.status <> \'completed\' THEN 1 ELSE 0 END AS missed_flag
             FROM ' . T_TASK_LOCATIONS . ' tl
             JOIN ' . T_TASKS . ' t ON t.id = tl.task_id
             WHERE (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL) AND t.deleted_at IS NULL
