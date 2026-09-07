@@ -8,7 +8,7 @@
 //     <div class="filter-panel">
 //       <div class="filter-group">
 //         <div class="filter-group-title">Status</div>
-//         <label class="filter-option"><input type="checkbox" data-filter="status" value="On-going" checked> On-going</label>
+//         <label class="filter-option"><input type="checkbox" data-filter="status" value="On-going"> On-going</label>
 //         ...
 //       </div>
 //       <div class="filter-panel-actions">
@@ -85,16 +85,19 @@ function applyTableFilters(tableId, options = {}) {
         });
         Object.keys(groups).forEach(key => {
             const group = groups[key];
-            // A single-checkbox group is a plain on/off toggle (e.g. "Missed
-            // Out"), not a multi-select "pick which of these categories" --
-            // checked means "only show matches", unchecked means "no
-            // restriction, show everything" (see applyTableFilters below).
-            // A multi-checkbox group instead treats checked.length < total
-            // as "actively filtering", down to and including all unchecked
-            // meaning "show nothing".
-            const isActive = group.total === 1 ? group.checked.length === 1 : group.checked.length < group.total;
-            if (isActive) activeFilterCount++;
+            if (group.checked.length > 0) {
+                activeFilterCount += group.checked.length;
+            }
         });
+
+        // Date Range filtering (from / to)
+        const dateFromInput = filterWrap.querySelector('input[data-filter-date="from"]');
+        const dateToInput = filterWrap.querySelector('input[data-filter-date="to"]');
+        var dateFrom = dateFromInput ? dateFromInput.value : '';
+        var dateTo = dateToInput ? dateToInput.value : '';
+        if (dateFrom || dateTo) {
+            activeFilterCount += 1;
+        }
     }
 
     const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
@@ -107,14 +110,22 @@ function applyTableFilters(tableId, options = {}) {
             if (!match) return;
             const rowValue = row.dataset[key];
             const group = groups[key];
-            if (group.total === 1) {
-                if (group.checked.length === 1 && !group.checked.includes(rowValue)) {
-                    match = false;
-                }
-            } else if (group.checked.length === 0 || !group.checked.includes(rowValue)) {
+            // When no filters are checked in this group: Show all items by default (no restriction).
+            // When filters are checked: Show only items that match the checked criteria.
+            if (group.checked.length > 0 && !group.checked.includes(rowValue)) {
                 match = false;
             }
         });
+
+        if (match && (typeof dateFrom !== 'undefined' && (dateFrom || dateTo))) {
+            const rowDate = row.dataset.date;
+            if (!rowDate) {
+                match = false;
+            } else {
+                if (dateFrom && rowDate < dateFrom) match = false;
+                if (dateTo && rowDate > dateTo) match = false;
+            }
+        }
 
         if (match && query !== '') {
             match = row.textContent.toLowerCase().includes(query);
@@ -162,18 +173,16 @@ function applyFilterPanel(el) {
 
 function clearFilterPanel(el) {
     const wrap = el.closest('.filter-wrap');
-    // Group by data-filter key first so a single-checkbox toggle group
-    // (see applyTableFilters) clears to its neutral OFF state instead of
-    // being forced checked=true like every multi-checkbox group's "select
-    // everything" reset.
-    const byKey = {};
+    // Uncheck all filter checkboxes so all rows are shown by default
     wrap.querySelectorAll('.filter-panel input[type="checkbox"][data-filter]').forEach(cb => {
-        const key = cb.dataset.filter;
-        (byKey[key] = byKey[key] || []).push(cb);
+        cb.checked = false;
     });
-    Object.values(byKey).forEach(checkboxes => {
-        const resetValue = checkboxes.length === 1 ? false : true;
-        checkboxes.forEach(cb => cb.checked = resetValue);
+    // Clear date inputs & preset buttons
+    wrap.querySelectorAll('.filter-panel input[data-filter-date]').forEach(input => {
+        input.value = '';
+    });
+    wrap.querySelectorAll('.date-preset-btn').forEach(btn => {
+        btn.classList.remove('active');
     });
     const dropdown = wrap.querySelector('.sort-dropdown');
     if (dropdown) {
@@ -186,8 +195,74 @@ function clearFilterPanel(el) {
     applyTableFilters(wrap.dataset.table);
 }
 
+function setDateFilterPreset(preset, btn) {
+    const wrap = btn.closest('.filter-wrap');
+    if (!wrap) return;
+
+    const fromInput = wrap.querySelector('input[data-filter-date="from"]');
+    const toInput = wrap.querySelector('input[data-filter-date="to"]');
+    if (!fromInput || !toInput) return;
+
+    const isAlreadyActive = btn.classList.contains('active');
+    wrap.querySelectorAll('.date-preset-btn').forEach(b => b.classList.remove('active'));
+
+    if (isAlreadyActive) {
+        fromInput.value = '';
+        toInput.value = '';
+        return;
+    }
+
+    btn.classList.add('active');
+
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const formatIso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const todayStr = formatIso(now);
+
+    switch (preset) {
+        case 'today':
+            fromInput.value = todayStr;
+            toInput.value = todayStr;
+            break;
+        case 'yesterday': {
+            const y = new Date(now);
+            y.setDate(now.getDate() - 1);
+            const yStr = formatIso(y);
+            fromInput.value = yStr;
+            toInput.value = yStr;
+            break;
+        }
+        case 'last7': {
+            const d7 = new Date(now);
+            d7.setDate(now.getDate() - 6);
+            fromInput.value = formatIso(d7);
+            toInput.value = todayStr;
+            break;
+        }
+        case 'thisMonth': {
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            fromInput.value = formatIso(firstDay);
+            toInput.value = formatIso(lastDay);
+            break;
+        }
+    }
+}
+
+window.setDateFilterPreset = setDateFilterPreset;
+
 document.addEventListener('input', function (e) {
     const input = e.target.closest('.table-search-input');
-    if (!input) return;
-    applyTableFilters(input.dataset.target);
+    if (input) {
+        applyTableFilters(input.dataset.target);
+        return;
+    }
+
+    if (e.target.matches('input[data-filter-date]')) {
+        const wrap = e.target.closest('.filter-wrap');
+        if (wrap) {
+            wrap.querySelectorAll('.date-preset-btn').forEach(b => b.classList.remove('active'));
+        }
+    }
 });

@@ -611,7 +611,8 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/select-dropdown.js"></script>
-    <script src="../scripts/scan.js?v=4"></script>
+    <script src="../scripts/toast.js?v=2"></script>
+    <script src="../scripts/scan.js?v=5"></script>
 </body>
 
 </html>

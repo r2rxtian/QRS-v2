@@ -98,7 +98,7 @@ $statTasksCovered = count($taskNames);
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles/app.css?v=15">
-    <link rel="stylesheet" href="../styles/task_report.css?v=15">
+    <link rel="stylesheet" href="../styles/task_report.css?v=16">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -188,20 +188,39 @@ $statTasksCovered = count($taskNames);
                             </div>
                         </div>
                         <div class="filter-group">
+                            <div class="filter-group-title">Scheduled Date</div>
+                            <div class="filter-date-grid">
+                                <div class="filter-date-row">
+                                    <span class="filter-date-tag">From</span>
+                                    <input type="date" class="form-input filter-date-field" data-filter-date="from" id="reportDateFrom" value="<?= htmlspecialchars($_GET['from'] ?? '') ?>">
+                                </div>
+                                <div class="filter-date-row">
+                                    <span class="filter-date-tag">To</span>
+                                    <input type="date" class="form-input filter-date-field" data-filter-date="to" id="reportDateTo" value="<?= htmlspecialchars($_GET['to'] ?? '') ?>">
+                                </div>
+                            </div>
+                            <div class="filter-date-presets">
+                                <button type="button" class="date-preset-btn" onclick="setDateFilterPreset('today', this)">Today</button>
+                                <button type="button" class="date-preset-btn" onclick="setDateFilterPreset('yesterday', this)">Yesterday</button>
+                                <button type="button" class="date-preset-btn" onclick="setDateFilterPreset('last7', this)">Last 7 Days</button>
+                                <button type="button" class="date-preset-btn" onclick="setDateFilterPreset('thisMonth', this)">This Month</button>
+                            </div>
+                        </div>
+                        <div class="filter-group">
                             <div class="filter-group-title">Status</div>
-                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Completed" checked> Completed</label>
-                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Missed Out" checked> Missed Out</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Completed"> Completed</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Missed Out"> Missed Out</label>
                         </div>
                         <div class="filter-group">
                             <div class="filter-group-title">Attachments</div>
-                            <label class="filter-option"><input type="checkbox" data-filter="attachments" value="yes" checked> With Photos</label>
-                            <label class="filter-option"><input type="checkbox" data-filter="attachments" value="no" checked> No Photos</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="attachments" value="yes"> With Photos</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="attachments" value="no"> No Photos</label>
                         </div>
                         <div class="filter-group">
                             <div class="filter-group-title">Task</div>
                             <div class="filter-task-list">
                                 <?php foreach ($taskNames as $taskName): ?>
-                                    <label class="filter-option"><input type="checkbox" data-filter="task" value="<?= htmlspecialchars($taskName) ?>" checked> <?= htmlspecialchars($taskName) ?></label>
+                                    <label class="filter-option"><input type="checkbox" data-filter="task" value="<?= htmlspecialchars($taskName) ?>"> <?= htmlspecialchars($taskName) ?></label>
                                 <?php endforeach; ?>
                             </div>
                         </div>
@@ -288,7 +307,7 @@ $statTasksCovered = count($taskNames);
                             $biometricsLast3 = $r['completed_by_code'] ? substr($r['completed_by_code'], -3) : '—';
                             $taskDateObj = new DateTime($r['task_date']);
                             ?>
-                            <tr data-id="<?= (int) $r['id'] ?>" data-task="<?= htmlspecialchars($r['task_name']) ?>" data-attachments="<?= $hasAttachments ?>" data-status="<?= htmlspecialchars($statusMeta['label']) ?>">
+                            <tr data-id="<?= (int) $r['id'] ?>" data-task="<?= htmlspecialchars($r['task_name']) ?>" data-attachments="<?= $hasAttachments ?>" data-status="<?= htmlspecialchars($statusMeta['label']) ?>" data-date="<?= htmlspecialchars($r['task_date']) ?>">
                                 <td>
                                     <div class="row-icon-name">
                                         <div class="row-icon"><i class="fas fa-location-dot"></i></div>
@@ -400,8 +419,8 @@ $statTasksCovered = count($taskNames);
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/sort-table.js"></script>
-    <script src="../scripts/filters.js?v=2"></script>
-    <script src="../scripts/task_report.js?v=12"></script>
+    <script src="../scripts/filters.js?v=4"></script>
+    <script src="../scripts/task_report.js?v=13"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </body>

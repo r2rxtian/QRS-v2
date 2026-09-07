@@ -9,6 +9,10 @@ function closeModal(id) {
 }
 
 function showMessage(message, type = 'info') {
+    if (type === 'success' && typeof showToast === 'function') {
+        showToast(message, 'success');
+        return;
+    }
     const titleEl = document.getElementById('msgTitle');
     const bodyEl = document.getElementById('msgBody');
     titleEl.textContent = type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Notification';
@@ -123,10 +127,11 @@ async function submitAddUser() {
         const data = await response.json();
 
         closeAddUserModal();
-        showMessage(data.message, data.type || (data.success ? 'success' : 'error'));
-
         if (data.success) {
+            showToast(data.message, 'success');
             await window.QRSRealtime?.refresh();
+        } else {
+            showMessage(data.message, data.type || 'error');
         }
     } catch (err) {
         closeAddUserModal();

@@ -365,7 +365,9 @@ function mountTaskReportTable() {
     // first visible row set. Doing it afterward would swap rows underneath an
     // already-running entrance timeline.
     const searchInput = document.querySelector('.table-search-input[data-target="reportTable"]');
-    if (searchInput && searchInput.value) {
+    const dateFromInput = document.querySelector('.filter-wrap[data-table="reportTable"] input[data-filter-date="from"]');
+    const dateToInput = document.querySelector('.filter-wrap[data-table="reportTable"] input[data-filter-date="to"]');
+    if ((searchInput && searchInput.value) || (dateFromInput && dateFromInput.value) || (dateToInput && dateToInput.value)) {
         applyTableFilters('reportTable');
     }
 

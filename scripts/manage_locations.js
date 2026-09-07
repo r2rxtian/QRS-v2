@@ -283,16 +283,13 @@ async function submitCsvImport() {
         const data = await response.json();
 
         closeModal('csvModal');
-        showMessage(
-            data.message,
-            data.success ? 'success' : 'error',
-            data.success ? 'Import Successful' : 'Import Unsuccessful'
-        );
-
         if (data.success) {
+            showToast(data.message, 'success');
             fileInput.value = '';
             updateCsvSelectedFilename();
             await refreshLocationsView();
+        } else {
+            showMessage(data.message, 'error', 'Import Unsuccessful');
         }
     } catch (err) {
         closeModal('csvModal');
@@ -384,6 +381,10 @@ function closeModal(id) {
 }
 
 function showMessage(message, type = 'info', title = '') {
+    if (type === 'success' && typeof showToast === 'function') {
+        showToast(message, 'success');
+        return;
+    }
     const titleEl = document.getElementById('msgTitle');
     const bodyEl = document.getElementById('msgBody');
     titleEl.textContent = title || (type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Notification');

@@ -151,7 +151,7 @@ $statTotal = count($locations);
                         <div class="filter-group">
                             <div class="filter-group-title">Type</div>
                             <?php foreach (TASK_TYPES as $type): ?>
-                                <label class="filter-option"><input type="checkbox" data-filter="loctype" value="<?= htmlspecialchars($type) ?>" checked> <?= htmlspecialchars($type) ?></label>
+                                <label class="filter-option"><input type="checkbox" data-filter="loctype" value="<?= htmlspecialchars($type) ?>"> <?= htmlspecialchars($type) ?></label>
                             <?php endforeach; ?>
                         </div>
                         <div class="filter-panel-actions">
@@ -419,9 +419,9 @@ $statTotal = count($locations);
     <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/sort-table.js"></script>
     <script src="../scripts/select-dropdown.js"></script>
-    <script src="../scripts/filters.js?v=2"></script>
-    <script src="../scripts/toast.js"></script>
-    <script src="../scripts/manage_locations.js?v=2"></script>
+    <script src="../scripts/filters.js?v=3"></script>
+    <script src="../scripts/toast.js?v=2"></script>
+    <script src="../scripts/manage_locations.js?v=3"></script>
 </body>
 
 </html>

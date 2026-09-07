@@ -45,6 +45,7 @@ window.QRS_SESSION_CONFIG = <?= json_encode([
     'warningBeforeMs' => 60 * 1000,
 ]) ?>;
 </script>
+<script src="../scripts/toast.js?v=2"></script>
 <script src="../scripts/motion.js?v=4"></script>
 <script src="../scripts/session-guard.js"></script>
 <script src="../scripts/realtime-sync.js?v=3"></script>

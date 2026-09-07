@@ -36,6 +36,10 @@ function showModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
 function showMessage(message, type = 'info') {
+    if (type === 'success' && typeof showToast === 'function') {
+        showToast(message, 'success');
+        return;
+    }
     const titleEl = document.getElementById('msgTitle');
     const bodyEl = document.getElementById('msgBody');
     titleEl.textContent = type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Notification';
@@ -447,7 +451,7 @@ async function submitCompleteCheck() {
         const data = await response.json();
 
         if (data.success) {
-            showMessage(data.message, data.type || 'success');
+            showToast(data.message, 'success');
             const taskLocationId = document.getElementById('completion_task_location_id').value;
             updateScanLocationState(taskLocationId, 'completed');
             returnToLanding();
@@ -585,7 +589,7 @@ function capturePhoto() {
         img.className = 'photo-preview';
         document.getElementById('capturedPhotos').appendChild(img);
 
-        showMessage(`Photo ${capturedPhotosData.length} captured! You can take more or click Done.`, 'success');
+        showToast(`Photo ${capturedPhotosData.length} captured! You can take more or click Done.`, 'success');
     }, 'image/jpeg', 0.9);
 }
 

@@ -229,16 +229,16 @@ if (!empty($tasks)) {
                         </div>
                         <div class="filter-group">
                             <div class="filter-group-title">Status</div>
-                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Completed" checked> Completed</label>
-                            <label class="filter-option"><input type="checkbox" data-filter="status" value="On-going" checked> On-going</label>
-                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Not Started" checked> Not Started</label>
-                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Scheduled" checked> Scheduled</label>
-                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Assign Locations" checked> Assign Locations</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Completed"> Completed</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="On-going"> On-going</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Not Started"> Not Started</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Scheduled"> Scheduled</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Assign Locations"> Assign Locations</label>
                         </div>
                         <div class="filter-group">
                             <div class="filter-group-title">Missed Out</div>
-                            <label class="filter-option"><input type="checkbox" data-filter="missed" value="Yes" checked> Has Missed Location</label>
-                            <label class="filter-option"><input type="checkbox" data-filter="missed" value="No" checked> None Missed</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="missed" value="Yes"> Has Missed Location</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="missed" value="No"> None Missed</label>
                         </div>
                         <div class="filter-panel-actions">
                             <button type="button" class="btn btn-sm btn-secondary" onclick="clearFilterPanel(this)">Clear</button>
@@ -338,7 +338,7 @@ if (!empty($tasks)) {
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/sort-table.js"></script>
-    <script src="../scripts/filters.js?v=2"></script>
+    <script src="../scripts/filters.js?v=3"></script>
     <script src="../scripts/qradmin.js"></script>
 </body>
 

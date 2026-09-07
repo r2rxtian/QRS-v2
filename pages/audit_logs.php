@@ -137,7 +137,7 @@ $activeUsersToday = (int) $pdo->query('
                         <div class="filter-group">
                             <div class="filter-group-title">Module</div>
                             <?php foreach (['Tasks', 'Locations', 'Assignments', 'Users', 'System'] as $moduleLabel): ?>
-                                <label class="filter-option"><input type="checkbox" data-filter="module" value="<?= htmlspecialchars($moduleLabel) ?>" checked> <?= htmlspecialchars($moduleLabel) ?></label>
+                                <label class="filter-option"><input type="checkbox" data-filter="module" value="<?= htmlspecialchars($moduleLabel) ?>"> <?= htmlspecialchars($moduleLabel) ?></label>
                             <?php endforeach; ?>
                         </div>
                         <div class="filter-panel-actions">
@@ -178,13 +178,14 @@ $activeUsersToday = (int) $pdo->query('
                         <?php foreach ($auditRows as $row): ?>
                             <?php
                             $moduleLabel = auditModuleLabel($row['entity_type']);
+                            $actionLabel = auditActionLabel($row['action']);
                             $actorName = $row['actor_name'] ?? 'System';
                             $timestamp = new DateTime($row['created_at']);
                             ?>
                             <tr data-module="<?= htmlspecialchars($moduleLabel) ?>">
                                 <td data-sort-value="<?= htmlspecialchars($row['created_at']) ?>"><?= htmlspecialchars($timestamp->format('M j, Y g:i:s A')) ?></td>
                                 <td><?= htmlspecialchars($actorName) ?></td>
-                                <td><span class="<?= auditActionBadgeClass($row['action']) ?>"><?= htmlspecialchars($row['action']) ?></span></td>
+                                <td><span class="<?= auditActionBadgeClass($row['action']) ?>"><?= htmlspecialchars($actionLabel) ?></span></td>
                                 <td><?= htmlspecialchars($moduleLabel) ?></td>
                             </tr>
                         <?php endforeach; ?>
@@ -200,7 +201,7 @@ $activeUsersToday = (int) $pdo->query('
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/sort-table.js"></script>
-    <script src="../scripts/filters.js?v=2"></script>
+    <script src="../scripts/filters.js?v=3"></script>
     <script src="../scripts/audit_logs.js"></script>
 </body>
 

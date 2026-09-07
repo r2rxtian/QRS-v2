@@ -9,6 +9,10 @@ function closeModal(id) {
 }
 
 function showMessage(message, type = 'info') {
+    if (type === 'success' && typeof showToast === 'function') {
+        showToast(message, 'success');
+        return;
+    }
     const titleEl = document.getElementById('msgTitle');
     const bodyEl = document.getElementById('msgBody');
     titleEl.textContent = type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Notification';
@@ -198,11 +202,12 @@ async function submitCreateTask() {
         const data = await response.json();
 
         closeModal('createTaskModal');
-        showMessage(data.message, data.type || (data.success ? 'success' : 'error'));
-
         if (data.success) {
+            showToast(data.message, 'success');
             nameInput.value = '';
             await refreshTasksView();
+        } else {
+            showMessage(data.message, data.type || 'error');
         }
     } catch (err) {
         closeModal('createTaskModal');

@@ -75,13 +75,13 @@ $manageableUsers = $stmt->fetchAll();
                     <div class="filter-panel">
                         <div class="filter-group">
                             <div class="filter-group-title">Role</div>
-                            <label class="filter-option"><input type="checkbox" data-filter="role" value="<?= htmlspecialchars(ROLE_ADMIN) ?>" checked> Admin</label>
-                            <label class="filter-option"><input type="checkbox" data-filter="role" value="<?= htmlspecialchars(ROLE_USER) ?>" checked> User</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="role" value="<?= htmlspecialchars(ROLE_ADMIN) ?>"> Admin</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="role" value="<?= htmlspecialchars(ROLE_USER) ?>"> User</label>
                         </div>
                         <div class="filter-group">
                             <div class="filter-group-title">Status</div>
-                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Active" checked> Active</label>
-                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Inactive" checked> Inactive</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Active"> Active</label>
+                            <label class="filter-option"><input type="checkbox" data-filter="status" value="Inactive"> Inactive</label>
                         </div>
                         <div class="filter-panel-actions">
                             <button type="button" class="btn btn-sm btn-secondary" onclick="clearFilterPanel(this)">Clear</button>
@@ -259,11 +259,11 @@ $manageableUsers = $stmt->fetchAll();
 
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/select-dropdown.js"></script>
-    <script src="../scripts/toast.js"></script>
+    <script src="../scripts/toast.js?v=2"></script>
     <script src="../scripts/kebab.js"></script>
     <script src="../scripts/pagination.js?v=7"></script>
-    <script src="../scripts/filters.js?v=2"></script>
-    <script src="../scripts/user_management.js?v=1"></script>
+    <script src="../scripts/filters.js?v=3"></script>
+    <script src="../scripts/user_management.js?v=2"></script>
 </body>
 
 </html>

@@ -45,13 +45,47 @@ function auditModuleLabel(?string $entityType): string
     return AUDIT_MODULE_LABELS[$entityType] ?? ucfirst(str_replace('_', ' ', $entityType));
 }
 
+// Simple, non-technical human labels for audit log actions.
+const AUDIT_ACTION_LABELS = [
+    'logout'                     => 'Log Out',
+    'logout.idle_timeout'        => 'Log Out (Timeout)',
+    'login.success'              => 'Log In',
+    'login.failed'               => 'Failed Login',
+    'task.create'                => 'Create Task',
+    'task.delete'                => 'Delete Task',
+    'task_location.assign'       => 'Assign Location',
+    'task_location.unassign'     => 'Unassign Location',
+    'task_location.expire'       => 'Task Expired',
+    'task_location.expire_sweep' => 'Task Expired',
+    'scan.start'                 => 'Start Scan',
+    'scan.complete'              => 'Complete Check',
+    'location.create'            => 'Create Location',
+    'location.update'            => 'Edit Location',
+    'location.delete'            => 'Delete Location',
+    'location.import_csv'        => 'Import Locations',
+    'location.reset_status'      => 'Reset Location',
+    'user.create'                => 'Add User',
+    'user.update_role'           => 'Change Role',
+    'user.update_status'         => 'Change Status',
+    'authz.denied'               => 'Access Denied',
+];
+
+function auditActionLabel(string $action): string
+{
+    if (isset(AUDIT_ACTION_LABELS[$action])) {
+        return AUDIT_ACTION_LABELS[$action];
+    }
+    // Fallback: replace separators with spaces and title-case
+    return ucwords(str_replace(['.', '_'], ' ', $action));
+}
+
 // Loose tone classifier from the action string itself (e.g. 'task.delete',
 // 'login.failed', 'authz.denied') rather than an exhaustive per-action
 // map -- a new action string added later (see this file's callers) still
 // gets a reasonable color instead of needing this list kept in sync.
 function auditActionBadgeClass(string $action): string
 {
-    foreach (['denied', 'failed', 'delete', 'idle_timeout'] as $needle) {
+    foreach (['denied', 'failed', 'delete', 'idle_timeout', 'unassign', 'expire'] as $needle) {
         if (str_contains($action, $needle)) {
             return 'status-badge status-missed';
         }

@@ -1299,7 +1299,7 @@ select.form-input {
     border: 1px solid var(--gray-200);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
-    width: 240px;
+    width: 275px;
     padding: 16px;
     z-index: 50;
     display: none;
@@ -3375,31 +3375,113 @@ tbody tr:hover {
     position: fixed;
     bottom: 24px;
     right: 24px;
-    z-index: 2000;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+    pointer-events: none;
+    max-width: 440px;
+}
+
+.qrs-toast {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
     padding: 12px 18px;
-    border-radius: var(--radius);
+    border-radius: 12px;
     font-size: 13.5px;
     font-weight: 500;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
     opacity: 0;
-    transform: translateY(8px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    pointer-events: none;
+    transform: translateY(12px) scale(0.96);
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+    cursor: pointer;
+    word-break: break-word;
+    border: 1px solid transparent;
 }
 
 .qrs-toast.show {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+}
+
+.qrs-toast i {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.qrs-toast-text {
+    line-height: 1.4;
 }
 
 .qrs-toast-success {
-    background: #D1FAE5;
+    background: #ECFDF5;
     color: #065F46;
+    border-color: #A7F3D0;
+}
+
+.qrs-toast-success i {
+    color: #059669;
 }
 
 .qrs-toast-error {
-    background: #FEE2E2;
+    background: #FEF2E2;
     color: #991B1B;
+    border-color: #FECACA;
+}
+
+.qrs-toast-error i {
+    color: #DC2626;
+}
+
+.qrs-toast-info {
+    background: #EFF6FF;
+    color: #1E40AF;
+    border-color: #BFDBFE;
+}
+
+.qrs-toast-info i {
+    color: #2563EB;
+}
+
+:root[data-theme="dark"] .qrs-toast-success {
+    background: #064E3B;
+    color: #A7F3D0;
+    border-color: #047857;
+}
+
+:root[data-theme="dark"] .qrs-toast-success i {
+    color: #34D399;
+}
+
+:root[data-theme="dark"] .qrs-toast-error {
+    background: #7F1D1D;
+    color: #FECACA;
+    border-color: #991B1B;
+}
+
+:root[data-theme="dark"] .qrs-toast-error i {
+    color: #F87171;
+}
+
+:root[data-theme="dark"] .qrs-toast-info {
+    background: #1E3A8A;
+    color: #BFDBFE;
+    border-color: #1D4ED8;
+}
+
+:root[data-theme="dark"] .qrs-toast-info i {
+    color: #60A5FA;
+}
+
+@media (max-width: 640px) {
+    #qrs-toast-container {
+        left: 16px;
+        right: 16px;
+        bottom: 20px;
+        max-width: none;
+    }
 }
 
 #taskDetailTable td {

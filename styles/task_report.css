@@ -213,3 +213,97 @@
     color: var(--gray-400);
     font-size: 12px;
 }
+
+/* Date Range Filter in Filter Panel */
+.filter-wrap[data-table="reportTable"] .filter-panel {
+    width: 275px;
+}
+
+.filter-date-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.filter-date-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-date-tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-500);
+    width: 36px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.filter-date-field {
+    flex: 1;
+    font-size: 12px;
+    padding: 5px 8px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    color: var(--gray-800);
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+}
+
+.filter-date-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.date-preset-btn {
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    border-radius: 9999px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.date-preset-btn:hover {
+    background: var(--gray-200);
+    color: var(--gray-900);
+}
+
+.date-preset-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+:root[data-theme="dark"] .filter-date-field {
+    background: var(--gray-800);
+    border-color: var(--gray-700);
+    color: var(--gray-100);
+}
+
+:root[data-theme="dark"] .date-preset-btn {
+    background: var(--gray-800);
+    border-color: var(--gray-700);
+    color: var(--gray-300);
+}
+
+:root[data-theme="dark"] .date-preset-btn:hover {
+    background: var(--gray-700);
+    color: var(--gray-100);
+}
+
+:root[data-theme="dark"] .date-preset-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
