@@ -108,25 +108,22 @@ while (($row = fgetcsv($handle, 0, ',')) !== false) {
         continue;
     }
 
-    // A blank Type cell defaults to 'Treatment', matching
-    // qrs_locations.location_type's own DEFAULT. A value that doesn't
-    // match either TASK_TYPES value is
-    // rejected outright rather than silently guessed at -- see
-    // pages/manage_locations.php's downloadable template for the exact
-    // expected values ("Monitoring" / "Treatment").
-    $matchedType = null;
+    // Type is required and must be either 'Monitoring' or 'Treatment'.
+    // Blank values are not accepted and will not default to Treatment.
     if ($rawType === '') {
-        $matchedType = 'Treatment';
-    } else {
-        foreach (TASK_TYPES as $validType) {
-            if (strcasecmp($rawType, $validType) === 0) {
-                $matchedType = $validType;
-                break;
-            }
+        $validationErrors[] = "Row $rowNumber is missing a Type; specify Monitoring or Treatment.";
+        continue;
+    }
+
+    $matchedType = null;
+    foreach (TASK_TYPES as $validType) {
+        if (strcasecmp($rawType, $validType) === 0) {
+            $matchedType = $validType;
+            break;
         }
     }
     if ($matchedType === null) {
-        $validationErrors[] = "Row $rowNumber has an invalid Type; use Monitoring or Treatment.";
+        $validationErrors[] = "Row $rowNumber has an invalid Type (\"$rawType\"); use Monitoring or Treatment.";
         continue;
     }
 
@@ -136,22 +133,22 @@ while (($row = fgetcsv($handle, 0, ',')) !== false) {
 fclose($handle);
 
 if ($duplicateRows || $validationErrors || !$records) {
-    $messages = [];
+    $sections = [];
     if ($duplicateRows) {
-        $messages[] = 'Duplicate locations detected: ' . implode(', ', $duplicateRows) . '.';
+        $sections[] = "Duplicate locations detected:\n• " . implode("\n• ", $duplicateRows) . '.';
     }
     if ($validationErrors) {
-        $messages[] = implode(' ', $validationErrors);
+        $sections[] = "Validation errors:\n• " . implode("\n• ", $validationErrors);
     }
     if (!$records && !$duplicateRows && !$validationErrors) {
-        $messages[] = 'The CSV does not contain any location records.';
+        $sections[] = 'The CSV does not contain any location records.';
     }
-    $messages[] = 'No locations were imported. Correct the file and try again.';
+    $sections[] = 'No locations were imported. Please correct the file and try again.';
 
     http_response_code(422);
     echo json_encode([
         'success' => false,
-        'message' => implode(' ', $messages),
+        'message' => implode("\n\n", $sections),
         'type' => 'error',
     ]);
     exit;
