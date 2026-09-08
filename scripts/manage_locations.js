@@ -188,12 +188,15 @@ function printAddLocationQr() {
     win.document.write('<html><head><title>Print QR — ' + safeName + '</title>');
     win.document.write('<style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;font-family:sans-serif;}img{width:250px;height:250px;}</style>');
     win.document.write('</head><body>');
-    win.document.write('<img src="' + printUrl + '">');
+    win.document.write('<img id="qrPrintImg" src="' + printUrl + '">');
     win.document.write('<h3>' + safeName + '</h3>');
+    win.document.write('<script>' +
+        'var img = document.getElementById("qrPrintImg");' +
+        'function doPrint() { window.focus(); window.print(); }' +
+        'if (img.complete) { doPrint(); } else { img.onload = doPrint; img.onerror = doPrint; }' +
+    '<\/script>');
     win.document.write('</body></html>');
     win.document.close();
-    win.focus();
-    win.print();
 }
 
 // Resets the modal back to its form step every time it closes. The table is
@@ -360,16 +363,20 @@ function printQR(locationName, button) {
     closeAllKebabs();
     const img = button.closest('tr').querySelector('.qr-thumb');
     const safeName = escapeHtml(locationName);
+    const printUrl = img.src.replace('100x100', '250x250');
     const win = window.open('', '_blank', 'width=400,height=500');
     win.document.write('<html><head><title>Print QR — ' + safeName + '</title>');
     win.document.write('<style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;font-family:sans-serif;}img{width:250px;height:250px;}</style>');
     win.document.write('</head><body>');
-    win.document.write('<img src="' + img.src.replace('100x100', '250x250') + '">');
+    win.document.write('<img id="qrPrintImg" src="' + printUrl + '">');
     win.document.write('<h3>' + safeName + '</h3>');
+    win.document.write('<script>' +
+        'var img = document.getElementById("qrPrintImg");' +
+        'function doPrint() { window.focus(); window.print(); }' +
+        'if (img.complete) { doPrint(); } else { img.onload = doPrint; img.onerror = doPrint; }' +
+    '<\/script>');
     win.document.write('</body></html>');
     win.document.close();
-    win.focus();
-    win.print();
 }
 
 function showModal(id) {

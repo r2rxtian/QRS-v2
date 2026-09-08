@@ -421,7 +421,7 @@ $statTotal = count($locations);
     <script src="../scripts/select-dropdown.js"></script>
     <script src="../scripts/filters.js?v=3"></script>
     <script src="../scripts/toast.js?v=2"></script>
-    <script src="../scripts/manage_locations.js?v=3"></script>
+    <script src="../scripts/manage_locations.js?v=4"></script>
 </body>
 
 </html>
