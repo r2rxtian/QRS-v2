@@ -178,6 +178,7 @@ if (!empty($tasks)) {
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles/app.css?v=16">
+    <link rel="stylesheet" href="../styles/tasks.css?v=1">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -599,7 +600,7 @@ if (!empty($tasks)) {
     <script src="../scripts/date-picker.js"></script>
     <script src="../scripts/filters.js?v=3"></script>
     <script src="../scripts/toast.js?v=2"></script>
-    <script src="../scripts/tasks.js?v=4"></script>
+    <script src="../scripts/tasks.js?v=5"></script>
 </body>
 
 </html>

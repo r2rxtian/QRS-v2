@@ -144,6 +144,16 @@ function selectTaskTypeCard(button) {
     const select = document.getElementById('task_type');
     select.value = button.dataset.value;
     select.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // On mobile screens, smoothly scroll down so the revealed locations list is immediately visible
+    if (window.innerWidth <= 768) {
+        setTimeout(() => {
+            const locPanel = document.getElementById('taskLocationsPanel');
+            if (locPanel) {
+                locPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 120);
+    }
 }
 
 function openCreateTaskModal() {
@@ -154,6 +164,10 @@ function openCreateTaskModal() {
         onTaskTypeChange();
     }
     showModal('createTaskModal');
+    const modalBody = document.querySelector('#createTaskModal .modal-body');
+    if (modalBody) {
+        modalBody.scrollTop = 0;
+    }
 }
 
 async function submitCreateTask() {

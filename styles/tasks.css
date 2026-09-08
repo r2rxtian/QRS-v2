@@ -1,0 +1,400 @@
+/* Page-specific styles for pages/tasks.php — Task Manager.
+   Relies on styles/app.css for global design tokens and shell.
+   Strictly scoped to avoid compromising any other pages in the system. */
+
+/* ==========================================================================
+   Create Task Modal — Mobile Responsive Optimization
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    /* Modal container on mobile: pinned height within viewport with fixed header & footer */
+    #createTaskModal .modal-split {
+        width: calc(100% - 24px) !important;
+        max-width: 100% !important;
+        max-height: calc(100vh - 24px) !important;
+        max-height: calc(100dvh - 24px) !important;
+        height: calc(100vh - 24px) !important;
+        height: calc(100dvh - 24px) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        margin: 12px auto !important;
+        border-radius: var(--radius-lg, 16px) !important;
+        overflow: hidden !important;
+        background: var(--surface) !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    #createTaskModal .modal-header {
+        flex: 0 0 auto !important;
+        padding: 14px 16px !important;
+        border-bottom: 1px solid var(--gray-200) !important;
+        background: var(--surface) !important;
+    }
+
+    #createTaskModal .modal-title {
+        font-size: 16.5px !important;
+        font-weight: 700 !important;
+    }
+
+    #createTaskModal .modal-subtitle {
+        font-size: 12px !important;
+        color: var(--gray-500) !important;
+        line-height: 1.35 !important;
+    }
+
+    /* CRITICAL FIX: Make modal-body vertically scrollable so the stacked
+       Task Details and Select Locations sections can both be scrolled and fully accessible */
+    #createTaskModal .modal-split .modal-body,
+    #createTaskModal .modal-body {
+        flex: 1 1 auto !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 0 !important;
+        max-height: none !important;
+        scroll-behavior: smooth !important;
+    }
+
+    #createTaskModal .modal-body-split {
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+
+    #createTaskModal .modal-body-left {
+        overflow: visible !important;
+        height: auto !important;
+        padding: 16px 14px !important;
+    }
+
+    #createTaskModal .modal-body-right {
+        overflow: visible !important;
+        height: auto !important;
+        padding: 16px 14px 24px !important;
+        border-left: none !important;
+        border-top: 1px solid var(--gray-200) !important;
+        background: var(--gray-50) !important;
+    }
+
+    /* Panel Headers */
+    #createTaskModal .modal-panel-header {
+        margin-bottom: 12px !important;
+        gap: 10px !important;
+        display: flex !important;
+        align-items: flex-start !important;
+    }
+
+    #createTaskModal .modal-panel-header-icon {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 13px !important;
+        border-radius: var(--radius, 8px) !important;
+        flex-shrink: 0 !important;
+    }
+
+    #createTaskModal .modal-panel-header h4 {
+        font-size: 14.5px !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+        line-height: 1.3 !important;
+    }
+
+    #createTaskModal .modal-panel-header p {
+        font-size: 12px !important;
+        color: var(--gray-500) !important;
+        margin: 2px 0 0 !important;
+        line-height: 1.35 !important;
+    }
+
+    /* Form Fields Spacing */
+    #createTaskModal .form-group {
+        margin-bottom: 14px !important;
+    }
+
+    #createTaskModal .form-label {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        margin-bottom: 4px !important;
+    }
+
+    #createTaskModal .input-icon-wrap input.form-input {
+        height: 40px !important;
+        font-size: 13.5px !important;
+        border-radius: var(--radius, 8px) !important;
+    }
+
+    /* Task Type Cards */
+    #createTaskModal .task-type-cards {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    #createTaskModal .task-type-card {
+        padding: 11px 10px !important;
+        gap: 4px !important;
+        border-radius: var(--radius, 8px) !important;
+        border: 1.5px solid var(--gray-200) !important;
+        background: var(--surface) !important;
+        cursor: pointer !important;
+        text-align: left !important;
+        position: relative !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+    }
+
+    #createTaskModal .task-type-card.selected {
+        border-color: var(--primary) !important;
+        background-color: var(--primary-light, #f0fdf4) !important;
+        box-shadow: 0 0 0 1.5px var(--primary) !important;
+    }
+
+    #createTaskModal .task-type-card-icon {
+        width: 26px !important;
+        height: 26px !important;
+        font-size: 12px !important;
+        border-radius: 6px !important;
+    }
+
+    #createTaskModal .task-type-card-title {
+        font-size: 13.5px !important;
+        font-weight: 600 !important;
+    }
+
+    #createTaskModal .task-type-card-desc {
+        font-size: 10.5px !important;
+        line-height: 1.3 !important;
+        color: var(--gray-500) !important;
+    }
+
+    /* Date Field */
+    #createTaskModal .date-field .select-dropdown-trigger {
+        height: 40px !important;
+        font-size: 13.5px !important;
+        border-radius: var(--radius, 8px) !important;
+    }
+
+    /* Locations Summary Card */
+    #createTaskModal .task-locations-summary {
+        padding: 10px 12px !important;
+        gap: 3px !important;
+        border-radius: var(--radius, 8px) !important;
+        border: 1.5px dashed var(--gray-300) !important;
+        background: var(--surface) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        width: 100% !important;
+    }
+
+    #createTaskModal .task-locations-summary-icon {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 12px !important;
+        border-radius: 50% !important;
+    }
+
+    #createTaskModal .task-locations-summary-text {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+    }
+
+    #createTaskModal .task-locations-summary-desc {
+        font-size: 11px !important;
+        color: var(--gray-500) !important;
+        margin: 0 !important;
+    }
+
+    /* Empty State on Mobile (arrow rotated 90° to point up to Task Type cards above) */
+    #createTaskModal .task-locations-empty-state {
+        padding: 24px 16px !important;
+        text-align: center !important;
+        border: 1.5px dashed var(--gray-300) !important;
+        border-radius: var(--radius, 8px) !important;
+        background: var(--surface) !important;
+    }
+
+    #createTaskModal .task-locations-empty-icon i {
+        transform: rotate(90deg) !important;
+    }
+
+    /* Checklist Toolbar */
+    #createTaskModal .checklist-toolbar {
+        display: flex !important;
+        gap: 8px !important;
+        align-items: center !important;
+        width: 100% !important;
+        margin-bottom: 8px !important;
+    }
+
+    #createTaskModal .checklist-toolbar .search-input-wrap {
+        flex: 1 !important;
+        min-width: 0 !important;
+        position: relative !important;
+    }
+
+    #createTaskModal .checklist-toolbar .search-input-wrap input.form-input {
+        height: 40px !important;
+        font-size: 13.5px !important;
+        padding-left: 36px !important;
+        border-radius: var(--radius, 8px) !important;
+        background: var(--surface) !important;
+    }
+
+    #createTaskModal .checklist-select-all {
+        height: 40px !important;
+        padding: 0 12px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        white-space: nowrap !important;
+        border: 1px solid var(--gray-300) !important;
+        border-radius: var(--radius, 8px) !important;
+        background: var(--surface) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 7px !important;
+        cursor: pointer !important;
+        user-select: none !important;
+    }
+
+    #createTaskModal .checklist-select-all input[type="checkbox"] {
+        width: 17px !important;
+        height: 17px !important;
+        margin: 0 !important;
+        accent-color: var(--primary) !important;
+    }
+
+    /* Meta Count Pills */
+    #createTaskModal .task-locations-meta-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
+        margin: 4px 0 10px !important;
+    }
+
+    #createTaskModal .task-locations-meta-pill {
+        font-size: 11.5px !important;
+        font-weight: 500 !important;
+        padding: 3px 9px !important;
+        border-radius: 999px !important;
+        background: var(--gray-200) !important;
+        color: var(--gray-700) !important;
+    }
+
+    /* Checklist Box & Items — Clean full-width touch cards, no nested scroll trap */
+    #createTaskModal .checklist-box {
+        border: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        overflow: visible !important;
+        width: 100% !important;
+    }
+
+    #createTaskModal .checkbox-list {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        padding: 2px !important;
+        max-height: none !important;
+        overflow: visible !important;
+        background: transparent !important;
+    }
+
+    #createTaskModal .checkbox-list-item {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        padding: 12px 14px !important;
+        background: var(--surface) !important;
+        border: 1.5px solid var(--gray-200) !important;
+        border-radius: var(--radius, 8px) !important;
+        font-size: 13.5px !important;
+        line-height: 1.35 !important;
+        cursor: pointer !important;
+        min-height: 46px !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+        transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease !important;
+        -webkit-tap-highlight-color: transparent !important;
+        user-select: none !important;
+    }
+
+    #createTaskModal .checkbox-list-item:active {
+        background-color: var(--primary-light, #f0fdf4) !important;
+    }
+
+    #createTaskModal .checkbox-list-item:has(input[type="checkbox"]:checked) {
+        border-color: var(--primary) !important;
+        background-color: var(--primary-light, #f0fdf4) !important;
+        box-shadow: 0 0 0 1px var(--primary) !important;
+    }
+
+    #createTaskModal .checkbox-list-item input[type="checkbox"] {
+        width: 19px !important;
+        height: 19px !important;
+        flex-shrink: 0 !important;
+        margin: 0 !important;
+        accent-color: var(--primary) !important;
+        cursor: pointer !important;
+    }
+
+    #createTaskModal .checkbox-list-item i {
+        color: var(--primary) !important;
+        font-size: 14px !important;
+        flex-shrink: 0 !important;
+    }
+
+    #createTaskModal .checkbox-list-item span {
+        flex: 1 !important;
+        min-width: 0 !important;
+        word-break: break-word !important;
+        font-weight: 500 !important;
+        color: var(--gray-800) !important;
+    }
+
+    /* Modal Footer: pinned at bottom of phone screen with 44px tap targets */
+    #createTaskModal .modal-footer {
+        flex: 0 0 auto !important;
+        display: flex !important;
+        gap: 10px !important;
+        padding: 12px 16px !important;
+        background: var(--surface) !important;
+        border-top: 1px solid var(--gray-200) !important;
+        box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.05) !important;
+        position: relative !important;
+        z-index: 2 !important;
+    }
+
+    #createTaskModal .modal-footer .btn {
+        flex: 1 !important;
+        height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        border-radius: var(--radius, 8px) !important;
+    }
+}
+
+/* Extra-compact screens (<=380px) */
+@media (max-width: 380px) {
+    #createTaskModal .checklist-toolbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    #createTaskModal .checklist-select-all {
+        justify-content: center !important;
+    }
+
+    #createTaskModal .task-type-cards {
+        grid-template-columns: 1fr !important;
+    }
+}

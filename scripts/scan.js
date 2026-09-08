@@ -701,3 +701,45 @@ window.addEventListener('focus', function () {
         window.QRSRealtime.refresh();
     }
 });
+
+// Ensure manual_location_select dropdown menu stays anchored to the trigger, moves with scrolling, and never cuts off
+(function () {
+    const origPosition = window.positionSelectDropdownMenu;
+    if (typeof origPosition === 'function') {
+        window.positionSelectDropdownMenu = function (trigger, menu) {
+            const dropdown = trigger ? trigger.closest('.select-dropdown') : document.querySelector('.select-dropdown[data-for="manual_location_select"]');
+            const isManualSelect = (menu && menu.dataset.owner === 'manual_location_select') ||
+                (trigger && trigger.closest && trigger.closest('[data-for="manual_location_select"]'));
+
+            if (isManualSelect && dropdown) {
+                // Keep the menu inside the relative .select-dropdown container so it scrolls naturally with the page
+                dropdown.appendChild(menu);
+                menu.style.top = '';
+                menu.style.left = '';
+                menu.style.width = '100%';
+                menu.style.minWidth = '100%';
+                menu.style.maxWidth = '100%';
+                return;
+            }
+
+            origPosition(trigger, menu);
+        };
+    }
+
+    // Auto-close if user scrolls so far that the manual location trigger leaves the viewport
+    window.addEventListener('scroll', function (e) {
+        if (e.target && e.target.classList && e.target.classList.contains('select-dropdown-menu')) {
+            return; // Don't close if user is scrolling inside the dropdown options list itself
+        }
+        const openMenu = document.querySelector('.select-dropdown-menu.open[data-owner="manual_location_select"]');
+        if (!openMenu) return;
+        const trigger = document.querySelector('.select-dropdown[data-for="manual_location_select"] .select-dropdown-trigger');
+        if (!trigger) return;
+        const rect = trigger.getBoundingClientRect();
+        if (rect.bottom < 0 || rect.top > window.innerHeight) {
+            if (typeof window.closeAllSelectDropdowns === 'function') {
+                window.closeAllSelectDropdowns();
+            }
+        }
+    }, { passive: true });
+})();

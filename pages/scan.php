@@ -60,7 +60,7 @@ if ($taskId <= 0) {
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
         <link rel="stylesheet" href="../styles/app.css?v=15">
-        <link rel="stylesheet" href="../styles/scan.css?v=3">
+        <link rel="stylesheet" href="../styles/scan.css?v=6">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
         <script src="../scripts/theme.js?v=6"></script>
     </head>
@@ -80,7 +80,7 @@ if ($taskId <= 0) {
             <?php endif; ?>
         </div>
 
-        <div class="card">
+        <div class="card scan-picker-card">
             <div class="card-header">
                 <h2>Tasks With Locations Left to Check</h2>
             </div>
@@ -224,7 +224,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles/app.css?v=15">
-    <link rel="stylesheet" href="../styles/scan.css?v=3">
+    <link rel="stylesheet" href="../styles/scan.css?v=6">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -612,7 +612,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/select-dropdown.js"></script>
     <script src="../scripts/toast.js?v=2"></script>
-    <script src="../scripts/scan.js?v=5"></script>
+    <script src="../scripts/scan.js?v=7"></script>
 </body>
 
 </html>

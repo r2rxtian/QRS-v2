@@ -8,11 +8,20 @@
     grid-template-columns: 1fr 340px;
     gap: 24px;
     align-items: start;
+    min-width: 0;
+    width: 100%;
+}
+
+.scan-form-col,
+.scan-side-col {
+    min-width: 0;
+    width: 100%;
 }
 
 @media (max-width: 900px) {
     .scan-layout {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px;
     }
 }
 
@@ -180,6 +189,74 @@ textarea.form-input {
     margin: 0 0 12px;
     font-size: 13.5px;
     color: var(--gray-600);
+}
+
+.manual-section .select-dropdown {
+    width: 100%;
+    min-width: 0;
+    position: relative !important;
+}
+
+.manual-section .select-dropdown-trigger {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 42px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.manual-section .select-dropdown-label {
+    flex: 1;
+    min-width: 0;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.35;
+    text-align: left;
+}
+
+.manual-section .select-dropdown-caret {
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+/* Dropdown menu for manual location picker — anchored to trigger, moves with scrolling, never cuts off */
+.manual-section .select-dropdown-menu,
+.select-dropdown-menu[data-owner="manual_location_select"] {
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    z-index: 1050 !important;
+}
+
+.select-dropdown-menu[data-owner="manual_location_select"] .select-dropdown-option {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.4 !important;
+    padding: 10px 14px !important;
+    text-align: left !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    min-height: 42px !important;
+    height: auto !important;
+}
+
+.select-dropdown-menu[data-owner="manual_location_select"] .select-dropdown-option::after {
+    flex-shrink: 0 !important;
+    margin-left: 8px !important;
 }
 
 /* --- "How it works" modal steps --- */
@@ -1298,5 +1375,355 @@ input[type="file"] {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+    }
+}
+
+/* ==========================================================================
+   Mobile Responsiveness (pages/scan.php strictly scoped)
+   Optimizes task picker, QR scan section, manual selection, checklist form,
+   and completion states on mobile devices (<=640px and <=380px) while
+   leaving desktop and tablet layouts completely unchanged.
+   ========================================================================== */
+
+/* Container and card bounds to prevent horizontal overflow */
+.scan-picker-card,
+.scan-layout,
+.scan-form-col,
+.scan-side-col,
+.scan-form-col .card,
+.scan-side-col .card {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .scan-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+}
+
+@media (max-width: 640px) {
+    /* --- Card padding optimization: saves 16px horizontal room --- */
+    .scan-picker-card .card-header,
+    .scan-picker-card .card-body,
+    .scan-layout .card-header,
+    .scan-layout .card-body {
+        padding: 16px;
+    }
+
+    /* --- Topbar adjustments for scan page --- */
+    .scan-picker-card ~ .topbar,
+    .scan-layout ~ .topbar {
+        margin-bottom: 16px;
+    }
+
+    /* --- Task Picker Screen (.task-pick-row) --- */
+    .task-pick-row {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 12px 14px;
+        padding: 14px;
+        align-items: center;
+    }
+
+    .task-pick-icon {
+        grid-column: 1;
+        grid-row: 1;
+        align-self: start;
+    }
+
+    .task-pick-info {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .task-pick-name {
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 6px;
+        font-size: 14.5px;
+        word-break: break-word;
+    }
+
+    .task-pick-progress {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+
+    .task-pick-progress-track {
+        width: 100%;
+        height: 7px;
+    }
+
+    .task-pick-remaining {
+        font-size: 12px;
+    }
+
+    .task-pick-action {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        width: 100%;
+        margin-top: 2px;
+    }
+
+    .task-pick-action .btn {
+        width: 100%;
+        justify-content: center;
+        height: 42px;
+        font-size: 14px;
+    }
+
+    /* --- Active Scan Screen: Card Header --- */
+    .scan-form-col .card-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .scan-form-col .card-header > .btn {
+        width: 100%;
+        justify-content: center;
+        height: 38px;
+    }
+
+    .scan-landing-header {
+        gap: 12px;
+    }
+
+    .scan-landing-header h2 {
+        font-size: 18px;
+    }
+
+    /* --- Active Scan Screen: QR and Manual Selection Sections --- */
+    .qr-section,
+    .manual-section {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 20px 14px;
+        gap: 14px;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .qr-section-visual,
+    .manual-section-visual {
+        width: 64px;
+        height: 64px;
+        font-size: 28px;
+        margin: 0 auto;
+    }
+
+    .qr-section-content,
+    .manual-section-content {
+        width: 100%;
+        min-width: 0;
+        text-align: center;
+    }
+
+    .qr-section-content h4,
+    .manual-section-content h4 {
+        font-size: 16px;
+        margin: 0 0 4px;
+        text-align: center;
+    }
+
+    .qr-section-content p,
+    .manual-section-content p {
+        font-size: 13px;
+        text-align: center;
+        margin: 0;
+    }
+
+    .qr-section-content .btn-lg {
+        width: 100%;
+        justify-content: center;
+        height: 46px;
+        font-size: 15px;
+        margin-top: 14px;
+        white-space: normal;
+    }
+
+    .manual-section-content .select-dropdown {
+        width: 100%;
+        margin-top: 12px;
+    }
+
+    .manual-section-content .select-dropdown-trigger {
+        width: 100%;
+        height: auto;
+        min-height: 44px;
+        padding: 10px 14px;
+    }
+
+    /* --- Step 1: Checklist & Location Header --- */
+    .scan-location-heading {
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .scan-location-heading > i {
+        width: 36px;
+        height: 36px;
+        font-size: 15px;
+    }
+
+    .scan-location-heading > span,
+    .scan-location-heading-title {
+        font-size: 17px;
+        word-break: break-word;
+    }
+
+    .checklist-question {
+        padding: 14px 12px;
+        margin-bottom: 12px;
+    }
+
+    .checklist-question-header {
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .checklist-question-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 15px;
+    }
+
+    .checklist-question-title {
+        font-size: 14.5px;
+    }
+
+    .checklist-question-desc {
+        font-size: 12px;
+    }
+
+    .answer-btn-group {
+        display: flex;
+        gap: 6px;
+        width: 100%;
+    }
+
+    .answer-btn {
+        flex: 1;
+        min-width: 0;
+        padding: 9px 4px;
+        font-size: 13px;
+        gap: 6px;
+        justify-content: center;
+    }
+
+    .answer-radio {
+        width: 14px;
+        height: 14px;
+    }
+
+    .answer-radio::after {
+        width: 6px;
+        height: 6px;
+    }
+
+    /* --- Step 2: Photo Uploads & Recorded at Start --- */
+    .photo-upload-box {
+        padding: 10px;
+    }
+
+    .file-input-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .file-input-label {
+        min-width: 0;
+        padding: 12px 6px;
+        flex-direction: column;
+        gap: 6px;
+        text-align: center;
+        justify-content: center;
+    }
+
+    .file-input-label > i {
+        font-size: 20px;
+    }
+
+    .file-input-label-text {
+        align-items: center;
+        text-align: center;
+    }
+
+    .file-input-label-text strong {
+        font-size: 13px;
+    }
+
+    .file-input-label-text small {
+        font-size: 11px;
+    }
+
+    .recorded-start-box {
+        padding: 14px;
+    }
+
+    .recorded-start-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    /* --- Action buttons --- */
+    .btn-lg {
+        height: 44px;
+        font-size: 14.5px;
+        margin-top: 18px;
+    }
+
+    /* --- Sidebar Rail on Mobile --- */
+    .scan-location-list {
+        max-height: 280px;
+    }
+
+    /* --- Camera & QR Modals on Mobile --- */
+    #photoCameraModal .modal,
+    #qrScannerModal .modal,
+    #howItWorksModal .modal {
+        width: calc(100% - 24px) !important;
+        max-width: 100% !important;
+        margin: 12px auto;
+    }
+}
+
+/* Extra-small screens (<=380px, e.g. iPhone SE, compact Android) */
+@media (max-width: 380px) {
+    .task-pick-row {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .task-pick-icon {
+        margin: 0 auto;
+    }
+
+    .task-pick-name {
+        justify-content: center;
+    }
+
+    .file-input-group {
+        grid-template-columns: 1fr;
+    }
+
+    .answer-btn {
+        padding: 8px 2px;
+        font-size: 12px;
+        gap: 4px;
+    }
+
+    .answer-radio {
+        width: 12px;
+        height: 12px;
     }
 }
