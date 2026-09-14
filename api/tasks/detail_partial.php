@@ -18,6 +18,7 @@ require_once __DIR__ . '/../../authz/capabilities.php';
 $currentUser = requireLogin(true);
 $isAdmin = $currentUser['role_name'] === ROLE_ADMIN;
 $canAssign = roleHasCapability($currentUser['role_name'], 'task_location.assign');
+$windowStartSql = taskLocationWindowStartSql('tl');
 
 $taskId = (int) ($_GET['task_id'] ?? 0);
 if ($taskId <= 0) {
@@ -47,8 +48,8 @@ $statusStmt = $pdo->prepare('
     SELECT
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-        SUM(CASE WHEN tl.status = \'in_progress\' AND DATEDIFF(SECOND, tl.assigned_at, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS in_progress_locations,
-        SUM(CASE WHEN tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations
+        SUM(CASE WHEN tl.status = \'in_progress\' AND SYSDATETIME() >= ' . $windowStartSql . ' AND DATEDIFF(SECOND, ' . $windowStartSql . ', SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status <> \'completed\' AND SYSDATETIME() >= ' . $windowStartSql . ' AND DATEDIFF(SECOND, ' . $windowStartSql . ', COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations
     FROM ' . T_TASK_LOCATIONS . ' tl
     WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
       AND tl.id = (
@@ -83,15 +84,16 @@ $canModifyLocations = $canAssign && !$isTaskCompleted && !$hasMissed;
 // is_missed still guards the brief window between a ticket crossing 24
 // hours and the next page load's sweep picking it up.
 $rowsStmt = $pdo->prepare('
-    SELECT tl.id, l.id AS location_id, l.name AS location_name, tl.task_date,
+    SELECT tl.id, l.id AS location_id, l.name AS location_name, tl.task_date, tl.scheduled_at,
            tl.spot_spray_answer, tl.spot_spray_remark,
            tl.misting_answer, tl.misting_remark,
            tl.mist_blower_answer, tl.mist_blower_remark,
            tl.monitoring_answer, tl.monitoring_remark,
            tl.findings_observation,
            tl.start_time, tl.end_time, tl.status,
-           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END)) AS remaining_seconds,
-           CASE WHEN tl.status <> \'completed\' AND CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END AS is_missed
+           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', ' . $windowStartSql . ')) AS remaining_seconds,
+           DATEDIFF(SECOND, SYSDATETIME(), ' . $windowStartSql . ') AS scheduled_start_seconds,
+           CASE WHEN tl.status <> \'completed\' AND SYSDATETIME() >= ' . $windowStartSql . ' AND DATEDIFF(SECOND, ' . $windowStartSql . ', SYSDATETIME()) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END AS is_missed
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     WHERE tl.task_id = ? AND tl.unassigned_at IS NULL
@@ -103,6 +105,13 @@ $rowsStmt = $pdo->prepare('
 ');
 $rowsStmt->execute([$taskId]);
 $assignedRows = $rowsStmt->fetchAll();
+$nextScheduleSeconds = null;
+foreach ($assignedRows as $scheduledRow) {
+    $seconds = (int) ($scheduledRow['scheduled_start_seconds'] ?? 0);
+    if ($seconds > 0 && ($nextScheduleSeconds === null || $seconds < $nextScheduleSeconds)) {
+        $nextScheduleSeconds = $seconds;
+    }
+}
 $dbToday = new DateTime($pdo->query('SELECT CONVERT(varchar, CAST(SYSDATETIME() AS DATE), 23)')->fetchColumn());
 
 // Nothing to show in the per-location table until at least one location has
@@ -140,8 +149,8 @@ $missedRowsStmt = $pdo->prepare('
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
       AND tl.status <> \'completed\'
-      AND CAST(SYSDATETIME() AS DATE) >= tl.task_date
-      AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
+      AND SYSDATETIME() >= ' . $windowStartSql . '
+      AND DATEDIFF(SECOND, ' . $windowStartSql . ', COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
       AND tl.id = (
           SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
           WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
@@ -172,6 +181,7 @@ if ($canModifyLocations) {
 }
 ?>
 <!-- Task Meta & KPI Strip -->
+<span id="taskDetailScheduleWake" data-scheduled-start-seconds="<?= $nextScheduleSeconds !== null ? $nextScheduleSeconds : 0 ?>" hidden></span>
 <div class="task-detail-meta-bar">
     <div class="task-detail-meta-left">
         <span class="task-type-chip"><i class="fas fa-tag"></i> <?= htmlspecialchars($task['task_type']) ?></span>
@@ -286,13 +296,14 @@ if ($canModifyLocations) {
                 <div class="location-tags">
                     <?php foreach ($assignedRows as $row):
                         $rowDate = !empty($row['task_date']) ? new DateTime($row['task_date']) : null;
-                        $isRowFutureScheduled = $rowDate !== null && $rowDate > $dbToday;
+                        $scheduledAt = !empty($row['scheduled_at']) ? new DateTime($row['scheduled_at']) : null;
+                        $isRowFutureScheduled = (int) $row['scheduled_start_seconds'] > 0;
                     ?>
                         <div class="location-tag" data-location-id="<?= (int) $row['location_id'] ?>">
                             <i class="fas fa-location-dot tag-pin"></i>
                             <span class="location-tag-name"><?= htmlspecialchars($row['location_name']) ?></span>
                             <?php if ($isRowFutureScheduled): ?>
-                                <span class="location-tag-scheduled-mark"><i class="fas fa-calendar-days"></i> Scheduled: <?= $rowDate->format('M j, Y') ?></span>
+                                <span class="location-tag-scheduled-mark"><i class="fas fa-calendar-days"></i> Scheduled: <?= ($scheduledAt ?: $rowDate)->format('M j, Y') ?><?php if ($scheduledAt): ?> <?= $scheduledAt->format('g:i A') ?><?php endif; ?></span>
                             <?php else: ?>
                                 <span class="expiration-countdown" data-expiration-countdown data-task-location-id="<?= (int) $row['id'] ?>" data-remaining-seconds="<?= max(0, (int) $row['remaining_seconds']) ?>"><i class="fas fa-hourglass-half"></i> --:--:--</span>
                             <?php endif; ?>
@@ -340,6 +351,7 @@ if ($canModifyLocations) {
                     <?php endif; ?>
                     <?php foreach ($assignedRows as $row): ?>
                         <?php
+                        $rowScheduledAt = !empty($row['scheduled_at']) ? new DateTime($row['scheduled_at']) : null;
                         $checklistBadges = [];
                         foreach (CHECKLIST_ITEMS as $key => $label) {
                             if ($row[$key . '_answer']) {
@@ -359,8 +371,8 @@ if ($canModifyLocations) {
                                     <span class="status-badge status-missed"><i class="fas fa-triangle-exclamation"></i> Missed Out</span>
                                 <?php elseif ($row['start_time']): ?>
                                     <span class="timestamp-pill"><i class="fas fa-clock"></i> <?= htmlspecialchars((new DateTime($row['start_time']))->format('Y-m-d H:i:s')) ?></span>
-                                <?php elseif (!empty($row['task_date']) && new DateTime($row['task_date']) > $dbToday): ?>
-                                    <span class="status-pill status-scheduled"><i class="fas fa-calendar-days"></i> Scheduled: <?= (new DateTime($row['task_date']))->format('M j, Y') ?></span>
+                                <?php elseif ((int) $row['scheduled_start_seconds'] > 0): ?>
+                                    <span class="status-pill status-scheduled"><i class="fas fa-calendar-days"></i> Scheduled: <?= ($rowScheduledAt ?: new DateTime($row['task_date']))->format('M j, Y') ?><?php if ($rowScheduledAt): ?> <?= $rowScheduledAt->format('g:i A') ?><?php endif; ?></span>
                                 <?php else: ?>
                                     <span class="status-pill"><i class="fas fa-pause"></i> Not Started</span>
                                 <?php endif; ?>
@@ -451,4 +463,3 @@ if ($canModifyLocations) {
         <?php endif; ?>
     </div>
 <?php endif; ?>
-

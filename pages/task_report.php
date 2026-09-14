@@ -4,13 +4,14 @@ $currentUser = requireLogin();
 
 require_once __DIR__ . '/../conn/db.php';
 require_once __DIR__ . '/../rules/constants.php';
+require_once __DIR__ . '/../rules/status.php';
 require_once __DIR__ . '/../authz/capabilities.php';
 
 $pdo = db();
 $isAdmin = $currentUser['role_name'] === ROLE_ADMIN;
 
 $sql = '
-    SELECT tl.id, t.name AS task_name, l.name AS location_name, tl.task_date,
+    SELECT tl.id, t.name AS task_name, l.name AS location_name, tl.task_date, tl.scheduled_at,
            COALESCE(scan_start.actual_start_time, tl.start_time) AS start_time,
            tl.end_time, tl.status,
            tl.spot_spray_answer, tl.spot_spray_remark,
@@ -38,7 +39,7 @@ $sql = '
     ) scan_start
     WHERE t.deleted_at IS NULL AND (
         tl.status = \'completed\'
-        OR (tl.status <> \'completed\' AND DATEDIFF(SECOND, tl.assigned_at, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
+        OR (tl.status <> \'completed\' AND SYSDATETIME() >= ' . taskLocationWindowStartSql('tl') . ' AND DATEDIFF(SECOND, ' . taskLocationWindowStartSql('tl') . ', COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
     )
     -- Grouped by task (so a Missed Out row sits next to its Completed rows
     -- instead of scattering across the list), but the task groups themselves
@@ -98,7 +99,7 @@ $statTasksCovered = count($taskNames);
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles/app.css?v=15">
-    <link rel="stylesheet" href="../styles/task_report.css?v=16">
+    <link rel="stylesheet" href="../styles/task_report.css?v=17">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -175,9 +176,9 @@ $statTasksCovered = count($taskNames);
                                     <div class="sort-dropdown-group-title">Area</div>
                                     <div class="sort-dropdown-option" data-value="1:text:asc" data-label="Area (A → Z)">A → Z</div>
                                     <div class="sort-dropdown-option" data-value="1:text:desc" data-label="Area (Z → A)">Z → A</div>
-                                    <div class="sort-dropdown-group-title">Scheduled Date</div>
-                                    <div class="sort-dropdown-option" data-value="2:text:asc" data-label="Scheduled Date (Oldest first)">Oldest first</div>
-                                    <div class="sort-dropdown-option" data-value="2:text:desc" data-label="Scheduled Date (Newest first)">Newest first</div>
+                                    <div class="sort-dropdown-group-title">Scheduled Date &amp; Time</div>
+                                    <div class="sort-dropdown-option" data-value="2:text:asc" data-label="Scheduled Date/Time (Oldest first)">Oldest first</div>
+                                    <div class="sort-dropdown-option" data-value="2:text:desc" data-label="Scheduled Date/Time (Newest first)">Newest first</div>
                                     <div class="sort-dropdown-group-title">Start Time</div>
                                     <div class="sort-dropdown-option" data-value="5:text:asc" data-label="Start Time (Earliest first)">Earliest first</div>
                                     <div class="sort-dropdown-option" data-value="5:text:desc" data-label="Start Time (Latest first)">Latest first</div>
@@ -188,7 +189,7 @@ $statTasksCovered = count($taskNames);
                             </div>
                         </div>
                         <div class="filter-group">
-                            <div class="filter-group-title">Scheduled Date</div>
+                            <div class="filter-group-title">Scheduled Date &amp; Time</div>
                             <div class="filter-date-grid">
                                 <div class="filter-date-row">
                                     <span class="filter-date-tag">From</span>
@@ -261,7 +262,7 @@ $statTasksCovered = count($taskNames);
                         <tr>
                             <th>Task</th>
                             <th>Area</th>
-                            <th>Scheduled Date</th>
+                            <th>Scheduled Date/Time</th>
                             <th>Biometrics</th>
                             <th>User</th>
                             <th>Start Time</th>
@@ -306,6 +307,7 @@ $statTasksCovered = count($taskNames);
                                 : ['label' => 'Missed Out', 'class' => 'status-missed'];
                             $biometricsLast3 = $r['completed_by_code'] ? substr($r['completed_by_code'], -3) : '—';
                             $taskDateObj = new DateTime($r['task_date']);
+                            $scheduledAtObj = !empty($r['scheduled_at']) ? new DateTime($r['scheduled_at']) : null;
                             ?>
                             <tr data-id="<?= (int) $r['id'] ?>" data-task="<?= htmlspecialchars($r['task_name']) ?>" data-attachments="<?= $hasAttachments ?>" data-status="<?= htmlspecialchars($statusMeta['label']) ?>" data-date="<?= htmlspecialchars($r['task_date']) ?>">
                                 <td>
@@ -315,8 +317,8 @@ $statTasksCovered = count($taskNames);
                                     </div>
                                 </td>
                                 <td><?= htmlspecialchars($r['location_name']) ?></td>
-                                <td data-sort-value="<?= htmlspecialchars($r['task_date']) ?>">
-                                    <span class="schedule-date-cell"><i class="fas fa-calendar-days"></i> <?= htmlspecialchars($taskDateObj->format('M j, Y')) ?> <span class="schedule-date-weekday">(<?= htmlspecialchars($taskDateObj->format('D')) ?>)</span></span>
+                                <td data-sort-value="<?= htmlspecialchars($scheduledAtObj ? $scheduledAtObj->format('Y-m-d H:i:s') : $r['task_date']) ?>">
+                                    <span class="schedule-date-cell"><i class="fas fa-calendar-days"></i> <?= htmlspecialchars(($scheduledAtObj ?: $taskDateObj)->format('M j, Y')) ?><?php if ($scheduledAtObj): ?> <span class="datetime-stack-time"><?= htmlspecialchars($scheduledAtObj->format('g:i A')) ?></span><?php endif; ?> <span class="schedule-date-weekday">(<?= htmlspecialchars($taskDateObj->format('D')) ?>)</span></span>
                                 </td>
                                 <td><?= htmlspecialchars($biometricsLast3) ?></td>
                                 <td><?= htmlspecialchars($r['completed_by_name'] ?? '—') ?></td>
@@ -417,10 +419,10 @@ $statTasksCovered = count($taskNames);
     </div>
 
     <script src="../scripts/sidebar-drawer.js"></script>
-    <script src="../scripts/pagination.js?v=7"></script>
+    <script src="../scripts/pagination.js?v=8"></script>
     <script src="../scripts/sort-table.js"></script>
     <script src="../scripts/filters.js?v=4"></script>
-    <script src="../scripts/task_report.js?v=13"></script>
+    <script src="../scripts/task_report.js?v=15"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </body>

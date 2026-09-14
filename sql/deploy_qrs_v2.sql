@@ -7,9 +7,9 @@
  * catalog (Monitoring + Treatment). Just CREATE TABLE / INSERT commands --
  * which server or database this runs against is not this file's concern.
  *
- * sql/schema.sql and sql/seed.sql are UNCHANGED and still the ones actively
- * maintained during development against the current LRNPH_OJT database --
- * this file is a separate, deployment-only package generated from them.
+ * sql/schema.sql remains the development baseline, while this file is the
+ * standalone deployment package containing the same current schema plus the
+ * deployment seed data.
  *
  * ----------------------------------------------------------------------------
  * Dependency note: dbo.lrn_master_list / dbo.lrnph_users
@@ -136,7 +136,8 @@ CREATE TABLE dbo.qrs_task_locations (
     id                    INT IDENTITY(1,1) PRIMARY KEY,
     task_id               INT            NOT NULL,
     location_id           INT            NOT NULL,
-    task_date             DATE           NOT NULL,   -- defaults to CAST(SYSDATETIME() AS DATE) at assignment (app-set)
+    task_date             DATE           NOT NULL,   -- calendar date retained for reporting/compatibility
+    scheduled_at          DATETIME2      NULL,       -- optional exact scheduled date/time; NULL preserves date-only behavior
     assigned_by           INT            NOT NULL,
     assigned_at           DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
     unassigned_by         INT            NULL,
@@ -169,6 +170,7 @@ CREATE TABLE dbo.qrs_task_locations (
 );
 GO
 CREATE INDEX IX_qrs_tl_task_date ON dbo.qrs_task_locations(task_id, task_date);
+CREATE INDEX IX_qrs_tl_task_scheduled_at ON dbo.qrs_task_locations(task_id, scheduled_at);
 CREATE INDEX IX_qrs_tl_task_location ON dbo.qrs_task_locations(task_id, location_id);
 CREATE INDEX IX_qrs_tl_location ON dbo.qrs_task_locations(location_id);
 CREATE INDEX IX_qrs_tl_scanned_by ON dbo.qrs_task_locations(scanned_by);

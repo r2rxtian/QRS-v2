@@ -4,10 +4,12 @@ $currentUser = requireLogin();
 
 require_once __DIR__ . '/../conn/db.php';
 require_once __DIR__ . '/../rules/constants.php';
+require_once __DIR__ . '/../rules/status.php';
 require_once __DIR__ . '/../authz/capabilities.php';
 require_once __DIR__ . '/../auth/csrf.php';
 
 $pdo = db();
+$windowStartSql = taskLocationWindowStartSql('tl');
 $isAdmin = $currentUser['role_name'] === ROLE_ADMIN;
 
 $taskId = (int) ($_GET['task_id'] ?? 0);
@@ -28,8 +30,8 @@ if ($taskId <= 0) {
                SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations
         FROM ' . T_TASKS . ' t
         LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
-            AND tl.task_date <= CAST(SYSDATETIME() AS DATE)
-            AND (tl.status = \'completed\' OR DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
+            AND SYSDATETIME() >= ' . $windowStartSql . '
+            AND (tl.status = \'completed\' OR DATEDIFF(SECOND, ' . $windowStartSql . ', SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
             AND tl.id = (
                 SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
                 WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
@@ -141,17 +143,17 @@ if (!$task) {
     exit;
 }
 
-$dbTodayStr = $pdo->query('SELECT CONVERT(varchar, CAST(SYSDATETIME() AS DATE), 23)')->fetchColumn();
+$dbNow = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
 
 // Scheduled tasks stay inactive until their actual scheduled date arrives
 $scheduleCheckStmt = $pdo->prepare('
-    SELECT MIN(tl.task_date) AS earliest_date
+    SELECT MIN(CASE WHEN tl.scheduled_at IS NOT NULL THEN tl.scheduled_at ELSE CAST(tl.task_date AS DATETIME2) END) AS earliest_schedule
     FROM ' . T_TASK_LOCATIONS . ' tl
     WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
 ');
 $scheduleCheckStmt->execute([$taskId]);
-$earliestDate = $scheduleCheckStmt->fetchColumn();
-if ($earliestDate && $earliestDate > $dbTodayStr) {
+$earliestSchedule = $scheduleCheckStmt->fetchColumn();
+if ($earliestSchedule && new DateTime($earliestSchedule) > $dbNow) {
     header('Location: ' . $myTasksPage);
     exit;
 }
@@ -173,12 +175,13 @@ if ($earliestDate && $earliestDate > $dbTodayStr) {
 // status (including ones a different worker just finished), not just
 // whichever locations haven't been auto-freed yet.
 $rowsStmt = $pdo->prepare('
-    SELECT tl.id AS task_location_id, l.id AS location_id, l.name AS location_name, tl.status, tl.task_date,
-           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END)) AS remaining_seconds
+    SELECT tl.id AS task_location_id, l.id AS location_id, l.name AS location_name, tl.status, tl.task_date, tl.scheduled_at,
+           DATEDIFF(SECOND, SYSDATETIME(), DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', ' . $windowStartSql . ')) AS remaining_seconds,
+           DATEDIFF(SECOND, SYSDATETIME(), ' . $windowStartSql . ') AS scheduled_start_seconds
     FROM ' . T_TASK_LOCATIONS . ' tl
     JOIN ' . T_LOCATIONS . ' l ON l.id = tl.location_id
     WHERE tl.task_id = ? AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
-      AND (tl.status = \'completed\' OR DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
+      AND (tl.status = \'completed\' OR DATEDIFF(SECOND, ' . $windowStartSql . ', SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
       AND tl.id = (
           SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
           WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
@@ -487,12 +490,14 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
                                 <button type="button"
                                     class="scan-location-list-item <?= $rowStatusClass ?><?= $rowIsCurrent ? ' active' : '' ?>"
                                     data-task-location-id="<?= (int) $row['task_location_id'] ?>"
-                                    <?= $rowIsDone ? 'disabled' : 'onclick="resolveLocation({ location_id: ' . (int) $row['location_id'] . ' })"' ?>>
+                                    <?= ($rowIsDone || (int) $row['scheduled_start_seconds'] > 0) ? 'disabled' : 'onclick="resolveLocation({ location_id: ' . (int) $row['location_id'] . ' })"' ?>>
                                     <i class="fas fa-hand-point-right scan-location-list-here-icon" aria-hidden="true"></i>
                                     <span class="scan-location-list-icon"><i class="fas fa-<?= $rowIsDone ? 'check' : ($row['status'] === 'in_progress' ? 'hourglass-half' : 'clock') ?>"></i></span>
                                     <span class="scan-location-list-name"><?= htmlspecialchars($row['location_name']) ?></span>
-                                    <?php if (!$rowIsDone && $row['task_date'] <= $dbTodayStr): ?>
+                                    <?php if (!$rowIsDone && (int) $row['scheduled_start_seconds'] <= 0): ?>
                                         <span class="expiration-countdown" data-expiration-countdown data-task-location-id="<?= (int) $row['task_location_id'] ?>" data-remaining-seconds="<?= max(0, (int) $row['remaining_seconds']) ?>">--:--:--</span>
+                                    <?php elseif (!$rowIsDone): ?>
+                                        <span class="location-tag-scheduled-mark"><i class="fas fa-calendar-days"></i> Scheduled: <?= htmlspecialchars((new DateTime($row['task_date']))->format('M j, Y')) ?><?php if (!empty($row['scheduled_at'])): ?> <?= htmlspecialchars((new DateTime($row['scheduled_at']))->format('g:i A')) ?><?php endif; ?></span>
                                     <?php endif; ?>
                                     <span class="scan-location-list-status <?= $rowStatusClass ?>"><?= $rowStatusLabel ?></span>
                                     <?php if (!$rowIsDone): ?><i class="fas fa-chevron-right scan-location-list-chevron"></i><?php endif; ?>

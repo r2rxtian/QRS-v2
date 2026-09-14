@@ -720,6 +720,10 @@
        once the other isn't), which would let a stray wide row scroll the
        list sideways instead of just wrapping. */
     overflow-x: hidden;
+    /* .recent-item:hover translates each row 4px to the right. Reserve that
+       distance inside this clipped scroll area so the row's background and
+       right-aligned schedule stay visible throughout the hover animation. */
+    padding-right: 4px;
 }
 
 /* The name+meta column is a plain, unclassed <div> in the markup (see

@@ -7,6 +7,23 @@
 
 const PREFERS_REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+function armDashboardScheduleWake() {
+    if (window.__qrsDashboardScheduleWakeTimer) {
+        clearTimeout(window.__qrsDashboardScheduleWakeTimer);
+        window.__qrsDashboardScheduleWakeTimer = null;
+    }
+    const region = document.querySelector('[data-realtime-region="dashboard-upcoming"]');
+    const seconds = Number(region?.dataset.scheduledWakeSeconds || 0);
+    if (!region || !Number.isFinite(seconds) || seconds <= 0) return;
+    window.__qrsDashboardScheduleWakeTimer = setTimeout(() => {
+        region.dataset.scheduledWakeSeconds = '0';
+        window.__qrsDashboardScheduleWakeTimer = null;
+        window.QRSRealtime?.refresh();
+    }, Math.min((seconds * 1000) + 250, 2147000000));
+}
+
+document.addEventListener('qrs:realtime-synced', armDashboardScheduleWake);
+
 // Counts a single number/percentage span up from 0 to its server-rendered
 // value (data-count-to, optionally suffixed via data-suffix, e.g. "%").
 function animateCountUp(el, delay) {
@@ -147,6 +164,7 @@ async function loadBarChart(range) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+    armDashboardScheduleWake();
     document.querySelectorAll('.count-up').forEach(function (el, i) {
         animateCountUp(el, i * 0.05);
     });

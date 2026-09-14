@@ -1800,6 +1800,205 @@ select.form-input {
     text-decoration: underline;
 }
 
+/* --- Themed time picker. Native time-selection popups are rendered by the
+   browser/OS and do not expose their columns for application CSS. This panel
+   mirrors its final choice into the hidden #task_time input as HH:MM. */
+.time-field {
+    position: relative;
+    display: flex;
+}
+
+.time-field.open .time-picker-trigger {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.time-field.open .select-dropdown-caret {
+    transform: rotate(180deg);
+    color: var(--primary);
+}
+
+.time-picker-label {
+    flex: 1;
+    min-width: 0;
+    color: var(--gray-800);
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.time-picker-label.placeholder {
+    color: var(--gray-400);
+}
+
+.time-picker-panel {
+    display: none;
+    position: fixed;
+    width: min(288px, calc(100vw - 16px));
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 1100;
+}
+
+.time-picker-panel.open {
+    display: block;
+}
+
+.time-picker-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 11px;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.time-picker-header > div {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.time-picker-title {
+    color: var(--gray-600);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.time-picker-preview {
+    color: var(--gray-900);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+}
+
+.time-picker-clear {
+    padding: 4px 5px;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--primary);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.time-picker-clear:hover,
+.time-picker-clear:focus-visible {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    outline: none;
+}
+
+.time-picker-column-labels {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5px minmax(0, 1fr) minmax(0, 0.82fr);
+    gap: 6px;
+    padding: 10px 0 5px;
+    color: var(--gray-400);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.time-picker-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5px minmax(0, 1fr) minmax(0, 0.82fr);
+    gap: 6px;
+    align-items: start;
+}
+
+.time-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    height: 174px;
+    padding: 3px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--radius);
+    scrollbar-width: thin;
+}
+
+.time-picker-separator {
+    padding-top: 8px;
+    color: var(--gray-500);
+    font-size: 17px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.time-picker-option {
+    flex: 0 0 31px;
+    min-height: 31px;
+    padding: 0 5px;
+    border: 0;
+    border-radius: calc(var(--radius) - 3px);
+    background: transparent;
+    color: var(--gray-700);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.time-picker-option:hover,
+.time-picker-option:focus-visible {
+    background: var(--primary-light);
+    color: var(--primary-hover);
+    outline: none;
+}
+
+.time-picker-option.selected {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.time-picker-option.selected:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--surface);
+}
+
+.time-picker-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid var(--gray-100);
+}
+
+.time-picker-action {
+    min-width: 72px;
+    padding: 7px 12px;
+    font-size: 12.5px;
+}
+
+@media (max-height: 430px) {
+    .time-picker-panel {
+        max-height: calc(100vh - 16px);
+        overflow-y: auto;
+    }
+
+    .time-picker-list {
+        height: 108px;
+    }
+}
+
 /* Rows hidden by an active filter — always wins over pagination's inline display style */
 .filter-hidden {
     display: none !important;
@@ -2214,18 +2413,30 @@ tbody tr:hover {
     font-weight: 500;
     border-radius: 9999px;
     white-space: nowrap;
-    /* Backstop for the rare long label a fixed-width table column can never
-       safely size for -- e.g. Task Manager/All Tasks' "Scheduled: Aug 28,
-       2026" status (see rules/status.php's deriveTaskStatus()), which is
-       longer than "Not Started"/"Missed Out" by a wide margin. Without
-       this, that one label overflows its td and bleeds into the next
-       column exactly like the Status/Schedule overlap this rule set was
-       widened to fix just above -- truncating it here keeps the row
-       readable instead. max-width:100% is a no-op everywhere else a badge
-       isn't already width-constrained by a table cell. */
+    /* Backstop for rare long labels in fixed-width table columns. Scheduled
+       task badges are the one exception: their exact date/time is actionable
+       information, so the two task tables override this with wrapping below.
+       max-width:100% is a no-op everywhere a badge is not width-constrained. */
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* Task Manager / All Tasks can include an exact time in the scheduled
+   status (for example, "Scheduled: Sep 14, 2026 1:30 PM"). The generic
+   badge backstop above intentionally truncates long labels, but doing that
+   here hides the creator's selected time. Keep this exception scoped to
+   these two tables and wrap only scheduled badges inside their existing
+   fixed-width Status cell; other pills retain the compact ellipsis rule. */
+#tasksTable .status-badge.status-scheduled,
+#allTasksTable .status-badge.status-scheduled {
+    box-sizing: border-box;
+    justify-content: center;
+    line-height: 1.35;
+    text-align: center;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .status-available,
@@ -4897,4 +5108,3 @@ a {
         padding: 16px;
     }
 }
-

@@ -48,6 +48,20 @@ async function openTaskDetailModal(taskId, taskName) {
     await refreshTaskDetailModal();
 }
 
+function armTaskDetailScheduleWake() {
+    if (window.__qrsTaskDetailScheduleWakeTimer) {
+        clearTimeout(window.__qrsTaskDetailScheduleWakeTimer);
+        window.__qrsTaskDetailScheduleWakeTimer = null;
+    }
+    const wake = document.getElementById('taskDetailScheduleWake');
+    const seconds = Number(wake?.dataset.scheduledStartSeconds || 0);
+    if (!wake || !Number.isFinite(seconds) || seconds <= 0) return;
+    window.__qrsTaskDetailScheduleWakeTimer = setTimeout(async () => {
+        window.__qrsTaskDetailScheduleWakeTimer = null;
+        try { await refreshTaskDetailModal(); } catch (_) {}
+    }, Math.min((seconds * 1000) + 250, 2147000000));
+}
+
 function closeTaskDetailModal() {
     document.getElementById('taskDetailModal').classList.remove('active');
     if (window.__qrsTaskListNeedsRefresh) {
@@ -65,6 +79,7 @@ async function refreshTaskDetailModal() {
     try {
         const response = await fetch('../api/tasks/detail_partial.php?task_id=' + encodeURIComponent(taskId));
         body.innerHTML = await response.text();
+        armTaskDetailScheduleWake();
     } catch (err) {
         body.innerHTML = '<p style="color: var(--danger);">Could not load task details. Please try again.</p>';
     }

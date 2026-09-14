@@ -68,7 +68,7 @@ When a task is active, each assigned location moves through the following stages
                                    [ Missed Out ]
 ```
 
-* **Scheduled**: The task was planned for an upcoming date. Locations remain on standby until the scheduled date arrives.
+* **Scheduled**: The task was planned for an upcoming date or exact time. Locations remain on standby until that schedule arrives.
 * **Pending**: The task is active for today. The location is waiting for a field technician to arrive and begin.
 * **In Progress**: A technician has scanned the QR code and submitted Step 1 (Observation Checklist). A **24-hour countdown timer** runs until work is completed.
 * **Completed**: The technician submitted Step 2 (Photo proof and Biometrics sign-off). The checkpoint is fully resolved.
@@ -92,15 +92,16 @@ Before assigning tasks, ensure your physical locations are registered:
 1. Go to **Task Manager** and click the **Create Task** button.
 2. **Task Name**: Enter a clear, descriptive name (e.g., *"Weekly Building Treatment"* or *"Warehouse Monitoring"*).
 3. **Task Type**: Click the card for **Treatment** or **Monitoring**.
-4. **Schedule Date**:
+4. **Schedule Date & Time**:
    * *For immediate work:* Leave the date set to **Today**. The task activates immediately.
    * *For future planning:* Click the calendar box and choose a future date (see [Advance Scheduling](#5-advance-scheduling-feature) below).
+   * *For an exact start:* Choose an optional time beside the date. Leaving time blank preserves date-only scheduling.
 5. **Select Locations**: Check the boxes for the checkpoints to include, or use **Select All** or the search box.
 6. Click **Create Task**.
 
 > [!TIP]
 > **Need to add more checkpoints to an existing task later?**  
-> Click **View** on the task card in Task Manager, select additional locations, and click Save. New locations inherit the task's schedule date automatically.
+> Click **View** on the task card in Task Manager, select additional locations, and click Save. New locations inherit the task's schedule date and optional time automatically. If assigned after that schedule, their own 24-hour window starts when they are assigned.
 
 ---
 
@@ -162,9 +163,9 @@ After performing the physical inspection or treatment:
 
 While daily tasks are typically created for **Today**, QR Task Check supports planning tasks days or weeks ahead:
 
-* **Standby Mode**: Tasks scheduled for future dates remain strictly dormant until 12:00 AM on the scheduled date.
-* **No Premature Scanning**: Field technicians cannot accidentally scan or start a future-dated location ahead of time.
-* **Preserved 24-Hour Window**: The 24-hour countdown timer does not begin until the actual scheduled calendar date arrives.
+* **Standby Mode**: Date-only tasks become available at 12:00 AM on their scheduled date. Tasks with a specific time remain dormant until that exact time.
+* **No Premature Scanning**: Field technicians cannot scan or start a location before its scheduled date and time.
+* **Preserved 24-Hour Window**: The 24-hour countdown begins from the later of the scheduled date/time or the location's assignment time, so a location assigned late still receives a full 24 hours.
 * **Clean Scan Lists**: Future tasks are kept off daily scanner pick-lists to prevent confusion among technicians.
 
 ---

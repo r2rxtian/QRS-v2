@@ -12,6 +12,7 @@ require_once __DIR__ . '/../../auth/csrf.php';
 require_once __DIR__ . '/../../authz/authz.php';
 require_once __DIR__ . '/../../conn/db.php';
 require_once __DIR__ . '/../../rules/constants.php';
+require_once __DIR__ . '/../../rules/status.php';
 require_once __DIR__ . '/../../rules/validation.php';
 
 header('Content-Type: application/json');
@@ -63,10 +64,10 @@ $pdo = db();
 // reasoning. An expired ticket simply stops matching here, falling into
 // the same generic "not found" as any other invalid task_location_id.
 $tlStmt = $pdo->prepare('
-    SELECT id, task_id, status, task_date
+    SELECT id, task_id, status, task_date, scheduled_at
     FROM ' . T_TASK_LOCATIONS . '
     WHERE id = ? AND task_id = ? AND unassigned_at IS NULL
-      AND (status <> \'pending\' OR DATEDIFF(SECOND, CASE WHEN task_date > CAST(assigned_at AS DATE) THEN CAST(task_date AS DATETIME2) ELSE assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
+      AND (status <> \'pending\' OR DATEDIFF(SECOND, ' . taskLocationWindowStartSql() . ', SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
 ');
 $tlStmt->execute([$taskLocationId, $taskId]);
 $taskLocation = $tlStmt->fetch();
@@ -77,10 +78,16 @@ if (!$taskLocation) {
     exit;
 }
 
-$dbTodayStr = $pdo->query('SELECT CONVERT(varchar, CAST(SYSDATETIME() AS DATE), 23)')->fetchColumn();
-if (!empty($taskLocation['task_date']) && $taskLocation['task_date'] > $dbTodayStr) {
+$dbNow = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
+$isFutureSchedule = !empty($taskLocation['scheduled_at'])
+    ? new DateTime($taskLocation['scheduled_at']) > $dbNow
+    : (!empty($taskLocation['task_date']) && $taskLocation['task_date'] > $dbNow->format('Y-m-d'));
+if ($isFutureSchedule) {
+    $scheduleLabel = !empty($taskLocation['scheduled_at'])
+        ? (new DateTime($taskLocation['scheduled_at']))->format('M j, Y g:i A')
+        : (new DateTime($taskLocation['task_date']))->format('M j, Y');
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'This location is scheduled for ' . (new DateTime($taskLocation['task_date']))->format('M j, Y') . ' and cannot be started yet.', 'type' => 'error']);
+    echo json_encode(['success' => false, 'message' => 'This location is scheduled for ' . $scheduleLabel . ' and cannot be started yet.', 'type' => 'error']);
     exit;
 }
 

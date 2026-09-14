@@ -18,6 +18,7 @@ require_once __DIR__ . '/../../auth/csrf.php';
 require_once __DIR__ . '/../../authz/authz.php';
 require_once __DIR__ . '/../../conn/db.php';
 require_once __DIR__ . '/../../rules/constants.php';
+require_once __DIR__ . '/../../rules/status.php';
 
 header('Content-Type: application/json');
 
@@ -67,7 +68,7 @@ if (!$location) {
 // (see the generic message below). No separate "Missed Out" messaging in
 // the scan flow -- it's just quietly not there anymore.
 $tlStmt = $pdo->prepare('
-    SELECT id, status, task_date,
+    SELECT id, status, task_date, scheduled_at,
            spot_spray_answer, spot_spray_remark,
            misting_answer, misting_remark,
            mist_blower_answer, mist_blower_remark,
@@ -75,7 +76,7 @@ $tlStmt = $pdo->prepare('
            findings_observation
     FROM ' . T_TASK_LOCATIONS . '
     WHERE task_id = ? AND location_id = ? AND (unassigned_at IS NULL OR unassigned_by IS NULL)
-      AND (status = \'completed\' OR DATEDIFF(SECOND, CASE WHEN task_date > CAST(assigned_at AS DATE) THEN CAST(task_date AS DATETIME2) ELSE assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
+      AND (status = \'completed\' OR DATEDIFF(SECOND, ' . taskLocationWindowStartSql() . ', SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ')
       AND id = (SELECT MAX(id) FROM ' . T_TASK_LOCATIONS . ' WHERE task_id = ? AND location_id = ?)
 ');
 $tlStmt->execute([$taskId, $location['id'], $taskId, $location['id']]);
@@ -86,11 +87,17 @@ if (!$taskLocation) {
     exit;
 }
 
-$dbTodayStr = $pdo->query('SELECT CONVERT(varchar, CAST(SYSDATETIME() AS DATE), 23)')->fetchColumn();
-if (!empty($taskLocation['task_date']) && $taskLocation['task_date'] > $dbTodayStr) {
+$dbNow = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
+$isFutureSchedule = !empty($taskLocation['scheduled_at'])
+    ? new DateTime($taskLocation['scheduled_at']) > $dbNow
+    : (!empty($taskLocation['task_date']) && $taskLocation['task_date'] > $dbNow->format('Y-m-d'));
+if ($isFutureSchedule) {
+    $scheduleLabel = !empty($taskLocation['scheduled_at'])
+        ? (new DateTime($taskLocation['scheduled_at']))->format('M j, Y g:i A')
+        : (new DateTime($taskLocation['task_date']))->format('M j, Y');
     echo json_encode([
         'success' => false,
-        'message' => $location['name'] . ' is scheduled for ' . (new DateTime($taskLocation['task_date']))->format('M j, Y') . ' and cannot be scanned yet.',
+        'message' => $location['name'] . ' is scheduled for ' . $scheduleLabel . ' and cannot be scanned yet.',
         'type' => 'info'
     ]);
     exit;

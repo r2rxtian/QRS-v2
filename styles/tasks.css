@@ -6,6 +6,82 @@
    Create Task Modal — Mobile Responsive Optimization
    ========================================================================== */
 
+.task-schedule-fields {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+}
+
+.task-schedule-date {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-time-field {
+    flex: 0 0 142px;
+    width: 142px;
+}
+
+.task-time-field .time-picker-trigger {
+    width: 100%;
+}
+
+/* Compact Time Picker for Create Task Modal so it comfortably fits inside modal boundaries */
+#task_time_panel {
+    padding: 10px 12px !important;
+    width: min(276px, calc(100vw - 24px)) !important;
+    border-radius: var(--radius-lg, 12px) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+}
+
+#task_time_panel .time-picker-header {
+    padding-bottom: 7px !important;
+}
+
+#task_time_panel .time-picker-title {
+    font-size: 10.5px !important;
+}
+
+#task_time_panel .time-picker-preview {
+    font-size: 18px !important;
+}
+
+#task_time_panel .time-picker-column-labels {
+    padding: 6px 0 4px !important;
+    font-size: 9.5px !important;
+}
+
+#task_time_panel .time-picker-list {
+    height: 128px !important;
+    padding: 2px !important;
+    gap: 2px !important;
+}
+
+#task_time_panel .time-picker-option {
+    flex: 0 0 28px !important;
+    min-height: 28px !important;
+    font-size: 12px !important;
+    padding: 0 4px !important;
+}
+
+#task_time_panel .time-picker-separator {
+    font-size: 15px !important;
+    padding-top: 5px !important;
+}
+
+#task_time_panel .time-picker-footer {
+    margin-top: 8px !important;
+    padding-top: 8px !important;
+    gap: 6px !important;
+}
+
+#task_time_panel .time-picker-action {
+    padding: 5px 12px !important;
+    font-size: 12px !important;
+    min-width: 64px !important;
+}
+
 @media (max-width: 768px) {
     /* Modal container on mobile: pinned height within viewport with fixed header & footer */
     #createTaskModal .modal-split {
@@ -174,6 +250,12 @@
 
     /* Date Field */
     #createTaskModal .date-field .select-dropdown-trigger {
+        height: 40px !important;
+        font-size: 13.5px !important;
+        border-radius: var(--radius, 8px) !important;
+    }
+
+    #createTaskModal .time-picker-trigger {
         height: 40px !important;
         font-size: 13.5px !important;
         border-radius: var(--radius, 8px) !important;
@@ -385,6 +467,15 @@
 
 /* Extra-compact screens (<=380px) */
 @media (max-width: 380px) {
+    #createTaskModal .task-schedule-fields {
+        flex-direction: column !important;
+    }
+
+    #createTaskModal .task-time-field {
+        flex-basis: auto !important;
+        width: 100% !important;
+    }
+
     #createTaskModal .checklist-toolbar {
         flex-direction: column !important;
         align-items: stretch !important;

@@ -47,7 +47,8 @@ $pdo = db();
 
 // "Today" is anchored to the DB server's own clock (matches dashboard.php)
 // rather than PHP's, since the two can run in different timezones.
-$dbToday = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
+$dbNow = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
+$dbToday = clone $dbNow;
 $dbToday->setTime(0, 0);
 
 $taskDateRaw = trim($_POST['task_date'] ?? '');
@@ -58,6 +59,36 @@ if (!$taskDateObj || $taskDateObj->format('Y-m-d') !== $taskDateRaw || $taskDate
     exit;
 }
 $taskDate = $taskDateObj->format('Y-m-d');
+
+// The time is optional so existing date-only task creation keeps its exact
+// behavior. When supplied, validate it strictly against the DB-server
+// clock. A past minute would be misleading because its effective window
+// would immediately fall back to the later assignment timestamp.
+$taskTimeRaw = trim($_POST['task_time'] ?? '');
+$scheduledAt = null;
+if ($taskTimeRaw !== '') {
+    if (!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $taskTimeRaw)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Please pick a valid schedule time.', 'type' => 'error']);
+        exit;
+    }
+    $scheduledAtObj = DateTime::createFromFormat('!Y-m-d H:i', $taskDate . ' ' . $taskTimeRaw);
+    $errors = DateTime::getLastErrors();
+    if (!$scheduledAtObj || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Please pick a valid schedule date and time.', 'type' => 'error']);
+        exit;
+    }
+    // Compare at minute precision because the native time input does not
+    // submit seconds. The currently displayed minute remains valid even
+    // when SQL Server is already several seconds into it.
+    if ($scheduledAtObj->format('Y-m-d H:i') < $dbNow->format('Y-m-d H:i')) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'The schedule time cannot be in the past.', 'type' => 'error']);
+        exit;
+    }
+    $scheduledAt = $scheduledAtObj->format('Y-m-d H:i:s');
+}
 
 // Only locations not currently on any task's roster, AND matching this
 // task's Task Type, can be used -- re-validated here server-side even
@@ -93,11 +124,11 @@ try {
     $taskId = (int) $stmt->fetchColumn();
 
     $insertLoc = $pdo->prepare('
-        INSERT INTO ' . T_TASK_LOCATIONS . ' (task_id, location_id, task_date, assigned_by, status)
-        VALUES (?, ?, ?, ?, \'pending\')
+        INSERT INTO ' . T_TASK_LOCATIONS . ' (task_id, location_id, task_date, scheduled_at, assigned_by, status)
+        VALUES (?, ?, ?, ?, ?, \'pending\')
     ');
     foreach ($locationIds as $locationId) {
-        $insertLoc->execute([$taskId, $locationId, $taskDate, $authUser['id']]);
+        $insertLoc->execute([$taskId, $locationId, $taskDate, $scheduledAt, $authUser['id']]);
     }
 
     $pdo->commit();
@@ -108,7 +139,13 @@ try {
     exit;
 }
 
-writeAuditLog($authUser['id'], 'task.create', 'task', $taskId, ['name' => $taskName, 'task_type' => $taskType, 'location_ids' => $locationIds]);
+writeAuditLog($authUser['id'], 'task.create', 'task', $taskId, [
+    'name' => $taskName,
+    'task_type' => $taskType,
+    'task_date' => $taskDate,
+    'scheduled_at' => $scheduledAt,
+    'location_ids' => $locationIds,
+]);
 
 $message = 'Task created successfully with ' . count($locationIds) . ' location' . (count($locationIds) === 1 ? '' : 's') . '!';
 if (!empty($unavailable)) {

@@ -10,8 +10,8 @@
  *
  * This file is the up-to-date baseline for a from-scratch rebuild; it is
  * NOT run against the live database (which already has this exact
- * structure — it got there incrementally via sql/migrations/, since
- * dropped once folded in here).
+ * structure — it was assembled through earlier incremental releases and is
+ * now maintained here as a standalone baseline).
  *
  * Notes on type translation:
  *   - IDENTITY(1,1) instead of AUTO_INCREMENT
@@ -64,7 +64,7 @@ CREATE TABLE dbo.qrs_users (
                                                             -- dbo.lrnph_users (via lrn_master_list.BiometricsID)
                                                             -- for login credentials -- neither full_name nor a
                                                             -- password is stored in this table (see
-                                                            -- sql/migrations/0003 and 0004)
+                                                            -- earlier schema releases)
     role_id               TINYINT        NOT NULL,
     avatar_initials       VARCHAR(4)     NULL,
     avatar_color          CHAR(7)        NULL,
@@ -132,7 +132,8 @@ CREATE TABLE dbo.qrs_task_locations (
     id                    INT IDENTITY(1,1) PRIMARY KEY,
     task_id               INT            NOT NULL,
     location_id           INT            NOT NULL,
-    task_date             DATE           NOT NULL,   -- defaults to CAST(SYSDATETIME() AS DATE) at assignment (app-set)
+    task_date             DATE           NOT NULL,   -- calendar date retained for reporting/compatibility
+    scheduled_at          DATETIME2      NULL,       -- optional exact scheduled date/time; NULL preserves date-only behavior
     assigned_by           INT            NOT NULL,
     assigned_at           DATETIME2      NOT NULL DEFAULT SYSDATETIME(),
     unassigned_by         INT            NULL,
@@ -165,6 +166,7 @@ CREATE TABLE dbo.qrs_task_locations (
 );
 GO
 CREATE INDEX IX_qrs_tl_task_date ON dbo.qrs_task_locations(task_id, task_date);
+CREATE INDEX IX_qrs_tl_task_scheduled_at ON dbo.qrs_task_locations(task_id, scheduled_at);
 CREATE INDEX IX_qrs_tl_task_location ON dbo.qrs_task_locations(task_id, location_id);
 CREATE INDEX IX_qrs_tl_location ON dbo.qrs_task_locations(location_id);
 CREATE INDEX IX_qrs_tl_scanned_by ON dbo.qrs_task_locations(scanned_by);

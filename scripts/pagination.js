@@ -39,6 +39,12 @@ function paginateTable(options) {
     function stabilizeWrapperHeight() {
         if (!wrapper) return;
 
+        if (options.stabilizeHeight === false) {
+            wrapper.classList.remove('table-wrapper--paginated');
+            wrapper.style.removeProperty('--table-page-min-height');
+            return;
+        }
+
         // Newly mounted rows are still visible when this first runs. Cache
         // their natural heights before pagination hides later pages.
         Array.from(tbody.rows).forEach(row => {

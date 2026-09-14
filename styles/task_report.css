@@ -72,11 +72,19 @@
     line-height: 0;
 }
 
-/* Report pagination needs a predictable row footprint. Photos previously
-   wrapped into a second line, making some ten-row pages much taller than
-   others and causing the shared CLS reservation to leave a large blank area. */
+/* Remove artificial wrapper min-height that causes huge empty voids below report rows.
+   The report table should hug its visible rows naturally on every page. */
+.table-wrapper.table-wrapper--paginated {
+    min-height: 0 !important;
+}
+
+#reportTable {
+    margin-bottom: 0 !important;
+}
+
 #reportTable tbody tr {
-    height: 92px;
+    height: auto;
+    min-height: 54px;
 }
 
 #reportTable tbody td {

@@ -62,7 +62,10 @@
                 if (!next) return;
 
                 // Deduplicate: if the content has not changed, do not mutate the DOM
-                if (current.innerHTML.trim() === next.innerHTML.trim()) {
+                // Region attributes can carry live state too (for example,
+                // seconds until the next exact schedule). Do not discard an
+                // attribute-only update as if the region were unchanged.
+                if (current.outerHTML.trim() === next.outerHTML.trim()) {
                     return;
                 }
 

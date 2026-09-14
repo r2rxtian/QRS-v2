@@ -20,7 +20,7 @@ function showMessage(message, type = 'info') {
     showModal('messageModal');
 }
 
-async function refreshTasksView() {
+async function refreshTasksView(options = {}) {
     const response = await fetch(window.location.href, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         credentials: 'same-origin',
@@ -43,11 +43,29 @@ async function refreshTasksView() {
         if (current && next) current.replaceWith(next);
     });
 
-    window.__pagers?.tasksTable?.refresh();
+    window.__pagers?.tasksTable?.refresh({ preservePage: Boolean(options.preservePage) });
     const selectAll = document.getElementById('select_all');
     if (selectAll) selectAll.checked = false;
     updateTaskSelectedCount();
+    armTasksScheduleWake();
 }
+
+function armTasksScheduleWake() {
+    if (window.__qrsTasksScheduleWakeTimer) {
+        clearTimeout(window.__qrsTasksScheduleWakeTimer);
+        window.__qrsTasksScheduleWakeTimer = null;
+    }
+    const tableBody = document.querySelector('#tasksTable tbody[data-scheduled-wake-seconds]');
+    const seconds = Number(tableBody?.dataset.scheduledWakeSeconds || 0);
+    if (!tableBody || !Number.isFinite(seconds) || seconds <= 0) return;
+    window.__qrsTasksScheduleWakeTimer = setTimeout(async () => {
+        tableBody.dataset.scheduledWakeSeconds = '0';
+        window.__qrsTasksScheduleWakeTimer = null;
+        try { await refreshTasksView({ preservePage: true }); } catch (_) {}
+    }, Math.min((seconds * 1000) + 250, 2147000000));
+}
+
+document.addEventListener('qrs:realtime-synced', armTasksScheduleWake);
 
 function toggleSelectAll(checkbox) {
     document.querySelectorAll('.row-check').forEach(c => c.checked = checkbox.checked);
@@ -163,6 +181,11 @@ function openCreateTaskModal() {
         document.querySelectorAll('.task-type-card').forEach(c => c.classList.remove('selected'));
         onTaskTypeChange();
     }
+    const taskTime = document.getElementById('task_time');
+    if (taskTime) {
+        if (typeof setTimePickerValue === 'function') setTimePickerValue(taskTime, '');
+        else taskTime.value = '';
+    }
     showModal('createTaskModal');
     const modalBody = document.querySelector('#createTaskModal .modal-body');
     if (modalBody) {
@@ -174,11 +197,13 @@ async function submitCreateTask() {
     const nameInput = document.getElementById('task_name');
     const typeSelect = document.getElementById('task_type');
     const dateInput = document.getElementById('task_date');
+    const timeInput = document.getElementById('task_time');
     const btn = document.getElementById('createTaskSubmitBtn');
 
     const taskName = nameInput.value.trim();
     const taskType = typeSelect ? typeSelect.value : '';
     const taskDate = dateInput ? dateInput.value : '';
+    const taskTime = timeInput ? timeInput.value : '';
     // Only exists once a Task Type is chosen (see onTaskTypeChange()) --
     // with none chosen yet, there's nothing to read locations from, which
     // is exactly the "Locations" error below.
@@ -208,6 +233,7 @@ async function submitCreateTask() {
     formData.set('task_name', taskName);
     formData.set('task_type', taskType);
     formData.set('task_date', taskDate);
+    if (taskTime) formData.set('task_time', taskTime);
     selectedLocationIds.forEach(id => formData.append('location_ids[]', id));
 
     btn.disabled = true;
@@ -283,6 +309,7 @@ function formatDateLabel(isoDate) {
 document.addEventListener('DOMContentLoaded', function() {
     const tasksPager = paginateTable({ tableId: 'tasksTable', paginationId: 'tasksPagination', rowsPerPage: 10 });
     makeSortable('tasksTable', tasksPager);
+    armTasksScheduleWake();
 
     window.onTasksEntriesChange = function(value) {
         tasksPager.setRowsPerPage(value === 'all' ? 'all' : parseInt(value, 10));

@@ -2,6 +2,27 @@
 require_once __DIR__ . '/../authz/capabilities.php';
 
 /**
+ * SQL expression for the authoritative start of a task-location's 24-hour
+ * window.  A supplied scheduled_at wins when it is later than assignment;
+ * a late assignment therefore receives a fresh 24 hours.  NULL scheduled_at
+ * keeps the original date-only behavior (future dates begin at midnight,
+ * while today's rows begin at assigned_at).
+ */
+function taskLocationWindowStartSql(string $alias = ''): string
+{
+    $prefix = $alias === '' ? '' : rtrim($alias, '.') . '.';
+    $scheduled = $prefix . 'scheduled_at';
+    $assigned = $prefix . 'assigned_at';
+    $taskDate = $prefix . 'task_date';
+
+    return "CASE WHEN {$scheduled} IS NOT NULL THEN\n"
+        . "             CASE WHEN {$scheduled} > {$assigned} THEN {$scheduled} ELSE {$assigned} END\n"
+        . "         ELSE CASE WHEN {$taskDate} > CAST({$assigned} AS DATE)\n"
+        . "                   THEN CAST({$taskDate} AS DATETIME2) ELSE {$assigned} END\n"
+        . "    END";
+}
+
+/**
  * Canonical task-status vocabulary (see the approved plan, §5) — derived
  * from a task's active (unassigned_at IS NULL) qrs_task_locations rows,
  * never stored on qrs_tasks itself.
@@ -100,8 +121,8 @@ function expireDueTaskLocations(PDO $pdo, ?array $taskLocationIds = null): array
         OUTPUT INSERTED.id, INSERTED.task_id, INSERTED.location_id
         WHERE unassigned_at IS NULL
           AND status IN (\'pending\', \'in_progress\')
-          AND CAST(SYSDATETIME() AS DATE) >= task_date
-          AND DATEDIFF(SECOND, CASE WHEN task_date > CAST(assigned_at AS DATE) THEN CAST(task_date AS DATETIME2) ELSE assigned_at END, SYSDATETIME()) >= ' . TASK_LOCATION_EXPIRATION_SECONDS .
+          AND SYSDATETIME() >= ' . taskLocationWindowStartSql() . '
+          AND DATEDIFF(SECOND, ' . taskLocationWindowStartSql() . ', SYSDATETIME()) >= ' . TASK_LOCATION_EXPIRATION_SECONDS .
           $idPredicate . '
     ');
     $stmt->execute($params);
@@ -226,7 +247,8 @@ function sweepResolvedLocations(PDO $pdo): void
  * based -- a ticket created at 5pm is only "missed" at 5pm the next day,
  * not at the next midnight.
  *
- * Future-scheduled tasks (task_date > today) are inactive and cannot be missed.
+ * Future-scheduled tasks (their effective date/time is after now) are inactive
+ * and cannot be missed.
  */
 function countMissedTaskLocations(PDO $pdo, ?string $taskType = null): array
 {
@@ -236,8 +258,8 @@ function countMissedTaskLocations(PDO $pdo, ?string $taskType = null): array
             COUNT(DISTINCT x.task_id) AS total
         FROM (
             SELECT tl.task_id,
-                   CASE WHEN CAST(SYSDATETIME() AS DATE) >= tl.task_date
-                             AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
+                   CASE WHEN SYSDATETIME() >= ' . taskLocationWindowStartSql('tl') . '
+                             AND DATEDIFF(SECOND, ' . taskLocationWindowStartSql('tl') . ', COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
                              AND tl.status <> \'completed\' THEN 1 ELSE 0 END AS missed_flag
             FROM ' . T_TASK_LOCATIONS . ' tl
             JOIN ' . T_TASKS . ' t ON t.id = tl.task_id

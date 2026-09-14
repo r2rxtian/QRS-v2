@@ -100,7 +100,7 @@ c:\xampp\htdocs\QRS_new\
 │   ├── tasks.js                   # Task creation form, dual-panel location assigner
 │   ├── theme.js                   # Accent color switcher & dark mode controller
 │   └── user_management.js         # User dialogs, role assignment, lookup handlers
-├── sql/                           # SQL migrations and schema reference
+├── sql/                           # Deployment schema, seed data, and location catalogs
 │   └── schema.sql                 # Baseline T-SQL schema definition
 └── styles/                        # CSS stylesheets
     ├── app.css                    # Core design system tokens, typography, grid, cards
@@ -138,6 +138,7 @@ All QRS tables reside in the `dbo` schema of the SQL Server database `LRNPH_OJT`
 │ task_id (FK-app)                │            │ name                           │
 │ location_id (FK-app)            │            │ qr_token (CHAR 16, UNIQUE)     │
 │ task_date (DATE)                │            │ location_type                  │
+│ scheduled_at (DATETIME2, NULL)  │            │                                │
 │ status (pending|in_progress|...)│            │ is_active (BIT)                │
 │ spot_spray_answer               │            │ created_at / updated_at        │
 │ misting_answer                  │            └────────────────────────────────┘
@@ -220,7 +221,7 @@ QR Task Check integrates with company-wide tables in `LRNPH_OJT` rather than mai
 ```
 
 1. **Pending**: Assigned to today's task, waiting for the inspector to arrive.
-2. **In Progress**: Step 1 complete. Inspector scanned the QR code and answered the 4 checklist items. A **24-hour countdown timer** begins (`TASK_LOCATION_EXPIRATION_SECONDS = 86400`).
+2. **In Progress**: Step 1 complete. Inspector scanned the QR code and answered the 4 checklist items. The shared **24-hour window** continues from the later of `scheduled_at` (or the legacy date-only anchor) and `assigned_at` (`TASK_LOCATION_EXPIRATION_SECONDS = 86400`).
 3. **Completed**: Step 2 complete. Inspector attached 1-3 photos and confirmed with staff ID/biometrics code.
 4. **Missed Out**: 24 hours elapsed without Step 2 submission. Automatically expired by `rules/status.php` or `api/task_locations/expire.php`.
 5. **Auto-Sweep**: Once a location reaches a resolved state (`completed` or `missed`), the background cleaner sets `unassigned_at = SYSDATETIME()`. This frees the physical location so it can be assigned to new tasks.
@@ -232,7 +233,7 @@ Task status is computed on the fly via `deriveTaskStatus($total, $completed, $in
 | Conditions | Derived Code | Display Badge |
 | :--- | :--- | :--- |
 | `total == 0` | `assign` | Assign Locations |
-| `completed == 0 && inProgress == 0` (Scheduled future date) | `scheduled` | Scheduled: [Date] |
+| `completed == 0 && inProgress == 0` (Scheduled future date/time) | `scheduled` | Scheduled: [Date/Time] |
 | `completed == 0 && inProgress == 0` (Scheduled today) | `not_started` | Not Started |
 | `completed == total` | `completed` | Completed |
 | `completed > 0 || inProgress > 0` | `ongoing` | On-going |

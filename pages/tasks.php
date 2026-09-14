@@ -48,8 +48,10 @@ foreach ($availableLocationsForCreate as $loc) {
 // "Today" is anchored to the DB server's own clock (matches dashboard.php
 // and api/tasks/create.php), used below to tell a genuinely-overdue
 // not-started task apart from one that's simply scheduled for later.
-$dbToday = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
+$dbNow = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
+$dbToday = clone $dbNow;
 $dbToday->setTime(0, 0);
+$windowStartSql = taskLocationWindowStartSql('tl');
 
 // Locations/Progress reflect a task's REAL total assignment -- each
 // location's CURRENT ticket (its most recent task_locations row), still on
@@ -69,14 +71,20 @@ $sql = '
         ' . fullNameSql('uml', 'u') . ' AS creator_name, u.employee_id AS creator_employee_id, u.avatar_initials, u.avatar_color,
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-        SUM(CASE WHEN tl.status = \'in_progress\' AND (CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ') THEN 1 ELSE 0 END) AS in_progress_locations,
-        SUM(CASE WHEN tl.status <> \'completed\' AND CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
-        (SELECT MIN(tl2.task_date) FROM ' . T_TASK_LOCATIONS . ' tl2
+        SUM(CASE WHEN tl.status = \'in_progress\' AND SYSDATETIME() >= ' . $windowStartSql . ' AND DATEDIFF(SECOND, ' . $windowStartSql . ', SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status <> \'completed\' AND SYSDATETIME() >= ' . $windowStartSql . ' AND DATEDIFF(SECOND, ' . $windowStartSql . ', COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
+        (SELECT MIN(CASE WHEN tl2.scheduled_at IS NOT NULL THEN tl2.scheduled_at ELSE CAST(tl2.task_date AS DATETIME2) END) FROM ' . T_TASK_LOCATIONS . ' tl2
             WHERE tl2.task_id = t.id AND (tl2.unassigned_at IS NULL OR tl2.unassigned_by IS NULL)
               AND tl2.id = (
                   SELECT MAX(tl3.id) FROM ' . T_TASK_LOCATIONS . ' tl3
                   WHERE tl3.task_id = tl2.task_id AND tl3.location_id = tl2.location_id
-              )) AS earliest_active_date
+              )) AS earliest_active_date,
+        (SELECT MIN(tl2.scheduled_at) FROM ' . T_TASK_LOCATIONS . ' tl2
+            WHERE tl2.task_id = t.id AND (tl2.unassigned_at IS NULL OR tl2.unassigned_by IS NULL)
+              AND tl2.id = (
+                  SELECT MAX(tl3.id) FROM ' . T_TASK_LOCATIONS . ' tl3
+                  WHERE tl3.task_id = tl2.task_id AND tl3.location_id = tl2.location_id
+              )) AS earliest_scheduled_at
     FROM ' . T_TASKS . ' t
     LEFT JOIN ' . T_USERS . ' u ON u.id = t.owner_id
     LEFT JOIN ' . T_MASTER_LIST . ' uml ON uml.EmployeeID = u.employee_id
@@ -98,11 +106,22 @@ $statOngoing = 0;
 $statCompleted = 0;
 $statSubTasksTotal = 0;
 $statSubTasksCompleted = 0;
+$nextScheduleSeconds = null;
 
 foreach ($stmt->fetchAll() as $row) {
     $earliestActiveDate = $row['earliest_active_date'] ? new DateTime($row['earliest_active_date']) : null;
-    $isFutureScheduled = $earliestActiveDate !== null && $earliestActiveDate > $dbToday;
-    $scheduledDateLabel = $isFutureScheduled ? $earliestActiveDate->format('M j, Y') : null;
+    // Exact-time schedules later today must become actionable at their
+    // chosen minute; date-only rows still compare correctly because their
+    // fallback value is midnight.
+    $isFutureScheduled = $earliestActiveDate !== null && $earliestActiveDate > $dbNow;
+    if ($isFutureScheduled) {
+        $secondsUntilSchedule = max(1, $earliestActiveDate->getTimestamp() - $dbNow->getTimestamp());
+        $nextScheduleSeconds = $nextScheduleSeconds === null ? $secondsUntilSchedule : min($nextScheduleSeconds, $secondsUntilSchedule);
+    }
+    $hasSpecificTime = !empty($row['earliest_scheduled_at']);
+    $scheduledDateLabel = $isFutureScheduled
+        ? $earliestActiveDate->format($hasSpecificTime ? 'M j, Y g:i A' : 'M j, Y')
+        : null;
 
     $status = deriveTaskStatus((int) $row['total_locations'], (int) $row['completed_locations'], (int) $row['in_progress_locations'], $isFutureScheduled, $scheduledDateLabel);
     $row['status'] = $status;
@@ -114,7 +133,9 @@ foreach ($stmt->fetchAll() as $row) {
     // status <> 'completed' condition), so this only ever applies to a
     // task that isn't already fully Completed.
     $row['has_missed'] = (int) $row['missed_locations'] > 0;
-    $row['schedule_label'] = $earliestActiveDate ? $earliestActiveDate->format('M j, Y') : null;
+    $row['schedule_label'] = $earliestActiveDate
+        ? $earliestActiveDate->format($hasSpecificTime ? 'M j, Y g:i A' : 'M j, Y')
+        : null;
     $row['schedule_weekday'] = $earliestActiveDate ? $earliestActiveDate->format('D') : null;
     $tasks[] = $row;
 
@@ -177,8 +198,8 @@ if (!empty($tasks)) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=16">
-    <link rel="stylesheet" href="../styles/tasks.css?v=1">
+    <link rel="stylesheet" href="../styles/app.css?v=18">
+    <link rel="stylesheet" href="../styles/tasks.css?v=3">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -339,7 +360,7 @@ if (!empty($tasks)) {
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody data-realtime-region="tasks-table-body">
+                    <tbody data-realtime-region="tasks-table-body" data-scheduled-wake-seconds="<?= $nextScheduleSeconds !== null ? (int) $nextScheduleSeconds : 0 ?>">
                         <?php if (empty($tasks)): ?>
                             <tr>
                                 <td colspan="<?= $canDeleteTask ? 8 : 7 ?>" style="text-align:center; padding: 40px; color: var(--gray-500);">No tasks yet.</td>
@@ -470,29 +491,61 @@ if (!empty($tasks)) {
                         </select>
                     </div>
                     <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px;">
-                        <label class="form-label">Schedule Date</label>
-                        <div class="date-field">
-                            <button type="button" class="select-dropdown-trigger" onclick="toggleDatePicker(this)">
-                                <i class="fas fa-calendar-days"></i>
-                                <span id="task_date_label"><?= htmlspecialchars((new DateTime())->format('m/d/Y')) ?></span>
-                            </button>
-                            <div class="date-picker-panel" data-for="task_date">
-                                <div class="date-picker-header">
-                                    <button type="button" class="date-picker-nav" onclick="navigateDatePicker(this, -1)"><i class="fas fa-chevron-left"></i></button>
-                                    <span class="date-picker-month-label"></span>
-                                    <button type="button" class="date-picker-nav" onclick="navigateDatePicker(this, 1)"><i class="fas fa-chevron-right"></i></button>
+                        <label class="form-label">Schedule Date &amp; Time <span style="font-weight: normal; color: var(--gray-500);">(time optional)</span></label>
+                        <div class="task-schedule-fields">
+                            <div class="date-field task-schedule-date">
+                                <button type="button" class="select-dropdown-trigger" onclick="toggleDatePicker(this)">
+                                    <i class="fas fa-calendar-days"></i>
+                                    <span id="task_date_label"><?= htmlspecialchars((new DateTime())->format('m/d/Y')) ?></span>
+                                </button>
+                                <div class="date-picker-panel" data-for="task_date">
+                                    <div class="date-picker-header">
+                                        <button type="button" class="date-picker-nav" onclick="navigateDatePicker(this, -1)"><i class="fas fa-chevron-left"></i></button>
+                                        <span class="date-picker-month-label"></span>
+                                        <button type="button" class="date-picker-nav" onclick="navigateDatePicker(this, 1)"><i class="fas fa-chevron-right"></i></button>
+                                    </div>
+                                    <div class="date-picker-weekdays">
+                                        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                                    </div>
+                                    <div class="date-picker-grid"></div>
+                                    <div class="date-picker-footer">
+                                        <button type="button" class="date-picker-today-btn" onclick="goToToday(this)">Today</button>
+                                    </div>
                                 </div>
-                                <div class="date-picker-weekdays">
-                                    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
-                                </div>
-                                <div class="date-picker-grid"></div>
-                                <div class="date-picker-footer">
-                                    <button type="button" class="date-picker-today-btn" onclick="goToToday(this)">Today</button>
-                                </div>
+                                <input type="date" id="task_date" tabindex="-1" aria-hidden="true" min="<?= htmlspecialchars((new DateTime())->format('Y-m-d')) ?>" value="<?= htmlspecialchars((new DateTime())->format('Y-m-d')) ?>">
                             </div>
-                            <input type="date" id="task_date" tabindex="-1" aria-hidden="true" min="<?= htmlspecialchars((new DateTime())->format('Y-m-d')) ?>" value="<?= htmlspecialchars((new DateTime())->format('Y-m-d')) ?>">
+                            <div class="time-field task-time-field" data-for="task_time">
+                                <button type="button" class="select-dropdown-trigger time-picker-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="task_time_panel" aria-label="Choose optional schedule time">
+                                    <i class="fas fa-clock" aria-hidden="true"></i>
+                                    <span class="time-picker-label placeholder">--:-- --</span>
+                                    <i class="fas fa-chevron-down select-dropdown-caret" aria-hidden="true"></i>
+                                </button>
+                                <div id="task_time_panel" class="time-picker-panel" data-for="task_time" role="dialog" aria-label="Choose schedule time">
+                                    <div class="time-picker-header">
+                                        <div>
+                                            <span class="time-picker-title">Choose time</span>
+                                            <span class="time-picker-preview" aria-live="polite">12:00 AM</span>
+                                        </div>
+                                        <button type="button" class="time-picker-clear" data-time-picker-action="clear">Clear</button>
+                                    </div>
+                                    <div class="time-picker-column-labels" aria-hidden="true">
+                                        <span>Hour</span><span></span><span>Minute</span><span>Period</span>
+                                    </div>
+                                    <div class="time-picker-columns">
+                                        <div class="time-picker-list" data-part="hour" role="listbox" aria-label="Hour"></div>
+                                        <span class="time-picker-separator" aria-hidden="true">:</span>
+                                        <div class="time-picker-list" data-part="minute" role="listbox" aria-label="Minute"></div>
+                                        <div class="time-picker-list time-picker-period-list" data-part="period" role="listbox" aria-label="AM or PM"></div>
+                                    </div>
+                                    <div class="time-picker-footer">
+                                        <button type="button" class="btn btn-secondary time-picker-action" data-time-picker-action="cancel">Cancel</button>
+                                        <button type="button" class="btn btn-primary time-picker-action" data-time-picker-action="done">Done</button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="task_time" value="">
+                            </div>
                         </div>
-                        <p style="color: var(--gray-500); font-size: 12.5px; margin: -2px 0 0;">Defaults to today — pick a future date to schedule this task's locations for that day instead.</p>
+                        <p style="color: var(--gray-500); font-size: 12.5px; margin: -2px 0 0;">Defaults to today. Add a time for an exact start; blank time preserves date-only scheduling.</p>
                     </div>
                     <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px;">
                         <label class="form-label">Locations <span class="required-asterisk">*</span></label>
@@ -598,9 +651,10 @@ if (!empty($tasks)) {
     <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/sort-table.js"></script>
     <script src="../scripts/date-picker.js"></script>
+    <script src="../scripts/time-picker.js?v=2"></script>
     <script src="../scripts/filters.js?v=3"></script>
     <script src="../scripts/toast.js?v=2"></script>
-    <script src="../scripts/tasks.js?v=5"></script>
+    <script src="../scripts/tasks.js?v=7"></script>
 </body>
 
 </html>

@@ -33,6 +33,7 @@ if ($taskTypeFilter !== '') {
 // on this page.
 $dbToday = clone $dbNow;
 $dbToday->setTime(0, 0);
+$windowStartSql = taskLocationWindowStartSql('tl');
 
 // Each task's location aggregates, reused for several
 // widgets below. Joins each location to its CURRENT ticket -- the most
@@ -55,13 +56,14 @@ $sql = '
     SELECT t.id, t.name,
            COUNT(tl.id) AS total_locations,
            SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-           SUM(CASE WHEN tl.status = \'in_progress\' AND (CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ') THEN 1 ELSE 0 END) AS in_progress_locations,
-           SUM(CASE WHEN tl.status <> \'completed\' AND CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
-           MAX(CASE WHEN tl.status <> \'completed\' AND CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
-                     AND CAST(DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END) AS DATE) = CAST(SYSDATETIME() AS DATE)
+           SUM(CASE WHEN tl.status = \'in_progress\' AND SYSDATETIME() >= ' . $windowStartSql . ' AND DATEDIFF(SECOND, ' . $windowStartSql . ', SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS in_progress_locations,
+           SUM(CASE WHEN tl.status <> \'completed\' AND SYSDATETIME() >= ' . $windowStartSql . ' AND DATEDIFF(SECOND, ' . $windowStartSql . ', COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
+           MAX(CASE WHEN tl.status <> \'completed\' AND SYSDATETIME() >= ' . $windowStartSql . ' AND DATEDIFF(SECOND, ' . $windowStartSql . ', COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . '
+                     AND CAST(DATEADD(SECOND, ' . TASK_LOCATION_EXPIRATION_SECONDS . ', ' . $windowStartSql . ') AS DATE) = CAST(SYSDATETIME() AS DATE)
                 THEN 1 ELSE 0 END) AS missed_today_flag,
            MIN(tl.start_time) AS earliest_start,
-           MIN(tl.task_date) AS earliest_active_date
+           MIN(CASE WHEN tl.scheduled_at IS NOT NULL THEN tl.scheduled_at ELSE CAST(tl.task_date AS DATETIME2) END) AS earliest_active_date,
+           MIN(tl.scheduled_at) AS earliest_scheduled_at
     FROM ' . T_TASKS . ' t
     LEFT JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
         AND tl.id = (
@@ -77,7 +79,7 @@ $stmt->execute($taskTypeParams);
 $todaysTasks = [];
 foreach ($stmt->fetchAll() as $row) {
     $earliestActiveDate = $row['earliest_active_date'] ? new DateTime($row['earliest_active_date']) : null;
-    $isFutureScheduled = $earliestActiveDate !== null && $earliestActiveDate > $dbToday;
+    $isFutureScheduled = $earliestActiveDate !== null && $earliestActiveDate > $dbNow;
 
     // A task scheduled for a future date isn't part of "today" at all -- it
     // appears under Upcoming Scheduled Tasks instead.
@@ -261,25 +263,43 @@ $barMax = max(1, ...array_column($barMonths, 'count'));
 // $taskTypeSql/$taskTypeParams task-type filter as every other query on
 // this page.
 $upcomingSql = '
-    SELECT TOP 6 t.id, t.name, MIN(tl.task_date) AS next_date, COUNT(tl.id) AS location_count
+    SELECT TOP 6 t.id, t.name,
+           MIN(CASE WHEN tl.scheduled_at IS NOT NULL THEN tl.scheduled_at ELSE CAST(tl.task_date AS DATETIME2) END) AS next_date,
+           MIN(tl.scheduled_at) AS next_scheduled_at,
+           COUNT(tl.id) AS location_count
     FROM ' . T_TASKS . ' t
     JOIN ' . T_TASK_LOCATIONS . ' tl ON tl.task_id = t.id
-    WHERE t.deleted_at IS NULL AND tl.task_date > CAST(SYSDATETIME() AS DATE)' . $taskTypeSql . '
+    WHERE t.deleted_at IS NULL
+      AND (tl.unassigned_at IS NULL OR tl.unassigned_by IS NULL)
+      AND tl.id = (
+          SELECT MAX(tl2.id) FROM ' . T_TASK_LOCATIONS . ' tl2
+          WHERE tl2.task_id = tl.task_id AND tl2.location_id = tl.location_id
+      )
+      AND (CASE WHEN tl.scheduled_at IS NOT NULL THEN tl.scheduled_at ELSE CAST(tl.task_date AS DATETIME2) END) > SYSDATETIME()' . $taskTypeSql . '
     GROUP BY t.id, t.name
     ORDER BY next_date ASC
 ';
 $upcomingStmt = $pdo->prepare($upcomingSql);
 $upcomingStmt->execute($taskTypeParams);
 $upcomingTasks = $upcomingStmt->fetchAll();
+$nextUpcomingScheduleSeconds = null;
+foreach ($upcomingTasks as $upcomingTask) {
+    $upcomingDate = new DateTime($upcomingTask['next_date']);
+    $secondsUntilSchedule = max(1, $upcomingDate->getTimestamp() - $dbNow->getTimestamp());
+    $nextUpcomingScheduleSeconds = $nextUpcomingScheduleSeconds === null
+        ? $secondsUntilSchedule
+        : min($nextUpcomingScheduleSeconds, $secondsUntilSchedule);
+}
 
 // "Tomorrow" reads better than "Aug 29" for the one date most worth
 // calling out specially; anything further off just shows as a plain
 // month/day (no year -- this list never reaches far enough ahead for that
 // to be ambiguous).
-function upcomingDateLabel(DateTime $date, DateTime $today): string
+function upcomingDateLabel(DateTime $date, DateTime $today, bool $hasSpecificTime): string
 {
     $diffDays = (int) $today->diff($date)->format('%r%a');
-    return $diffDays === 1 ? 'Tomorrow' : $date->format('M j');
+    $dateLabel = $diffDays === 1 ? 'Tomorrow' : $date->format('M j');
+    return $hasSpecificTime ? $dateLabel . ' ' . $date->format('g:i A') : $dateLabel;
 }
 ?>
 <!DOCTYPE html>
@@ -294,7 +314,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles/app.css?v=15">
-    <link rel="stylesheet" href="../styles/dashboard.css?v=21">
+    <link rel="stylesheet" href="../styles/dashboard.css?v=22">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -514,7 +534,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
                 <div class="panel-header">
                     <h3>Upcoming Tasks</h3>
                 </div>
-                <div class="recent-list upcoming-list" data-realtime-region="dashboard-upcoming">
+                <div class="recent-list upcoming-list" data-realtime-region="dashboard-upcoming" data-scheduled-wake-seconds="<?= $nextUpcomingScheduleSeconds !== null ? (int) $nextUpcomingScheduleSeconds : 0 ?>">
                     <?php if (empty($upcomingTasks)): ?>
                         <p style="color: var(--gray-500); font-size: 14px;">Nothing scheduled ahead yet.</p>
                     <?php endif; ?>
@@ -528,7 +548,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
                                 <div class="recent-item-name"><?= htmlspecialchars($ut['name']) ?></div>
                                 <div class="recent-item-meta"><?= $locationCount ?> location<?= $locationCount === 1 ? '' : 's' ?></div>
                             </div>
-                            <span class="upcoming-item-date"><?= htmlspecialchars(upcomingDateLabel($nextDate, $dbToday)) ?></span>
+                            <span class="upcoming-item-date"><?= htmlspecialchars(upcomingDateLabel($nextDate, $dbToday, !empty($ut['next_scheduled_at']))) ?></span>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -549,7 +569,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today): string
     <script src="../scripts/select-dropdown.js"></script>
     <script src="../scripts/motion.js"></script>
     <script src="../scripts/session-guard.js"></script>
-    <script src="../scripts/dashboard.js"></script>
+    <script src="../scripts/dashboard.js?v=2"></script>
     <script src="../scripts/logout-confirm.js"></script>
 </body>
 

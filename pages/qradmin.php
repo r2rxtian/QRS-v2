@@ -21,8 +21,10 @@ $pdo = db();
 // "Today" is anchored to the DB server's own clock (matches dashboard.php
 // and api/tasks/create.php), used below to tell a genuinely-overdue
 // not-started task apart from one that's simply scheduled for later.
-$dbToday = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
+$dbNow = new DateTime($pdo->query('SELECT CONVERT(varchar, SYSDATETIME(), 120)')->fetchColumn());
+$dbToday = clone $dbNow;
 $dbToday->setTime(0, 0);
+$windowStartSql = taskLocationWindowStartSql('tl');
 
 // Locations/Progress reflect a task's REAL total assignment -- each
 // location's CURRENT ticket (its most recent task_locations row), still on
@@ -42,14 +44,20 @@ $sql = '
         ' . fullNameSql('uml', 'u') . ' AS creator_name, u.employee_id AS creator_employee_id, u.avatar_initials, u.avatar_color,
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
-        SUM(CASE WHEN tl.status = \'in_progress\' AND (CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ') THEN 1 ELSE 0 END) AS in_progress_locations,
-        SUM(CASE WHEN tl.status <> \'completed\' AND CAST(SYSDATETIME() AS DATE) >= tl.task_date AND DATEDIFF(SECOND, CASE WHEN tl.task_date > CAST(tl.assigned_at AS DATE) THEN CAST(tl.task_date AS DATETIME2) ELSE tl.assigned_at END, COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
-        (SELECT MIN(tl2.task_date) FROM ' . T_TASK_LOCATIONS . ' tl2
+        SUM(CASE WHEN tl.status = \'in_progress\' AND SYSDATETIME() >= ' . $windowStartSql . ' AND DATEDIFF(SECOND, ' . $windowStartSql . ', SYSDATETIME()) < ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS in_progress_locations,
+        SUM(CASE WHEN tl.status <> \'completed\' AND SYSDATETIME() >= ' . $windowStartSql . ' AND DATEDIFF(SECOND, ' . $windowStartSql . ', COALESCE(tl.unassigned_at, SYSDATETIME())) >= ' . TASK_LOCATION_EXPIRATION_SECONDS . ' THEN 1 ELSE 0 END) AS missed_locations,
+        (SELECT MIN(CASE WHEN tl2.scheduled_at IS NOT NULL THEN tl2.scheduled_at ELSE CAST(tl2.task_date AS DATETIME2) END) FROM ' . T_TASK_LOCATIONS . ' tl2
             WHERE tl2.task_id = t.id AND (tl2.unassigned_at IS NULL OR tl2.unassigned_by IS NULL)
               AND tl2.id = (
                   SELECT MAX(tl3.id) FROM ' . T_TASK_LOCATIONS . ' tl3
                   WHERE tl3.task_id = tl2.task_id AND tl3.location_id = tl2.location_id
-              )) AS earliest_active_date
+              )) AS earliest_active_date,
+        (SELECT MIN(tl2.scheduled_at) FROM ' . T_TASK_LOCATIONS . ' tl2
+            WHERE tl2.task_id = t.id AND (tl2.unassigned_at IS NULL OR tl2.unassigned_by IS NULL)
+              AND tl2.id = (
+                  SELECT MAX(tl3.id) FROM ' . T_TASK_LOCATIONS . ' tl3
+                  WHERE tl3.task_id = tl2.task_id AND tl3.location_id = tl2.location_id
+              )) AS earliest_scheduled_at
     FROM ' . T_TASKS . ' t
     LEFT JOIN ' . T_USERS . ' u ON u.id = t.owner_id
     LEFT JOIN ' . T_MASTER_LIST . ' uml ON uml.EmployeeID = u.employee_id
@@ -70,11 +78,21 @@ $statTotal = 0;
 $statOngoing = 0;
 $statCompleted = 0;
 $statNotStarted = 0;
+$nextScheduleSeconds = null;
 
 foreach ($stmt->fetchAll() as $row) {
     $earliestActiveDate = $row['earliest_active_date'] ? new DateTime($row['earliest_active_date']) : null;
-    $isFutureScheduled = $earliestActiveDate !== null && $earliestActiveDate > $dbToday;
-    $scheduledDateLabel = $isFutureScheduled ? $earliestActiveDate->format('M j, Y') : null;
+    // Exact-time schedules later today must become actionable at their
+    // chosen minute; date-only rows still compare correctly at midnight.
+    $isFutureScheduled = $earliestActiveDate !== null && $earliestActiveDate > $dbNow;
+    if ($isFutureScheduled) {
+        $secondsUntilSchedule = max(1, $earliestActiveDate->getTimestamp() - $dbNow->getTimestamp());
+        $nextScheduleSeconds = $nextScheduleSeconds === null ? $secondsUntilSchedule : min($nextScheduleSeconds, $secondsUntilSchedule);
+    }
+    $hasSpecificTime = !empty($row['earliest_scheduled_at']);
+    $scheduledDateLabel = $isFutureScheduled
+        ? $earliestActiveDate->format($hasSpecificTime ? 'M j, Y g:i A' : 'M j, Y')
+        : null;
 
     $status = deriveTaskStatus((int) $row['total_locations'], (int) $row['completed_locations'], (int) $row['in_progress_locations'], $isFutureScheduled, $scheduledDateLabel);
     $row['status'] = $status;
@@ -82,7 +100,9 @@ foreach ($stmt->fetchAll() as $row) {
     // pages/tasks.php's identical comment for the reasoning.
     $row['has_missed'] = (int) $row['missed_locations'] > 0;
     $row['action'] = resolveTaskAction($status, (int) $row['id'], $currentUser['role_name'], $row['has_missed']);
-    $row['schedule_label'] = $earliestActiveDate ? $earliestActiveDate->format('M j, Y') : null;
+    $row['schedule_label'] = $earliestActiveDate
+        ? $earliestActiveDate->format($hasSpecificTime ? 'M j, Y g:i A' : 'M j, Y')
+        : null;
     $row['schedule_weekday'] = $earliestActiveDate ? $earliestActiveDate->format('D') : null;
     $tasks[] = $row;
 
@@ -138,7 +158,7 @@ if (!empty($tasks)) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=16">
+    <link rel="stylesheet" href="../styles/app.css?v=17">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -271,7 +291,7 @@ if (!empty($tasks)) {
                         <th></th>
                     </tr>
                 </thead>
-                <tbody data-realtime-region="all-tasks-table-body">
+                <tbody data-realtime-region="all-tasks-table-body" data-scheduled-wake-seconds="<?= $nextScheduleSeconds !== null ? (int) $nextScheduleSeconds : 0 ?>">
                     <?php if (empty($tasks)): ?>
                         <tr>
                             <td colspan="7" style="text-align:center; padding: 40px; color: var(--gray-500);">No tasks found.</td>
@@ -339,7 +359,7 @@ if (!empty($tasks)) {
     <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/sort-table.js"></script>
     <script src="../scripts/filters.js?v=3"></script>
-    <script src="../scripts/qradmin.js"></script>
+    <script src="../scripts/qradmin.js?v=2"></script>
 </body>
 
 </html>

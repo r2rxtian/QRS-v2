@@ -91,17 +91,22 @@ $checkAssignedElsewhere = $pdo->prepare('
 ');
 $checkLocationType = $pdo->prepare('SELECT location_type FROM ' . T_LOCATIONS . ' WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
 $targetDateStmt = $pdo->prepare('
-    SELECT COALESCE(
-        (SELECT MIN(task_date) FROM ' . T_TASK_LOCATIONS . ' WHERE task_id = ? AND (unassigned_at IS NULL OR unassigned_by IS NULL)),
-        CAST(SYSDATETIME() AS DATE)
-    )
+    SELECT TOP 1 task_date, scheduled_at
+    FROM ' . T_TASK_LOCATIONS . '
+    WHERE task_id = ?
+    -- The first assignment records the original immutable task schedule.
+    -- Include manually unassigned history so removing every location does
+    -- not make a later reassignment lose that original date/time.
+    ORDER BY id ASC
 ');
 $targetDateStmt->execute([$taskId]);
-$targetTaskDate = $targetDateStmt->fetchColumn() ?: date('Y-m-d');
+$targetSchedule = $targetDateStmt->fetch() ?: null;
+$targetTaskDate = $targetSchedule['task_date'] ?? $pdo->query('SELECT CAST(SYSDATETIME() AS DATE)')->fetchColumn();
+$targetScheduledAt = $targetSchedule['scheduled_at'] ?? null;
 
 $insert = $pdo->prepare('
-    INSERT INTO ' . T_TASK_LOCATIONS . ' (task_id, location_id, task_date, assigned_by, status)
-    VALUES (?, ?, ?, ?, \'pending\')
+    INSERT INTO ' . T_TASK_LOCATIONS . ' (task_id, location_id, task_date, scheduled_at, assigned_by, status)
+    VALUES (?, ?, ?, ?, ?, \'pending\')
 ');
 
 $assigned = 0;
@@ -129,7 +134,7 @@ foreach ($locationIds as $locationId) {
         continue;
     }
 
-    $insert->execute([$taskId, $locationId, $targetTaskDate, $authUser['id']]);
+    $insert->execute([$taskId, $locationId, $targetTaskDate, $targetScheduledAt, $authUser['id']]);
     $assigned++;
 }
 
