@@ -67,7 +67,7 @@ $windowStartSql = taskLocationWindowStartSql('tl');
 // (set), not the live clock, so "was this missed" stays true permanently.
 $sql = '
     SELECT
-        t.id, t.name, t.owner_id,
+        t.id, t.name, t.owner_id, t.created_at,
         ' . fullNameSql('uml', 'u') . ' AS creator_name, u.employee_id AS creator_employee_id, u.avatar_initials, u.avatar_color,
         COUNT(tl.id) AS total_locations,
         SUM(CASE WHEN tl.status = \'completed\' THEN 1 ELSE 0 END) AS completed_locations,
@@ -94,7 +94,7 @@ $sql = '
             WHERE tl4.task_id = tl.task_id AND tl4.location_id = tl.location_id
         )
     WHERE t.deleted_at IS NULL
-    GROUP BY t.id, t.name, t.owner_id, u.employee_id, uml.LastName, uml.FirstName, uml.MiddleName, u.avatar_initials, u.avatar_color
+    GROUP BY t.id, t.name, t.owner_id, t.created_at, u.employee_id, uml.LastName, uml.FirstName, uml.MiddleName, u.avatar_initials, u.avatar_color
     ORDER BY t.id DESC';
 
 $stmt = $pdo->prepare($sql);
@@ -110,6 +110,9 @@ $nextScheduleSeconds = null;
 
 foreach ($stmt->fetchAll() as $row) {
     $earliestActiveDate = $row['earliest_active_date'] ? new DateTime($row['earliest_active_date']) : null;
+    $hasSpecificTime = !empty($row['earliest_scheduled_at']);
+    $createdAt = !empty($row['created_at']) ? new DateTime($row['created_at']) : null;
+
     // Exact-time schedules later today must become actionable at their
     // chosen minute; date-only rows still compare correctly because their
     // fallback value is midnight.
@@ -118,9 +121,25 @@ foreach ($stmt->fetchAll() as $row) {
         $secondsUntilSchedule = max(1, $earliestActiveDate->getTimestamp() - $dbNow->getTimestamp());
         $nextScheduleSeconds = $nextScheduleSeconds === null ? $secondsUntilSchedule : min($nextScheduleSeconds, $secondsUntilSchedule);
     }
-    $hasSpecificTime = !empty($row['earliest_scheduled_at']);
+
+    // When the creator did not input a specific time, display the scheduled
+    // date along with the current time when it was created.
+    $displaySchedule = $earliestActiveDate;
+    if ($earliestActiveDate !== null) {
+        if ($hasSpecificTime) {
+            $displaySchedule = $earliestActiveDate;
+        } elseif ($createdAt !== null) {
+            $displaySchedule = clone $earliestActiveDate;
+            $displaySchedule->setTime(
+                (int) $createdAt->format('H'),
+                (int) $createdAt->format('i'),
+                (int) $createdAt->format('s')
+            );
+        }
+    }
+
     $scheduledDateLabel = $isFutureScheduled
-        ? $earliestActiveDate->format($hasSpecificTime ? 'M j, Y g:i A' : 'M j, Y')
+        ? ($displaySchedule ? $displaySchedule->format('M j, Y g:i A') : null)
         : null;
 
     $status = deriveTaskStatus((int) $row['total_locations'], (int) $row['completed_locations'], (int) $row['in_progress_locations'], $isFutureScheduled, $scheduledDateLabel);
@@ -133,10 +152,11 @@ foreach ($stmt->fetchAll() as $row) {
     // status <> 'completed' condition), so this only ever applies to a
     // task that isn't already fully Completed.
     $row['has_missed'] = (int) $row['missed_locations'] > 0;
-    $row['schedule_label'] = $earliestActiveDate
-        ? $earliestActiveDate->format($hasSpecificTime ? 'M j, Y g:i A' : 'M j, Y')
+    $row['schedule_label'] = $displaySchedule
+        ? $displaySchedule->format('M j, Y g:i A')
         : null;
-    $row['schedule_weekday'] = $earliestActiveDate ? $earliestActiveDate->format('D') : null;
+    $row['schedule_weekday'] = $displaySchedule ? $displaySchedule->format('D') : null;
+    $row['schedule_sort_value'] = $displaySchedule ? $displaySchedule->format('Y-m-d H:i:s') : '';
     $tasks[] = $row;
 
     $statTotal++;
@@ -400,7 +420,7 @@ if (!empty($tasks)) {
                                     <?php endif; ?>
                                 </td>
                                 <td><span class="tag"><?= htmlspecialchars($completionLabel) ?></span></td>
-                                <td>
+                                <td data-sort-value="<?= htmlspecialchars($task['schedule_sort_value'] ?? '') ?>">
                                     <?php if ($task['schedule_label']): ?>
                                         <span class="schedule-date-cell"><i class="fas fa-calendar-days"></i> <?= htmlspecialchars($task['schedule_label']) ?> <span class="schedule-date-weekday">(<?= htmlspecialchars($task['schedule_weekday']) ?>)</span></span>
                                     <?php else: ?>
