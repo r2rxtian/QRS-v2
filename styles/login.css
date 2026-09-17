@@ -527,6 +527,14 @@ body {
    Animations
    ========================================================================== */
 
+/* A direct visit may spend time loading scripts and fonts after this CSS has
+   started its entrance animations. Keep their first frame until login.js is
+   ready, so the animation is visible on navigation as well as on refresh. */
+html.login-entrance-pending body,
+html.login-entrance-pending body * {
+    animation-play-state: paused !important;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }

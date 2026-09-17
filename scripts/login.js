@@ -117,4 +117,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (form) {
         form.addEventListener('submit', handleLoginSubmit);
     }
+
+    // Give the browser one painted frame at the paused starting state before
+    // releasing the CSS entrance animations. This also works on a fast reload.
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            document.documentElement.classList.remove('login-entrance-pending');
+        });
+    });
 });

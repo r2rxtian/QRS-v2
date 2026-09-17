@@ -14,11 +14,12 @@ if (isLoggedIn()) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Task Check — Login</title>
+    <script>document.documentElement.classList.add('login-entrance-pending');</script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/login.css?v=6">
+    <link rel="stylesheet" href="../styles/login.css?v=7">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -113,7 +114,7 @@ if (isLoggedIn()) {
 
     </div>
 
-    <script src="../scripts/login.js"></script>
+    <script src="../scripts/login.js?v=2"></script>
 </body>
 
 </html>
