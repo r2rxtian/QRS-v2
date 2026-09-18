@@ -24,6 +24,12 @@ sweepResolvedLocations(db());
 
 $shellUser = currentUser();
 $currentPage = basename($_SERVER['PHP_SELF']);
+// Only Scan QR uses HTTPS on the LAN. Its links to other pages should return
+// to the site's normal HTTP origin instead of inheriting the current scheme.
+$scanHttpPageBase = '';
+if ($currentPage === 'scan.php' && in_array(strtolower($_SERVER['HTTP_HOST'] ?? ''), ['10.2.0.8', '10.2.0.8:443'], true)) {
+    $scanHttpPageBase = 'http://10.2.0.8' . rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/QRS_new/pages/scan.php'), '/\\') . '/';
+}
 // Admin gets Task Manager (create/manage); User gets All Tasks (read-only
 // browse, routed into scan.php) -- one task-list page per role, not both,
 // since tasks.php/qradmin.php each redirect the other role away.
@@ -58,7 +64,7 @@ $avatarPhotoUrl = employeePhotoUrl($shellUser['employee_id']);
             <div class="nav-section-label">Main Menu</div>
             <nav class="sidebar-nav">
                 <?php foreach ($mainNavItems as $item): ?>
-                    <a href="<?= htmlspecialchars($item['href']) ?>" class="sidebar-link<?= $currentPage === $item['href'] ? ' active' : '' ?>" title="<?= htmlspecialchars($item['label']) ?>" aria-label="<?= htmlspecialchars($item['label']) ?>">
+                    <a href="<?= htmlspecialchars($scanHttpPageBase !== '' && $item['href'] !== 'scan.php' ? $scanHttpPageBase . $item['href'] : $item['href']) ?>" class="sidebar-link<?= $currentPage === $item['href'] ? ' active' : '' ?>" title="<?= htmlspecialchars($item['label']) ?>" aria-label="<?= htmlspecialchars($item['label']) ?>">
                         <i class="fas <?= htmlspecialchars($item['icon']) ?>"></i> <?= htmlspecialchars($item['label']) ?>
                     </a>
                 <?php endforeach; ?>
@@ -67,10 +73,10 @@ $avatarPhotoUrl = employeePhotoUrl($shellUser['employee_id']);
             <?php if ($shellUser['role_name'] === ROLE_ADMIN): ?>
                 <div class="nav-section-label">General</div>
                 <nav class="sidebar-nav">
-                    <a href="user_management.php" class="sidebar-link<?= $currentPage === 'user_management.php' ? ' active' : '' ?>" title="User Management" aria-label="User Management">
+                    <a href="<?= htmlspecialchars($scanHttpPageBase . 'user_management.php') ?>" class="sidebar-link<?= $currentPage === 'user_management.php' ? ' active' : '' ?>" title="User Management" aria-label="User Management">
                         <i class="fas fa-users-gear"></i> User Management
                     </a>
-                    <a href="audit_logs.php" class="sidebar-link<?= $currentPage === 'audit_logs.php' ? ' active' : '' ?>" title="Audit Logs" aria-label="Audit Logs">
+                    <a href="<?= htmlspecialchars($scanHttpPageBase . 'audit_logs.php') ?>" class="sidebar-link<?= $currentPage === 'audit_logs.php' ? ' active' : '' ?>" title="Audit Logs" aria-label="Audit Logs">
                         <i class="fas fa-clock-rotate-left"></i> Audit Logs
                     </a>
                 </nav>

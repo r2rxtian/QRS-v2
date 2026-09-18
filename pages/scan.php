@@ -1,4 +1,15 @@
 <?php
+// Camera access on the LAN requires HTTPS. Redirect only the configured LAN
+// address; localhost remains on HTTP because browsers already trust it for
+// camera access and its HTTPS certificate may not be valid.
+$scanHost = strtolower($_SERVER['HTTP_HOST'] ?? '');
+$scanIsHttps = !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
+if (!$scanIsHttps && in_array($scanHost, ['10.2.0.8', '10.2.0.8:80'], true)) {
+    $scanRequestUri = $_SERVER['REQUEST_URI'] ?? '/QRS_new/pages/scan.php';
+    header('Location: https://10.2.0.8' . str_replace(["\r", "\n"], '', $scanRequestUri), true, 302);
+    exit;
+}
+
 require_once __DIR__ . '/../auth/session.php';
 $currentUser = requireLogin();
 
@@ -77,7 +88,7 @@ if ($taskId <= 0) {
             </div>
             <?php if (roleHasCapability($currentUser['role_name'], 'task.create')): ?>
                 <div class="topbar-actions">
-                    <a href="tasks.php" class="btn btn-primary"><i class="fas fa-circle-plus"></i> Create New Task</a>
+                    <a href="<?= htmlspecialchars($scanHttpPageBase . 'tasks.php') ?>" class="btn btn-primary"><i class="fas fa-circle-plus"></i> Create New Task</a>
                 </div>
             <?php endif; ?>
         </div>
