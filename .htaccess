@@ -1,21 +1,18 @@
 # QR Task Check — Apache Configuration & Routing
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteBase /QRS_new/
 
     # 1. Allow existing files and directories to be served directly
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # 2. Map root-level page requests (e.g. /dashboard.php or /dashboard) to pages/<name>.php if that page exists
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond pages/$1.php -f
+    # 2. Map root-level page requests (e.g. /tasks.php or /tasks) to pages/<name>.php if that page exists
+    RewriteCond %{DOCUMENT_ROOT}/QRS_new/pages/$1.php -f
     RewriteRule ^([^/]+)\.php$ pages/$1.php [L]
 
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond pages/$1.php -f
+    RewriteCond %{DOCUMENT_ROOT}/QRS_new/pages/$1.php -f
     RewriteRule ^([^/]+)$ pages/$1.php [L]
 
     # 3. For any other request that does not match an existing file or directory,
@@ -24,3 +21,7 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ pages/404.php [L]
 </IfModule>
+
+# Fallback ErrorDocuments for standard Apache error handling
+ErrorDocument 404 /QRS_new/pages/404.php
+ErrorDocument 403 /QRS_new/pages/403.php
