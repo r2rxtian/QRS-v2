@@ -31,11 +31,12 @@ $stmt = $pdo->query('
     FROM ' . T_AUDIT_LOG . ' al
     LEFT JOIN ' . T_USERS . ' u ON u.id = al.user_id
     LEFT JOIN ' . T_MASTER_LIST . ' ml ON ml.EmployeeID = u.employee_id
+    WHERE al.action <> \'task_location.expire_sweep\'
     ORDER BY al.created_at DESC, al.id DESC
 ');
 $auditRows = $stmt->fetchAll();
 
-$totalEvents = (int) $pdo->query('SELECT COUNT(*) FROM ' . T_AUDIT_LOG)->fetchColumn();
+$totalEvents = (int) $pdo->query('SELECT COUNT(*) FROM ' . T_AUDIT_LOG . ' WHERE action <> \'task_location.expire_sweep\'')->fetchColumn();
 
 $failedLoginsToday = (int) $pdo->query("
     SELECT COUNT(*) FROM " . T_AUDIT_LOG . "

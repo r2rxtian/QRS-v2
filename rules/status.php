@@ -220,15 +220,7 @@ function sweepResolvedLocations(PDO $pdo): void
 
     // The countdown endpoint and this fallback now share one transition and
     // one expiration constant.
-    $expired = expireDueTaskLocations($pdo);
-
-    if ($expired) {
-        require_once __DIR__ . '/../authz/audit.php';
-        writeAuditLog(null, 'task_location.expire_sweep', 'task_location', null, [
-            'count' => count($expired),
-            'task_location_ids' => array_column($expired, 'id'),
-        ]);
-    }
+    expireDueTaskLocations($pdo);
 
     $pdo->exec('
         UPDATE ' . T_TASK_LOCATIONS . '
