@@ -9,10 +9,9 @@ require_once __DIR__ . '/../auth/csrf.php';
 
 $isAdmin = $currentUser['role_name'] === ROLE_ADMIN;
 
-// Admin-only page (no User-role equivalent, unlike Task Manager/qradmin.php)
-// -- send anyone else back to the dashboard instead of a broken empty page.
+// Admin-only page -- trigger custom 403 Forbidden page for non-administrators
 if (!$isAdmin) {
-    header('Location: dashboard.php');
+    require_once __DIR__ . '/403.php';
     exit;
 }
 

@@ -8,12 +8,9 @@ require_once __DIR__ . '/../authz/capabilities.php';
 require_once __DIR__ . '/../authz/audit.php';
 require_once __DIR__ . '/../auth/csrf.php';
 
-// Admin-only, same pattern as user_management.php -- audit events include
-// other people's IP addresses and action details, not something a User
-// role should see (that role has no equivalent page at all, unlike Task
-// Manager/qradmin.php's admin/user split).
+// Admin-only page -- trigger custom 403 Forbidden page for non-administrators
 if ($currentUser['role_name'] !== ROLE_ADMIN) {
-    header('Location: dashboard.php');
+    require_once __DIR__ . '/403.php';
     exit;
 }
 
