@@ -61,14 +61,14 @@ function fullNameSql(string $alias = 'ml', string $userAlias = 'u'): string
     return "CASE WHEN $alias.LastName IS NOT NULL THEN " . masterListNameSql($alias) . " ELSE $userAlias.employee_id END";
 }
 
-// Internal HR server hosting each employee's photo, filed by their
-// EmployeeID (e.g. "2024-40484.jpg") -- same identifier as
-// qrs_users.employee_id / T_MASTER_LIST.EmployeeID. Not every employee has
-// a photo uploaded there, so every <img> using this MUST have an onerror
-// fallback to the initials-avatar (placehold.co) URL -- see
-// employeeAvatarUrl()'s callers (components/appshell_start.php,
-// pages/tasks.php, pages/qradmin.php).
-define('EMP_PHOTO_BASE_URL', 'http://10.2.0.8/lrnph/emp_photos/');
+// Internal HR photos are hosted at the web-server root and filed by
+// EmployeeID (e.g. "2024-40484.jpg"). Keep this URL root-relative so it
+// automatically follows the current page's scheme and host. A hard-coded
+// http:// URL is blocked as mixed content when mobile users open Scan QR over
+// HTTPS, which incorrectly triggers the initials fallback despite the photo
+// existing. Not every employee has a photo, so callers still retain their
+// onerror initials fallback for genuinely missing files.
+define('EMP_PHOTO_BASE_URL', '/lrnph/emp_photos/');
 
 function employeePhotoUrl(?string $employeeId): ?string
 {
