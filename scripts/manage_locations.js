@@ -35,7 +35,13 @@ async function refreshLocationsView() {
     replacements.forEach(([currentSelector, nextSelector]) => {
         const current = document.querySelector(currentSelector);
         const next = nextDocument.querySelector(nextSelector);
-        if (current && next) current.replaceWith(next);
+        if (current && next) {
+            if (window.QRSRealtime?.replaceRegion) {
+                window.QRSRealtime.replaceRegion(current, next);
+            } else {
+                current.replaceWith(next);
+            }
+        }
     });
 
     window.__pagers?.locationsTable?.refresh();

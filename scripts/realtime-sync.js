@@ -4,6 +4,74 @@
     let refreshPromise = null;
     let refreshQueued = false;
     let debounceTimer = null;
+    const UPDATE_FLASH_CLASS = 'qrs-update-flash';
+
+    function stableMarkup(element) {
+        const clone = element.cloneNode(true);
+        clone.classList?.remove(UPDATE_FLASH_CLASS);
+        clone.querySelectorAll?.('.' + UPDATE_FLASH_CLASS).forEach(node => node.classList.remove(UPDATE_FLASH_CLASS));
+        clone.querySelectorAll?.('[data-expiration-countdown]').forEach(countdown => {
+            countdown.textContent = '';
+            countdown.removeAttribute('data-countdown-ready');
+            countdown.removeAttribute('data-remaining-seconds');
+            countdown.removeAttribute('aria-label');
+        });
+        return clone.outerHTML.trim();
+    }
+
+    function rowKey(row, index) {
+        return row.dataset.taskId
+            || row.dataset.id
+            || row.dataset.locationId
+            || row.dataset.userId
+            || 'row-index-' + index;
+    }
+
+    function prepareUpdateHighlights(current, next) {
+        const highlighted = [];
+
+        if (next.tagName === 'TBODY') {
+            const currentRows = new Map(Array.from(current.rows).map((row, index) => [rowKey(row, index), stableMarkup(row)]));
+            Array.from(next.rows).forEach((row, index) => {
+                const previousMarkup = currentRows.get(rowKey(row, index));
+                if (previousMarkup === undefined || previousMarkup !== stableMarkup(row)) {
+                    row.classList.add(UPDATE_FLASH_CLASS);
+                    highlighted.push(row);
+                }
+            });
+        } else if (next.classList.contains('stat-tiles')) {
+            const currentTiles = Array.from(current.querySelectorAll('.stat-tile'));
+            Array.from(next.querySelectorAll('.stat-tile')).forEach((tile, index) => {
+                if (!currentTiles[index] || stableMarkup(currentTiles[index]) !== stableMarkup(tile)) {
+                    tile.classList.add(UPDATE_FLASH_CLASS);
+                    highlighted.push(tile);
+                }
+            });
+        }
+
+        return highlighted;
+    }
+
+    function clearUpdateHighlights(elements) {
+        window.setTimeout(() => {
+            elements.forEach(element => element.classList.remove(UPDATE_FLASH_CLASS));
+        }, 1250);
+    }
+
+    function replaceRegion(current, next) {
+        const highlighted = prepareUpdateHighlights(current, next);
+        current.replaceWith(next);
+        clearUpdateHighlights(highlighted);
+        return next;
+    }
+
+    function flashElement(element) {
+        if (!element || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        element.classList.remove(UPDATE_FLASH_CLASS);
+        void element.offsetWidth;
+        element.classList.add(UPDATE_FLASH_CLASS);
+        clearUpdateHighlights([element]);
+    }
 
     function currentModule() {
         const page = location.pathname.split('/').pop();
@@ -65,7 +133,7 @@
                 // Region attributes can carry live state too (for example,
                 // seconds until the next exact schedule). Do not discard an
                 // attribute-only update as if the region were unchanged.
-                if (current.outerHTML.trim() === next.outerHTML.trim()) {
+                if (stableMarkup(current) === stableMarkup(next)) {
                     return;
                 }
 
@@ -102,7 +170,7 @@
                     }
                 }
 
-                current.replaceWith(next);
+                replaceRegion(current, next);
             });
 
             if (tableChanged) {
@@ -142,6 +210,8 @@
     window.QRSRealtime = {
         refresh: refreshLiveRegions,
         schedule: scheduleRefresh,
+        replaceRegion,
+        flash: flashElement,
     };
 
     if (!window.EventSource) return;

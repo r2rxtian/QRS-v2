@@ -35,6 +35,14 @@ function showTaskDetailMessage(text, type) {
     body.prepend(el);
 }
 
+function taskDetailLoadingMarkup() {
+    return '<div class="qrs-skeleton-stack" aria-hidden="true">' +
+        '<div class="qrs-skeleton-card"><span class="qrs-skeleton qrs-skeleton-title"></span><span class="qrs-skeleton"></span></div>' +
+        '<div class="qrs-skeleton-card"><span class="qrs-skeleton qrs-skeleton-short"></span><span class="qrs-skeleton"></span></div>' +
+        '<div class="qrs-skeleton-card"><span class="qrs-skeleton qrs-skeleton-title"></span><span class="qrs-skeleton qrs-skeleton-short"></span></div>' +
+        '</div><span class="qrs-loading-status">Loading task details</span>';
+}
+
 async function openTaskDetailModal(taskId, taskName) {
     const modal = document.getElementById('taskDetailModal');
     const body = document.getElementById('taskDetailBody');
@@ -42,7 +50,8 @@ async function openTaskDetailModal(taskId, taskName) {
 
     modal.dataset.taskId = taskId;
     taskNameEl.textContent = taskName || '';
-    body.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--gray-500);">Loading…</div>';
+    body.setAttribute('aria-busy', 'true');
+    body.innerHTML = taskDetailLoadingMarkup();
     modal.classList.add('active');
 
     await refreshTaskDetailModal();
@@ -79,8 +88,10 @@ async function refreshTaskDetailModal() {
     try {
         const response = await fetch('../api/tasks/detail_partial.php?task_id=' + encodeURIComponent(taskId));
         body.innerHTML = await response.text();
+        body.removeAttribute('aria-busy');
         armTaskDetailScheduleWake();
     } catch (err) {
+        body.removeAttribute('aria-busy');
         body.innerHTML = '<p style="color: var(--danger);">Could not load task details. Please try again.</p>';
     }
 }

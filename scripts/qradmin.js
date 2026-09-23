@@ -26,13 +26,23 @@ async function refreshAllTasksView() {
     const incoming = new DOMParser().parseFromString(await response.text(), 'text/html');
     const currentStats = document.querySelector('.stat-tiles');
     const nextStats = incoming.querySelector('.stat-tiles');
-    if (currentStats && nextStats) currentStats.replaceWith(nextStats);
+    if (currentStats && nextStats) {
+        if (window.QRSRealtime?.replaceRegion) {
+            window.QRSRealtime.replaceRegion(currentStats, nextStats);
+        } else {
+            currentStats.replaceWith(nextStats);
+        }
+    }
 
     const currentBody = document.querySelector('#allTasksTable tbody');
     const nextBody = incoming.querySelector('#allTasksTable tbody');
     if (!currentBody || !nextBody) throw new Error('The refreshed task table was not available.');
     nextBody.dataset.skipMountAnimation = 'true';
-    currentBody.replaceWith(nextBody);
+    if (window.QRSRealtime?.replaceRegion) {
+        window.QRSRealtime.replaceRegion(currentBody, nextBody);
+    } else {
+        currentBody.replaceWith(nextBody);
+    }
     window.__pagers?.allTasksTable?.refresh({ preservePage: true });
     armAllTasksScheduleWake();
 }

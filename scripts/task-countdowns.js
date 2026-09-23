@@ -68,6 +68,7 @@
                     badge.className = 'status-badge status-missed';
                     badge.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Missed Out';
                 }
+                window.QRSRealtime?.flash(taskRow);
             }
         }
 

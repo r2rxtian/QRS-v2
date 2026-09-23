@@ -178,7 +178,7 @@ if (!empty($tasks)) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/app.css?v=28">
+    <link rel="stylesheet" href="../styles/app.css?v=29">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -379,7 +379,7 @@ if (!empty($tasks)) {
     <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/sort-table.js"></script>
     <script src="../scripts/filters.js?v=3"></script>
-    <script src="../scripts/qradmin.js?v=2"></script>
+<script src="../scripts/qradmin.js?v=3"></script>
 </body>
 
 </html>

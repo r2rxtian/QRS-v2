@@ -186,6 +186,7 @@ async function changeUserRole(button) {
             const actionLabel = row.querySelector('[data-role-action-label]');
             if (actionLabel) actionLabel.textContent = 'Make ' + (newRole === 'Admin' ? 'User' : 'Admin');
             if (typeof applyTableFilters === 'function') applyTableFilters('usersTable');
+            window.QRSRealtime?.flash(row);
             showToast(data.message, 'success');
         } else {
             showToast(data.message, 'error');
@@ -225,6 +226,7 @@ async function changeUserStatus(button) {
             const actionLabel = row.querySelector('[data-status-action-label]');
             if (actionLabel) actionLabel.textContent = willBeActive ? 'Deactivate' : 'Activate';
             if (typeof applyTableFilters === 'function') applyTableFilters('usersTable');
+            window.QRSRealtime?.flash(row);
             showToast(data.message, 'success');
         } else {
             showToast(data.message, 'error');
