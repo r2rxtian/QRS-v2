@@ -628,7 +628,7 @@ $pendingOrActiveRows = array_values(array_filter($assignedRows, fn($r) => $r['st
     <script src="../scripts/sidebar-drawer.js"></script>
     <script src="../scripts/select-dropdown.js"></script>
     <script src="../scripts/toast.js?v=2"></script>
-    <script src="../scripts/scan.js?v=7"></script>
+    <script src="../scripts/scan.js?v=8"></script>
 </body>
 
 </html>

@@ -588,8 +588,6 @@ function capturePhoto() {
         img.src = URL.createObjectURL(blob);
         img.className = 'photo-preview';
         document.getElementById('capturedPhotos').appendChild(img);
-
-        showToast(`Photo ${capturedPhotosData.length} captured! You can take more or click Done.`, 'success');
     }, 'image/jpeg', 0.9);
 }
 
