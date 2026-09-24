@@ -45,6 +45,7 @@ if (!$person) {
 $existingStmt = $pdo->prepare('SELECT id FROM ' . T_USERS . ' WHERE employee_id = ? AND deleted_at IS NULL');
 $existingStmt->execute([$person['employee_id']]);
 $alreadyExists = (bool) $existingStmt->fetchColumn();
+$departmentManaged = isItDepartmentAdmin($person['department'] ?? null);
 
 echo json_encode([
     'success' => true,
@@ -55,6 +56,7 @@ echo json_encode([
         'position' => $person['position'],
         'has_login' => $person['lrnph_status'] === 'active',
         'already_exists' => $alreadyExists,
+        'department_managed' => $departmentManaged,
         'photo_url' => employeePhotoUrl($person['employee_id']),
     ],
 ]);

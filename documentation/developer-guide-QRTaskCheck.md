@@ -1,6 +1,6 @@
 # QR Task Check — Developer Technical Guide & Architecture Reference
 
-Welcome to the **QR Task Check (QRS v2)** Developer Guide. This technical manual is intended for software engineers, systems administrators, and DevOps personnel maintaining, extending, or integrating with the QR Task Check codebase.
+Welcome to the **QR Task Check (QRTS)** Developer Guide. This technical manual is intended for software engineers, systems administrators, and DevOps personnel maintaining, extending, or integrating with the QR Task Check codebase.
 
 ---
 
@@ -51,7 +51,7 @@ Welcome to the **QR Task Check (QRS v2)** Developer Guide. This technical manual
 ## 2. Directory Structure & File Map
 
 ```text
-c:\xampp\htdocs\QRS_new\
+c:\xampp\htdocs\QRTS\
 ├── api/                           # RESTful JSON & partial rendering endpoints
 │   ├── auth/                      # Session heartbeat & authentication helpers
 │   ├── dashboard/                 # Dashboard chart & calendar AJAX partials
@@ -242,7 +242,7 @@ Task status is computed on the fly via `deriveTaskStatus($total, $completed, $in
 
 ## 5. Security & Access Control (RBAC)
 
-The system enforces a strict 2-role capability matrix defined in [`authz/capabilities.php`](file:///c:/xampp/htdocs/QRS_new/authz/capabilities.php):
+The system enforces a strict 2-role capability matrix defined in [`authz/capabilities.php`](file:///c:/xampp/htdocs/QRTS/authz/capabilities.php):
 
 ```php
 const ROLE_ADMIN = 'Admin';
@@ -325,7 +325,7 @@ Instead of resource-heavy WebSocket servers or high-frequency polling, QR Task C
        handleRealtimeUpdate(data);
    });
    ```
-2. [`api/realtime/events.php`](file:///c:/xampp/htdocs/QRS_new/api/realtime/events.php) keeps the HTTP connection open, streaming lightweight diff events whenever a checkpoint transitions state:
+2. [`api/realtime/events.php`](file:///c:/xampp/htdocs/QRTS/api/realtime/events.php) keeps the HTTP connection open, streaming lightweight diff events whenever a checkpoint transitions state:
    ```text
    event: sync
    data: {"type":"location_completed","task_id":12,"location_id":45}
@@ -366,9 +366,9 @@ Because native `<select>` popups cannot be custom-styled, the application uses c
 ### Quick Setup Steps
 1. Clone the repository into your web server root:
    ```powershell
-   git clone <repo_url> C:\xampp\htdocs\QRS_new
+   git clone <repo_url> C:\xampp\htdocs\QRTS
    ```
-2. Configure database credentials in [`conn/config.php`](file:///c:/xampp/htdocs/QRS_new/conn/config.php):
+2. Configure database credentials in [`conn/config.php`](file:///c:/xampp/htdocs/QRTS/conn/config.php):
    ```php
    define('QRS_DB_HOST', 'localhost'); // or remote SQL Server IP
    define('QRS_DB_NAME', 'LRNPH_OJT');
@@ -383,7 +383,7 @@ Because native `<select>` popups cannot be custom-styled, the application uses c
    node -c scripts/scan.js
    ```
 5. Access the application in your browser:
-   `http://localhost/QRS_new/pages/dashboard.php`
+   `http://localhost/QRTS/pages/dashboard.php`
 
 ---
 
@@ -391,7 +391,7 @@ Because native `<select>` popups cannot be custom-styled, the application uses c
 
 ### 1. Camera / QR Scanner Not Opening
 * **Root Cause**: The HTML5 `getUserMedia` API requires a **Secure Context** (`https://` or `localhost`).
-* **Fix**: If accessing the dev server from a physical mobile device over LAN (e.g. `http://192.168.1.50/QRS_new`), the browser will block the camera. Configure an SSL certificate in Apache or use port forwarding / ngrok to provide HTTPS.
+* **Fix**: If accessing the dev server from a physical mobile device over LAN (e.g. `http://192.168.1.50/QRTS`), the browser will block the camera. Configure an SSL certificate in Apache or use port forwarding / ngrok to provide HTTPS.
 
 ### 2. SQL Server UTF-8 Character Corruption
 * **Root Cause**: Accented names or non-ASCII characters appearing garbled.

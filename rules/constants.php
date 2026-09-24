@@ -41,6 +41,16 @@ define('T_MASTER_LIST', 'dbo.lrn_master_list');
 // counters) still lives only in qrs_users.
 define('T_LRNPH_USERS', 'dbo.lrnph_users');
 
+// Employees in this HR-managed department receive effective Admin access
+// automatically. Their QRS rows exist only as internal actor identifiers for
+// tasks/audit logs and are intentionally excluded from User Management.
+define('IT_ADMIN_DEPARTMENT', 'Information Technology Department - LRN');
+
+function isItDepartmentAdmin(?string $department): bool
+{
+    return trim((string) $department) === IT_ADMIN_DEPARTMENT;
+}
+
 // "Lastname, Firstname Middlename" (this app's existing display
 // convention) built straight from a T_MASTER_LIST row aliased $alias --
 // used directly when master list IS the driving table (e.g.

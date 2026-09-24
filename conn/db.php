@@ -1,6 +1,6 @@
 <?php
 /**
- * Shared PDO connection factory for QRS v2 (SQL Server via pdo_sqlsrv).
+ * Shared PDO connection factory for QRTS (SQL Server via pdo_sqlsrv).
  * Credentials live in conn/config.php, protected by conn/.htaccess
  * ("Require all denied") so they're never web-reachable directly, but
  * still travel with the project on a plain FTP deploy.

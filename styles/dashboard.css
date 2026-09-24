@@ -165,7 +165,8 @@
     position: absolute;
     left: 50%;
     bottom: 0;
-    transform: translateX(-50%);
+    transform: translateX(-50%) scale(var(--dome-scale, 1));
+    transform-origin: bottom center;
     height: 78%;
     aspect-ratio: 2 / 1; /* width follows height 2:1, keeping the semicircle proportion */
     /* 50% horizontal / 100% vertical on the two top corners = a perfect

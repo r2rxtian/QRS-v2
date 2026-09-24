@@ -80,8 +80,13 @@ async function lookupUserBiometrics() {
         // they're already set up" view instead of showing controls that
         // can't be used.
         const warningEl = document.getElementById('addUserWarning');
+        const departmentManaged = person.department_managed === true;
         const alreadyExists = person.already_exists;
-        if (alreadyExists) {
+        if (departmentManaged) {
+            warningEl.textContent = 'This IT administrator receives access automatically and is hidden from User Management.';
+            warningEl.style.display = 'block';
+            submitBtn.disabled = true;
+        } else if (alreadyExists) {
             warningEl.textContent = 'This person already has a QRS account.';
             warningEl.style.display = 'block';
             submitBtn.disabled = true;
@@ -95,10 +100,11 @@ async function lookupUserBiometrics() {
         }
 
         document.getElementById('addUserResult').style.display = 'flex';
-        document.getElementById('addUserDivider').style.display = alreadyExists ? 'none' : 'block';
-        document.getElementById('addUserRoleGroup').style.display = alreadyExists ? 'none' : 'flex';
-        document.getElementById('addUserInfoBanner').style.display = alreadyExists ? 'none' : 'flex';
-        submitBtn.style.display = alreadyExists ? 'none' : '';
+        const cannotAdd = alreadyExists || departmentManaged;
+        document.getElementById('addUserDivider').style.display = cannotAdd ? 'none' : 'block';
+        document.getElementById('addUserRoleGroup').style.display = cannotAdd ? 'none' : 'flex';
+        document.getElementById('addUserInfoBanner').style.display = cannotAdd ? 'none' : 'flex';
+        submitBtn.style.display = cannotAdd ? 'none' : '';
     } catch (err) {
         showMessage('Could not reach the server. Please try again.', 'error');
     } finally {

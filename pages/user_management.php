@@ -17,7 +17,7 @@ if (!$isAdmin) {
 
 // Every QRS account, real name/photo derived live from the master list same
 // as everywhere else in the app.
-$stmt = db()->query('
+$stmt = db()->prepare('
     SELECT u.id, u.employee_id, u.role_id, u.is_active, u.last_login_at,
            r.name AS role_name,
            ' . fullNameSql('ml', 'u') . ' AS full_name
@@ -25,8 +25,10 @@ $stmt = db()->query('
     LEFT JOIN ' . T_ROLES . ' r ON r.id = u.role_id
     LEFT JOIN ' . T_MASTER_LIST . ' ml ON ml.EmployeeID = u.employee_id
     WHERE u.deleted_at IS NULL
+      AND (ml.Department IS NULL OR LTRIM(RTRIM(ml.Department)) <> ?)
     ORDER BY r.name, full_name
 ');
+$stmt->execute([IT_ADMIN_DEPARTMENT]);
 $manageableUsers = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -262,7 +264,7 @@ $manageableUsers = $stmt->fetchAll();
     <script src="../scripts/kebab.js"></script>
     <script src="../scripts/pagination.js?v=7"></script>
     <script src="../scripts/filters.js?v=3"></script>
-    <script src="../scripts/user_management.js?v=3"></script>
+    <script src="../scripts/user_management.js?v=4"></script>
 </body>
 
 </html>

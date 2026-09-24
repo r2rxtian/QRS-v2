@@ -1,6 +1,6 @@
 <?php
 /**
- * QRS v2 DB credentials. Kept inside conn/ (protected by conn/.htaccess,
+ * QRTS DB credentials. Kept inside conn/ (protected by conn/.htaccess,
  * "Require all denied") so this travels with a plain FTP upload to any
  * new server instead of needing to be recreated by hand each time.
  */
@@ -20,4 +20,3 @@ define('QRS_DB_NAME', 'LRNPH_OJT');
 define('QRS_DB_TABLE_PREFIX', 'qrs_');   // tables live in dbo, prefixed to avoid colliding with existing OJT tables
 define('QRS_DB_USER', 'acdavid');
 define('QRS_DB_PASS', '4rthurd4v1d@123');
-

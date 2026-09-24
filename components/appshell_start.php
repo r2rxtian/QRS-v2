@@ -28,7 +28,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 // to the site's normal HTTP origin instead of inheriting the current scheme.
 $scanHttpPageBase = '';
 if ($currentPage === 'scan.php' && in_array(strtolower($_SERVER['HTTP_HOST'] ?? ''), ['10.2.0.8', '10.2.0.8:443'], true)) {
-    $scanHttpPageBase = 'http://10.2.0.8' . rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/QRS_new/pages/scan.php'), '/\\') . '/';
+    $scanHttpPageBase = 'http://10.2.0.8' . rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/QRTS/pages/scan.php'), '/\\') . '/';
 }
 // Admin gets Task Manager (create/manage); User gets All Tasks (read-only
 // browse, routed into scan.php) -- one task-list page per role, not both,

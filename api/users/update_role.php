@@ -37,11 +37,23 @@ if ($userId === (int) $authUser['id'] && $role !== ROLE_ADMIN) {
 
 $pdo = db();
 
-$userStmt = $pdo->prepare('SELECT id FROM ' . T_USERS . ' WHERE id = ? AND deleted_at IS NULL');
+$userStmt = $pdo->prepare('
+    SELECT u.id, ml.Department AS department
+    FROM ' . T_USERS . ' u
+    LEFT JOIN ' . T_MASTER_LIST . ' ml ON ml.EmployeeID = u.employee_id
+    WHERE u.id = ? AND u.deleted_at IS NULL
+');
 $userStmt->execute([$userId]);
-if (!$userStmt->fetchColumn()) {
+$targetUser = $userStmt->fetch();
+if (!$targetUser) {
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => 'User not found.', 'type' => 'error']);
+    exit;
+}
+
+if (isItDepartmentAdmin($targetUser['department'] ?? null)) {
+    http_response_code(409);
+    echo json_encode(['success' => false, 'message' => 'IT administrator access is managed automatically by department.', 'type' => 'error']);
     exit;
 }
 

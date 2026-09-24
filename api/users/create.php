@@ -37,13 +37,19 @@ $pdo = db();
 // biometrics number server-side against the master list, same as
 // api/users/lookup.php did for the modal's auto-detect step. The client
 // only ever gets to pick the biometrics number and the role.
-$stmt = $pdo->prepare('SELECT ml.EmployeeID AS employee_id, ' . masterListNameSql('ml') . ' AS full_name FROM ' . T_MASTER_LIST . ' ml WHERE ml.BiometricsID = ?');
+$stmt = $pdo->prepare('SELECT ml.EmployeeID AS employee_id, ' . masterListNameSql('ml') . ' AS full_name, ml.Department AS department FROM ' . T_MASTER_LIST . ' ml WHERE ml.BiometricsID = ?');
 $stmt->execute([$biometricsId]);
 $person = $stmt->fetch();
 
 if (!$person) {
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => 'No employee found with that biometrics number.', 'type' => 'error']);
+    exit;
+}
+
+if (isItDepartmentAdmin($person['department'] ?? null)) {
+    http_response_code(409);
+    echo json_encode(['success' => false, 'message' => 'IT administrator access is provisioned automatically at login and is not managed here.', 'type' => 'error']);
     exit;
 }
 

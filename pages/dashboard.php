@@ -314,7 +314,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today, bool $hasSpecificTim
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../styles/app.css?v=29">
-    <link rel="stylesheet" href="../styles/dashboard.css?v=22">
+    <link rel="stylesheet" href="../styles/dashboard.css?v=23">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="../scripts/theme.js?v=6"></script>
 </head>
@@ -569,7 +569,7 @@ function upcomingDateLabel(DateTime $date, DateTime $today, bool $hasSpecificTim
     <script src="../scripts/select-dropdown.js"></script>
     <script src="../scripts/motion.js"></script>
     <script src="../scripts/session-guard.js"></script>
-    <script src="../scripts/dashboard.js?v=2"></script>
+    <script src="../scripts/dashboard.js?v=3"></script>
     <script src="../scripts/logout-confirm.js"></script>
 </body>
 

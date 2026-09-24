@@ -1,5 +1,5 @@
 /*
- * QRS v2 — schema (T-SQL / SQL Server), current as of the System
+ * QRTS — schema (T-SQL / SQL Server), current as of the System
  * Requirements Specification alignment (task_type/location_type, the
  * Observation/Recommendation checklist, Admin/User roles). Tables live in
  * the "dbo" schema of the shared LRNPH_OJT database, all prefixed "qrs_"
@@ -33,9 +33,11 @@
  * api/ endpoints) rather than by the database. Primary key, UNIQUE, and
  * CHECK constraints are still used.
  *
- * No department concept -- this app is used by a single QA team (access is
- * based on each user's own biometrics/employee_id, not a department), so
- * there is no qrs_departments table and no department_id column anywhere.
+ * Department-managed access is read live from dbo.lrn_master_list. Employees
+ * in "Information Technology Department - LRN" receive effective Admin
+ * access and are auto-provisioned by auth/login_handler.php. Department data
+ * is not duplicated here, so no qrs_departments table or department_id column
+ * is required.
  */
 
 USE LRNPH_OJT;

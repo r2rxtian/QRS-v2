@@ -1,6 +1,6 @@
- --run new query in LRNPH_OJT
- --This SQL script is a safe, idempotent database migration
- --adds support for custom scheduled date/times to task locations in SQL Server.
+-- QRTS existing-database migration (safe and idempotent).
+-- Adds support for custom scheduled date/times to task locations.
+-- Fresh installations already include this column/index in deploy_QRTS.sql.
  SET XACT_ABORT ON;
 BEGIN TRANSACTION;
 

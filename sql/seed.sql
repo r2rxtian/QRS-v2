@@ -1,14 +1,16 @@
 /*
- * QRS v2 — baseline data (T-SQL / SQL Server). Run after schema.sql.
+ * QRTS — baseline data (T-SQL / SQL Server). Run after schema.sql.
  * Reflects the real System Requirements Specification data currently live
- * in the database: 2 roles (Admin/User) and the 12 real employee accounts
- * from the client's user list. No department concept -- access is based on
- * each user's own biometrics/employee_id, not a department.
+ * in the database: 2 roles (Admin/User) and the 12 manageable employee accounts
+ * from the client's user list. IT-department administrators are resolved
+ * live from dbo.lrn_master_list and auto-provisioned at successful login, so
+ * they are intentionally not duplicated in this manageable-user seed list.
  *
  * This is a ONE-TIME bootstrap script, not the ongoing way to add users --
- * once an Admin account exists and can log in, every subsequent user gets
- * added live through Settings > User Management (see api/users/create.php),
- * which writes straight to dbo.qrs_users, no SQL involved. This file only
+ * once an Admin account exists and can log in, ordinary users get added live
+ * through Settings > User Management (see api/users/create.php), which writes
+ * straight to dbo.qrs_users. IT-department administrators are provisioned
+ * automatically at successful login and remain hidden from that page. This file only
  * matters again for a fresh install (schema.sql + this, in order, before
  * the app has any Admin to log in with) or as a record of the original
  * roles/roster.
@@ -26,9 +28,9 @@
  * Login credentials are NOT stored in qrs_users either (no username or
  * password_hash column) -- login resolves through the company-wide
  * dbo.lrnph_users table instead, bridged via dbo.lrn_master_list (see
- * auth/login_handler.php). A person only gains QRS v2 access once BOTH
- * exist: a row here (this file) AND a row in lrnph_users with a matching
- * biometrics number via the master list.
+ * auth/login_handler.php). Ordinary users require both a qrs_users row and an
+ * active lrnph_users login. Employees in the configured IT department are
+ * instead provisioned automatically after their company password is verified.
  */
 
 USE LRNPH_OJT;
@@ -70,4 +72,4 @@ SELECT r.employee_id,
 FROM RealUsers r;
 GO
 
-PRINT 'Baseline data inserted: 2 roles, 12 real users. Next: run sql/import_real_locations.php.';
+PRINT 'Baseline data inserted: 2 roles, 12 manageable users. Next: run sql/import_real_locations.php.';

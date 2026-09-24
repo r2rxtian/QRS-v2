@@ -2,7 +2,7 @@
 http_response_code(403);
 require_once __DIR__ . '/../auth/session.php';
 
-// Dynamically compute the base URL for QRS_new so all assets, links, and styles
+// Dynamically compute the QRS base URL so all assets, links, and styles
 // load correctly regardless of whether the 403 was triggered from /pages/user_management.php,
 // /pages/audit_logs.php, or directly from /pages/403.php
 $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
@@ -10,8 +10,8 @@ $pagesDir = dirname($scriptName);
 $appRoot = rtrim(dirname($pagesDir), '/\\');
 
 if ($appRoot === '' || $appRoot === '.') {
-    if (isset($_SERVER['REQUEST_URI']) && str_starts_with($_SERVER['REQUEST_URI'], '/QRS_new')) {
-        $appRoot = '/QRS_new';
+    if (isset($_SERVER['REQUEST_URI']) && str_starts_with($_SERVER['REQUEST_URI'], '/QRTS')) {
+        $appRoot = '/QRTS';
     } else {
         $appRoot = '';
     }

@@ -48,29 +48,26 @@ function animateCountUp(el, delay) {
     });
 }
 
-// Pops the "Task Completion Insights" dome from small to full size on load,
-// anchored to the same bottom-center point it's already positioned at
-// (bottom:0; left:50%) so it reads as rising/inflating from the card's base
-// rather than scaling in from mid-air. xPercent:-50 redoes the stylesheet's
-// own translateX(-50%) centering through GSAP instead -- once GSAP writes
-// anything to the inline transform, it owns that property outright, so the
-// centering has to be part of the same tween or it's lost the moment this
-// runs.
+// Pops the "Task Completion Insights" dome from small to full size on load.
+// GSAP animates a CSS variable consumed by the stylesheet's transform instead
+// of writing its own transform. That leaves translateX(-50%) under CSS control,
+// so browser zoom can recalculate the dome's center without stale inline values.
 function animateDome() {
     const dome = document.querySelector('.dome');
     if (!dome || PREFERS_REDUCED_MOTION || typeof gsap === 'undefined') return;
 
     gsap.fromTo(dome, {
-        scale: 0.35,
+        '--dome-scale': 0.35,
         opacity: 0,
-        xPercent: -50,
-        transformOrigin: 'bottom center',
     }, {
-        scale: 1,
+        '--dome-scale': 1,
         opacity: 1,
-        xPercent: -50,
         duration: 0.9,
         ease: 'back.out(1.6)',
+        onComplete: function () {
+            dome.style.removeProperty('--dome-scale');
+            dome.style.removeProperty('opacity');
+        },
     });
 }
 

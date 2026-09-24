@@ -1,15 +1,19 @@
 /* ============================================================================
- * QRS v2 — full deployment package (T-SQL / SQL Server)
+ * QRTS — full deployment package (T-SQL / SQL Server)
  * ============================================================================
  * Run top to bottom (in SSMS, or however the target database is reached) to
  * stand up everything this app owns: the 9 dbo.qrs_* tables, the 2 fixed
- * roles, the 12 real employee accounts, and the real 240-row location
+ * roles, the 12 explicitly manageable employee accounts, and the real 240-row location
  * catalog (Monitoring + Treatment). Just CREATE TABLE / INSERT commands --
  * which server or database this runs against is not this file's concern.
  *
  * sql/schema.sql remains the development baseline, while this file is the
  * standalone deployment package containing the same current schema plus the
  * deployment seed data.
+ *
+ * FRESH INSTALL ONLY: this script intentionally uses unconditional CREATE
+ * TABLE and INSERT statements. Do not run it over an existing QRTS database;
+ * use the idempotent migrate_QRTS_*.sql scripts for an older installation.
  *
  * ----------------------------------------------------------------------------
  * Dependency note: dbo.lrn_master_list / dbo.lrnph_users
@@ -37,8 +41,11 @@
  *     application layer (see authz/authz.php and the api/ endpoints), not
  *     by the database. Primary key, UNIQUE, and CHECK constraints are
  *     still used.
- *   - No department concept -- this app is used by a single QA team,
- *     access is based on each user's own biometrics/employee_id.
+ *   - Department-managed access is resolved live from the external
+ *     dbo.lrn_master_list table. Employees whose Department is
+ *     "Information Technology Department - LRN" are auto-provisioned by
+ *     auth/login_handler.php and receive effective Admin access. No QRTS
+ *     department table or additional schema column is required.
  * ============================================================================
  */
 
@@ -254,7 +261,7 @@ PRINT 'Section 1 done: 9 dbo.qrs_* tables created.';
 GO
 
 -- ============================================================
--- SECTION 2: ROLES + REAL USERS (12 accounts)
+-- SECTION 2: ROLES + MANAGEABLE USERS (12 accounts)
 -- ============================================================
 
 INSERT INTO dbo.qrs_roles (name, description) VALUES
@@ -262,7 +269,11 @@ INSERT INTO dbo.qrs_roles (name, description) VALUES
     ('User',  'Complete assigned tasks and view reports.');
 GO
 
--- full_name is NOT a qrs_users column -- always derived live from
+-- These are the 12 explicitly managed QRTS accounts. IT-department
+-- administrators are intentionally not seeded here: after a successful
+-- company login, auth/login_handler.php provisions their internal actor row
+-- automatically and pages/user_management.php keeps them out of the managed
+-- roster. full_name is NOT a qrs_users column -- always derived live from
 -- dbo.lrn_master_list (see the OPEN ITEM at the top of this file). Names
 -- below are kept in the VALUES tuple purely as a human-readable reference
 -- for whose employee_id is whose, not inserted anywhere. Same for login
@@ -292,7 +303,7 @@ SELECT r.employee_id,
 FROM RealUsers r;
 GO
 
-PRINT 'Section 2 done: 2 roles, 12 real users inserted.';
+PRINT 'Section 2 done: 2 roles, 12 manageable users inserted.';
 GO
 
 -- ============================================================
@@ -560,7 +571,7 @@ PRINT 'Section 3 done: 240 real locations inserted (148 Monitoring, 92 Treatment
 GO
 
 PRINT '============================================================';
-PRINT 'QRS v2 deployment complete: 9 tables, 2 roles, 12 users, 240 locations.';
+PRINT 'QRTS deployment complete: 9 tables, 2 roles, 12 manageable users, 240 locations.';
 PRINT 'Remember: see the OPEN ITEM at the top of this file before anyone';
 PRINT 'tries to log in -- login depends on lrn_master_list/lrnph_users';
 PRINT 'being reachable from this database too.';

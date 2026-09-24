@@ -5,7 +5,7 @@
 $scanHost = strtolower($_SERVER['HTTP_HOST'] ?? '');
 $scanIsHttps = !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
 if (!$scanIsHttps && in_array($scanHost, ['10.2.0.8', '10.2.0.8:80'], true)) {
-    $scanRequestUri = $_SERVER['REQUEST_URI'] ?? '/QRS_new/pages/scan.php';
+    $scanRequestUri = $_SERVER['REQUEST_URI'] ?? '/QRTS/pages/scan.php';
     header('Location: https://10.2.0.8' . str_replace(["\r", "\n"], '', $scanRequestUri), true, 302);
     exit;
 }

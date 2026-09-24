@@ -21,7 +21,7 @@ $pdo = db();
 // SELECT * would mean shipping the entire history to the browser on every
 // visit. 500 rows is generous for "recent activity" without that cost;
 // there's no date-range picker (yet) to reach further back than that.
-$stmt = $pdo->query('
+$stmt = $pdo->prepare('
     SELECT TOP 500
         al.id, al.created_at, al.action, al.entity_type, al.user_id,
         CASE WHEN al.user_id IS NULL THEN NULL ELSE ' . fullNameSql('ml', 'u') . ' END AS actor_name
@@ -29,21 +29,46 @@ $stmt = $pdo->query('
     LEFT JOIN ' . T_USERS . ' u ON u.id = al.user_id
     LEFT JOIN ' . T_MASTER_LIST . ' ml ON ml.EmployeeID = u.employee_id
     WHERE al.action <> \'task_location.expire_sweep\'
+      AND (ml.Department IS NULL OR LTRIM(RTRIM(ml.Department)) <> ?)
     ORDER BY al.created_at DESC, al.id DESC
 ');
+$stmt->execute([IT_ADMIN_DEPARTMENT]);
 $auditRows = $stmt->fetchAll();
 
-$totalEvents = (int) $pdo->query('SELECT COUNT(*) FROM ' . T_AUDIT_LOG . ' WHERE action <> \'task_location.expire_sweep\'')->fetchColumn();
+$totalEventsStmt = $pdo->prepare('
+    SELECT COUNT(*)
+    FROM ' . T_AUDIT_LOG . ' al
+    LEFT JOIN ' . T_USERS . ' u ON u.id = al.user_id
+    LEFT JOIN ' . T_MASTER_LIST . ' ml ON ml.EmployeeID = u.employee_id
+    WHERE al.action <> \'task_location.expire_sweep\'
+      AND (ml.Department IS NULL OR LTRIM(RTRIM(ml.Department)) <> ?)
+');
+$totalEventsStmt->execute([IT_ADMIN_DEPARTMENT]);
+$totalEvents = (int) $totalEventsStmt->fetchColumn();
 
-$failedLoginsToday = (int) $pdo->query("
-    SELECT COUNT(*) FROM " . T_AUDIT_LOG . "
-    WHERE action = 'login.failed' AND created_at >= CAST(SYSDATETIME() AS DATE)
-")->fetchColumn();
+$failedLoginsStmt = $pdo->prepare('
+    SELECT COUNT(*)
+    FROM ' . T_AUDIT_LOG . ' al
+    LEFT JOIN ' . T_USERS . ' u ON u.id = al.user_id
+    LEFT JOIN ' . T_MASTER_LIST . ' ml ON ml.EmployeeID = u.employee_id
+    WHERE al.action = \'login.failed\'
+      AND al.created_at >= CAST(SYSDATETIME() AS DATE)
+      AND (ml.Department IS NULL OR LTRIM(RTRIM(ml.Department)) <> ?)
+');
+$failedLoginsStmt->execute([IT_ADMIN_DEPARTMENT]);
+$failedLoginsToday = (int) $failedLoginsStmt->fetchColumn();
 
-$activeUsersToday = (int) $pdo->query('
-    SELECT COUNT(DISTINCT user_id) FROM ' . T_AUDIT_LOG . '
-    WHERE user_id IS NOT NULL AND created_at >= CAST(SYSDATETIME() AS DATE)
-')->fetchColumn();
+$activeUsersStmt = $pdo->prepare('
+    SELECT COUNT(DISTINCT al.user_id)
+    FROM ' . T_AUDIT_LOG . ' al
+    LEFT JOIN ' . T_USERS . ' u ON u.id = al.user_id
+    LEFT JOIN ' . T_MASTER_LIST . ' ml ON ml.EmployeeID = u.employee_id
+    WHERE al.user_id IS NOT NULL
+      AND al.created_at >= CAST(SYSDATETIME() AS DATE)
+      AND (ml.Department IS NULL OR LTRIM(RTRIM(ml.Department)) <> ?)
+');
+$activeUsersStmt->execute([IT_ADMIN_DEPARTMENT]);
+$activeUsersToday = (int) $activeUsersStmt->fetchColumn();
 ?>
 <!DOCTYPE html>
 <html lang="en">
